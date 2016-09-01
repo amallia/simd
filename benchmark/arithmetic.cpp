@@ -30,7 +30,8 @@
 
 #include "chrono_io.hpp"
 #include "docopt/docopt.h"
-#include "simd.hpp"
+#include <simd>
+
 
 using clock_type = std::chrono::high_resolution_clock;
 using duration = typename clock_type::duration;

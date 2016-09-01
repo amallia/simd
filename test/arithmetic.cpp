@@ -17,7 +17,7 @@
 #include <type_traits>  // std::is_same
 #include <vector>       // std::vector
 
-#include "simd.hpp"
+#include <simd>
 
 
 template <typename>

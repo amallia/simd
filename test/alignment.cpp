@@ -9,7 +9,7 @@
 #include <new>       // new, delete
 #include <vector>    // std::vector
 
-#include "simd.hpp"
+#include <simd>
 
 
 template <typename T>
