@@ -20,6 +20,42 @@
 #include "simd.hpp"
 
 
+template <typename>
+struct is_divides_or_modulus : std::false_type {};
+
+template <typename T>
+struct is_divides_or_modulus <std::divides <T>> : std::true_type {};
+
+template <typename T>
+struct is_divides_or_modulus <std::modulus <T>> : std::true_type {};
+
+template <typename T>
+struct is_divides_or_modulus <T const> : is_divides_or_modulus <T> {};
+
+template <typename T>
+struct is_divides_or_modulus <T &> : is_divides_or_modulus <T> {};
+
+template <typename T>
+struct is_divides_or_modulus <T const &> : is_divides_or_modulus <T> {};
+
+template <typename T>
+struct shiftl
+{
+    T operator() (T const & a, T const & b) noexcept
+    {
+        return a << b;
+    }
+};
+
+template <typename T>
+struct shiftr
+{
+    T operator() (T const & a, T const & b) noexcept
+    {
+        return a >> b;
+    }
+};
+
 enum status : bool
 {
     pass = true,
@@ -45,16 +81,16 @@ std::array <T, N> map (Op op, std::array <T, N> const & lhs, std::array <T, N> c
 }
 
 template <typename ScalarOp, typename SimdOp, typename SimdT>
-enum status verify_correctness (SimdT const & lhs,
-                                SimdT const & rhs,
-                                std::ostream & erros)
+enum status verify (SimdT const & lhs,
+                    SimdT const & rhs,
+                    std::vector <std::string> & errors)
 {
     using traits = simd::simd_traits <SimdT>;
     using value_type = typename traits::value_type;
     static constexpr auto lanes = traits::lanes;
 
-    static ScalarOp scalar_op;
-    static SimdOp vector_op;
+    static ScalarOp scalar_op {};
+    static SimdOp vector_op {};
 
     auto const lhs_arr = static_cast <std::array <value_type, lanes>> (lhs);
     auto const rhs_arr = static_cast <std::array <value_type, lanes>> (rhs);
@@ -64,19 +100,21 @@ enum status verify_correctness (SimdT const & lhs,
     auto const result = vector_op (lhs, rhs);
 
     if ((result != expected_vector).any_of ()) {
-        erros << "incorrect value obtained;\n";
+        std::ostringstream err;
+        err << "incorrect value obtained for:\n";
         for (std::size_t i = 0; i < lanes; ++i) {
             if (result [i] != expected_vector [i]) {
-                erros << "\t[expected: "
-                      << std::hex << expected_vector [i]
-                      << "] [obtained: "
-                      << std::hex << result [i]
-                      << "] [arguments: "
-                      << std::hex << lhs_arr [i] << "; "
-                      << std::hex << rhs_arr [i] << "]"
-                      << std::endl;
+                err << "\t[expected: "
+                    << std::dec << expected_vector [i]
+                    << "] [obtained: "
+                    << std::dec << result [i]
+                    << "] [arguments: "
+                    << std::dec << lhs_arr [i] << "; "
+                    << std::dec << rhs_arr [i] << "]"
+                    << std::endl;
             }
         }
+        errors.push_back (err.str ());
         return status::fail;
     } else {
         return status::pass;
@@ -84,11 +122,13 @@ enum status verify_correctness (SimdT const & lhs,
 }
 
 template <typename ScalarOp, typename SimdOp, typename SimdT>
-enum status generate_and_test_cases (std::size_t len, std::ostream & logos, std::ostream & erros)
+std::uint64_t generate_and_test_cases (std::size_t len,
+                                       std::ostream & logos,
+                                       std::vector <std::string> & errors)
 {
     using operand_type = SimdT;
-    using traits_type = simd::simd_traits <operand_type>;
-    using value_type = typename traits_type::value_type;
+    using traits_type  = simd::simd_traits <operand_type>;
+    using value_type   = typename traits_type::value_type;
     static constexpr auto lanes = traits_type::lanes;
 
     static auto gen = [] (void) -> operand_type
@@ -100,177 +140,322 @@ enum status generate_and_test_cases (std::size_t len, std::ostream & logos, std:
         >::type;
 
         static std::random_device rd;
-        static auto g = std::bind (distribution {}, std::mt19937 {rd ()});
+        auto g = std::bind (distribution {}, std::mt19937 {rd ()});
 
         std::array <value_type, lanes> values;
         std::generate_n (values.begin (), lanes, g);
         return operand_type {values};
     };
 
-    std::vector <operand_type> lhs (len);
-    std::vector <operand_type> rhs (len);
+    static auto gen_nonzero = [] (void) -> operand_type
+    {
+        using distribution = typename std::conditional <
+            std::is_integral <value_type>::value,
+            std::uniform_int_distribution <value_type>,
+            std::uniform_real_distribution <value_type>
+        >::type;
+
+        static std::random_device rd;
+        auto g = std::bind (
+            distribution {value_type {1}}, std::mt19937 {rd ()}
+        );
+
+        std::array <value_type, lanes> values;
+        std::generate_n (values.begin (), lanes, g);
+        return operand_type {values};
+    };
+
+    std::vector <operand_type> lhs;
+    lhs.resize (len);
+    std::vector <operand_type> rhs;
+    rhs.resize (len);
 
     std::generate (lhs.begin (), lhs.end (), gen);
-    std::generate (rhs.begin (), rhs.end (), gen);
 
-    if (std::is_same <SimdOp, std::divides <SimdT>>::value ||
-        std::is_same <SimdOp, std::modulus <SimdT>>::value)
-    {
-        static operand_type const one_vec (value_type {1});
-        static auto any_zero = [](operand_type const & o) -> bool
-        {
-            static operand_type const zero_vec (value_type {0});
-            return (o == zero_vec).any_of ();
-        };
-
-        std::replace_if (rhs.begin (), rhs.end (), any_zero, one_vec);
+    if (is_divides_or_modulus <ScalarOp>::value) {
+        std::generate (rhs.begin (), rhs.end (), gen_nonzero);
+    } else {
+        std::generate (rhs.begin (), rhs.end (), gen);
     }
 
-    status result = status::pass;
+    std::uint64_t fail_count = 0;
     for (std::size_t i = 0; i < len; ++i) {
-        result = verify_correctness <ScalarOp, SimdOp> (lhs [i], rhs [i], erros);
+        switch (verify <ScalarOp, SimdOp> (lhs [i], rhs [i], errors)) {
+            case status::fail:
+                fail_count += 1;
+                break;
+            case status::pass:
+                break;
+        }
+
         logos << "\r\t" << "[" << i + 1 << "/" << len << "]" << std::flush;
     }
-    return result;
+
+    return fail_count;
 }
-
-template <typename T>
-struct shl
-{
-    T operator () (T const & a, T const & b) const noexcept
-    {
-        return a << b;
-    }
-};
-
-template <typename T>
-struct shr
-{
-    T operator () (T const & a, T const & b) const noexcept
-    {
-        return a >> b;
-    }
-};
 
 template <typename ScalarType, typename SimdType>
 void run_integral_tests (std::string name, std::size_t test_length)
 {
-    status result;
-    std::stringstream errlog {};
+    std::vector <std::string> errors;
 
-    std::cerr << name << " (+)" << std::endl;
-    result = generate_and_test_cases <
-        std::plus <ScalarType>, std::plus <SimdType>, SimdType
-    > (test_length, std::cerr, errlog);
+    {
+        std::cerr << name << " (+)" << std::endl;
+        auto fail_count = generate_and_test_cases <
+            std::plus <ScalarType>, std::plus <SimdType>, SimdType
+        > (test_length, std::cerr, errors);
 
-    if (result == status::fail) {
-        std::cerr << "\t... fail ...\n" << errlog.str () << std::endl;
-        errlog.str ("");
-    } else {
-        std::cerr << "\t... ok ..." << std::endl;
+        if (fail_count != 0) {
+            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+
+            if (errors.size () > 5) {
+                std::cerr << "truncating output to 5 error logs...\n";
+            }
+
+            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
+                std::cerr << errors [i];
+            }
+
+            errors.clear ();
+        } else {
+            std::cerr << "\t... ok ..." << std::endl;
+        }
     }
 
-    std::cerr << name << " (-)" << std::endl;
-    result = generate_and_test_cases <
-        std::minus <ScalarType>, std::minus <SimdType>, SimdType
-    > (test_length, std::cerr, errlog);
+    {
+        std::cerr << name << " (-)" << std::endl;
+        auto fail_count = generate_and_test_cases <
+            std::minus <ScalarType>, std::minus <SimdType>, SimdType
+        > (test_length, std::cerr, errors);
 
-    if (result == status::fail) {
-        std::cerr << "... fail ...\n" << errlog.str () << std::endl;
-        errlog.str ("");
-    } else {
-        std::cerr << "\t... ok ..." << std::endl;
+        if (fail_count != 0) {
+            std::cerr << "... failed: " << errors.size () << " ..." << std::endl;
+
+            if (errors.size () > 5) {
+                std::cerr << "truncating output to 5 error logs...\n";
+            }
+
+            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
+                std::cerr << errors [i];
+            }
+
+            errors.clear ();
+        } else {
+            std::cerr << "\t... ok ..." << std::endl;
+        }
     }
 
-    std::cerr << name << " (*)" << std::endl;
-    result = generate_and_test_cases <
-        std::multiplies <ScalarType>, std::multiplies <SimdType>, SimdType
-    > (test_length, std::cerr, errlog);
+    {
+        std::cerr << name << " (*)" << std::endl;
+        auto fail_count = generate_and_test_cases <
+            std::multiplies <ScalarType>, std::multiplies <SimdType>, SimdType
+        > (test_length, std::cerr, errors);
 
-    if (result == status::fail) {
-        std::cerr << "... fail ...\n" << errlog.str () << std::endl;
-        errlog.str ("");
-    } else {
-        std::cerr << "\t... ok ..." << std::endl;
+        if (fail_count != 0) {
+            std::cerr << "... failed: " << errors.size () << " ..." << std::endl;
+
+            if (errors.size () > 5) {
+                std::cerr << "truncating output to 5 error logs...\n";
+            }
+
+            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
+                std::cerr << errors [i];
+            }
+
+            errors.clear ();
+        } else {
+            std::cerr << "\t... ok ..." << std::endl;
+        }
     }
 
-    std::cerr << name << " (/)" << std::endl;
-    result = generate_and_test_cases <
-        std::divides <ScalarType>, std::divides <SimdType>, SimdType
-    > (test_length, std::cerr, errlog);
+    {
+        std::cerr << name << " (/)" << std::endl;
+        auto fail_count = generate_and_test_cases <
+            std::divides <ScalarType>, std::divides <SimdType>, SimdType
+        > (test_length, std::cerr, errors);
 
-    if (result == status::fail) {
-        std::cerr << "... fail ...\n" << errlog.str () << std::endl;
-        errlog.str ("");
-    } else {
-        std::cerr << "\t... ok ..." << std::endl;
+        if (fail_count != 0) {
+            std::cerr << "... failed: " << errors.size () << " ..." << std::endl;
+
+            if (errors.size () > 5) {
+                std::cerr << "truncating output to 5 error logs...\n";
+            }
+
+            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
+                std::cerr << errors [i];
+            }
+
+            errors.clear ();
+        } else {
+            std::cerr << "\t... ok ..." << std::endl;
+        }
     }
 
-    std::cerr << name << " (%)" << std::endl;
-    result = generate_and_test_cases <
-        std::modulus <ScalarType>, std::modulus <SimdType>, SimdType
-    > (test_length, std::cerr, errlog);
+    {
+        std::cerr << name << " (%)" << std::endl;
+        auto fail_count = generate_and_test_cases <
+            std::modulus <ScalarType>, std::modulus <SimdType>, SimdType
+        > (test_length, std::cerr, errors);
 
-    if (result == status::fail) {
-        std::cerr << "... fail ...\n" << errlog.str () << std::endl;
-        errlog.str ("");
-    } else {
-        std::cerr << "\t... ok ..." << std::endl;
+        if (fail_count != 0) {
+            std::cerr << "... failed: " << errors.size () << " ..." << std::endl;
+
+            if (errors.size () > 5) {
+                std::cerr << "truncating output to 5 error logs...\n";
+            }
+
+            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
+                std::cerr << errors [i];
+            }
+
+            errors.clear ();
+        } else {
+            std::cerr << "\t... ok ..." << std::endl;
+        }
+    }
+
+    {
+        std::cerr << name << " (<<)" << std::endl;
+        auto fail_count = generate_and_test_cases <
+            shiftl <ScalarType>, shiftl <SimdType>, SimdType
+        > (test_length, std::cerr, errors);
+
+        if (fail_count != 0) {
+            std::cerr << "... failed: " << errors.size () << " ..." << std::endl;
+
+            if (errors.size () > 5) {
+                std::cerr << "truncating output to 5 error logs...\n";
+            }
+
+            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
+                std::cerr << errors [i];
+            }
+
+            errors.clear ();
+        } else {
+            std::cerr << "\t... ok ..." << std::endl;
+        }
+    }
+
+    {
+        std::cerr << name << " (>>)" << std::endl;
+        auto fail_count = generate_and_test_cases <
+            shiftr <ScalarType>, shiftr <SimdType>, SimdType
+        > (test_length, std::cerr, errors);
+
+        if (fail_count != 0) {
+            std::cerr << "... failed: " << errors.size () << " ..." << std::endl;
+
+            if (errors.size () > 5) {
+                std::cerr << "truncating output to 5 error logs...\n";
+            }
+
+            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
+                std::cerr << errors [i];
+            }
+
+            errors.clear ();
+        } else {
+            std::cerr << "\t... ok ..." << std::endl;
+        }
     }
 }
 
 template <typename ScalarType, typename SimdType>
 void run_float_tests (std::string name, std::size_t test_length)
 {
-    status result;
-    std::stringstream errlog {};
+    std::vector <std::string> errors;
 
-    std::cerr << name << " (+)" << std::endl;
-    result = generate_and_test_cases <
-        std::plus <ScalarType>, std::plus <SimdType>, SimdType
-    > (test_length, std::cerr, errlog);
+    {
+        std::cerr << name << " (+)" << std::endl;
+        auto fail_count = generate_and_test_cases <
+            std::plus <ScalarType>, std::plus <SimdType>, SimdType
+        > (test_length, std::cerr, errors);
 
-    if (result == status::fail) {
-        std::cerr << "\t... fail ...\n" << errlog.str () << std::endl;
-        errlog.str ("");
-    } else {
-        std::cerr << "\t... ok ..." << std::endl;
+        if (fail_count != 0) {
+            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+
+            if (errors.size () > 5) {
+                std::cerr << "truncating output to 5 error logs...\n";
+            }
+
+            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
+                std::cerr << errors [i];
+            }
+
+            errors.clear ();
+        } else {
+            std::cerr << "\t... ok ..." << std::endl;
+        }
     }
 
-    std::cerr << name << " (-)" << std::endl;
-    result = generate_and_test_cases <
-        std::minus <ScalarType>, std::minus <SimdType>, SimdType
-    > (test_length, std::cerr, errlog);
+    {
+        std::cerr << name << " (-)" << std::endl;
+        auto fail_count = generate_and_test_cases <
+            std::minus <ScalarType>, std::minus <SimdType>, SimdType
+        > (test_length, std::cerr, errors);
 
-    if (result == status::fail) {
-        std::cerr << "... fail ...\n" << errlog.str () << std::endl;
-        errlog.str ("");
-    } else {
-        std::cerr << "\t... ok ..." << std::endl;
+        if (fail_count != 0) {
+            std::cerr << "... failed: " << errors.size () << " ..." << std::endl;
+
+            if (errors.size () > 5) {
+                std::cerr << "truncating output to 5 error logs...\n";
+            }
+
+            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
+                std::cerr << errors [i];
+            }
+
+            errors.clear ();
+        } else {
+            std::cerr << "\t... ok ..." << std::endl;
+        }
     }
 
-    std::cerr << name << " (*)" << std::endl;
-    result = generate_and_test_cases <
-        std::multiplies <ScalarType>, std::multiplies <SimdType>, SimdType
-    > (test_length, std::cerr, errlog);
+    {
+        std::cerr << name << " (*)" << std::endl;
+        auto fail_count = generate_and_test_cases <
+            std::multiplies <ScalarType>, std::multiplies <SimdType>, SimdType
+        > (test_length, std::cerr, errors);
 
-    if (result == status::fail) {
-        std::cerr << "... fail ...\n" << errlog.str () << std::endl;
-        errlog.str ("");
-    } else {
-        std::cerr << "\t... ok ..." << std::endl;
+        if (fail_count != 0) {
+            std::cerr << "... failed: " << errors.size () << " ..." << std::endl;
+
+            if (errors.size () > 5) {
+                std::cerr << "truncating output to 5 error logs...\n";
+            }
+
+            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
+                std::cerr << errors [i];
+            }
+
+            errors.clear ();
+        } else {
+            std::cerr << "\t... ok ..." << std::endl;
+        }
     }
 
-    std::cerr << name << " (/)" << std::endl;
-    result = generate_and_test_cases <
-        std::divides <ScalarType>, std::divides <SimdType>, SimdType
-    > (test_length, std::cerr, errlog);
+    {
+        std::cerr << name << " (/)" << std::endl;
+        auto fail_count = generate_and_test_cases <
+            std::divides <ScalarType>, std::divides <SimdType>, SimdType
+        > (test_length, std::cerr, errors);
 
-    if (result == status::fail) {
-        std::cerr << "... fail ...\n" << errlog.str () << std::endl;
-        errlog.str ("");
-    } else {
-        std::cerr << "\t... ok ..." << std::endl;
+        if (fail_count != 0) {
+            std::cerr << "... failed: " << errors.size () << " ..." << std::endl;
+
+            if (errors.size () > 5) {
+                std::cerr << "truncating output to 5 error logs...\n";
+            }
+
+            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
+                std::cerr << errors [i];
+            }
+
+            errors.clear ();
+        } else {
+            std::cerr << "\t... ok ..." << std::endl;
+        }
     }
 }
 
