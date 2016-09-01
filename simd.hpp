@@ -18,7 +18,6 @@
 #include <cstdint>              // std::{u}int{8,16,32,64}_t
 #include <cstring>              // std::memcpy
 #include <functional>           // std::hash
-#include <initializer_list>     // std::initializer_list
 #include <iterator>             // std::iterator, std::reverse_iterator
 #include <memory>               // std::align, std::addressof
 #include <mutex>                // std::lock_guard, std::mutex
@@ -29,11 +28,11 @@
 #include <utility>              // util::index_sequence
 
 #if !defined (__clang__) && !defined (__GNUG__)
-#error "simd implemention requires clang or gcc vector extensions"
+    #error "simd implemention requires clang or gcc vector extensions"
 #endif
 
 #if __cplusplus < 201103L
-#error "simd implementation requires C++11 support"
+    #error "simd implementation requires C++11 support"
 #endif
 
 #if __cplusplus >= 201402L
@@ -41,6 +40,69 @@
 #else
     #define advanced_constexpr
 #endif
+
+#if defined (__arm__)
+    #if !(defined (__ARM_NEON__) || defined (__ARM_NEON))
+        #error "simd implementation requires ARM NEON extension support"
+    #else
+        #include <arm_neon.h>
+        #define simd_arm
+        #define simd_neon
+    #endif
+#endif
+
+#if defined (__x86__)\
+ || defined (__x86_64__)\
+ || defined (__x86_64)\
+ || defined (__amd64__)\
+ || defined (__amd64)
+    #if !(defined (__MMX__)\
+       || defined (__SSE__)\
+       || defined (__SSE2__)\
+       || defined (__SSE3__)\
+       || defined (__SSSE3__)\
+       || defined (__SSE4_1__)\
+       || defined (__SSE4_2__)\
+       || defined (__AVX__)\
+       || defined (__AVX2__)\
+       || defined (__AVX512F__))
+        #error "simd implementation requires x86 SIMD extension support"
+    #else
+        #include <x86intrin.h>
+        #define simd_x86
+        #if defined (__MMX__)
+            #define simd_mmx
+        #endif
+        #if defined (__SSE__)
+            #define simd_sse
+        #endif
+        #if defined (__SSE2__)
+            #define simd_sse2
+        #endif
+        #if defined (__SSE3__)
+            #define simd_sse3
+        #endif
+        #if defined (__SSSE3__)
+            #define simd_ssse3
+        #endif
+        #if defined (__SSE4_1__)
+            #define simd_see4_1
+        #endif
+        #if defined (__SSE4_2__)
+            #define simd_see4_2
+        #endif
+        #if defined (__AVX__)
+            #define simd_avx
+        #endif
+        #if defined (__AVX2__)
+            #define simd_avx2
+        #endif
+        #if defined (__AVX512F__)
+            #define simd_avx512
+        #endif
+    #endif
+#endif
+
 
 namespace simd
 {
@@ -205,9 +267,9 @@ namespace util
      * Hash combine for specialization of std::hash for SIMD vector types.
      */
     template <>
-#if defined(__clang__)
+#if defined (__clang__)
     void hash_combine (std::size_t & seed, __int128_t const & t) noexcept
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     void hash_combine (std::size_t & seed, __int128 const & t) noexcept
 #endif
     {
@@ -228,10 +290,10 @@ namespace util
      * vector types.
      */
     template <>
-#if defined(__clang__)
+#if defined (__clang__)
     std::size_t hash_combine (std::size_t const & seed, __int128_t const & t)
         noexcept
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     std::size_t hash_combine (std::size_t const & seed, __int128 const & t)
         noexcept
 #endif
@@ -254,9 +316,9 @@ namespace util
      * Hash combine for specialization of std::hash for SIMD vector types.
      */
     template <>
-#if defined(__clang__)
+#if defined (__clang__)
     void hash_combine (std::size_t & seed, __uint128_t const & t) noexcept
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     void hash_combine (std::size_t & seed, unsigned __int128 const & t) noexcept
 #endif
     {
@@ -277,10 +339,10 @@ namespace util
      * vector types.
      */
     template <>
-#if defined(__clang__)
+#if defined (__clang__)
     std::size_t hash_combine (std::size_t const & seed, __uint128_t const & t)
         noexcept
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     std::size_t hash_combine (std::size_t const & seed,
                               unsigned __int128 const & t) noexcept
 #endif
@@ -339,6 +401,8 @@ namespace util
      * -mmmx, -msse, -msse2, -msse3, -mssse3, -msse4, -msse4.{1,2}, -mavx,
      * -mavx2, -mavx512{f,bw,cd,dq,er,ifma,pf,vbmi,vl}, -mneon.
      */
+namespace vext
+{
     template <typename, std::size_t, typename enable = void>
     struct vector_type_specialization;
 
@@ -865,6 +929,10 @@ template <>
     };
 
     template <typename T, std::size_t lanes>
+    using vector = vector_type_specialization <T, lanes>;
+}   // namespace vext
+
+    template <typename T, std::size_t lanes>
     class simd_type_base;
 
     template <typename T, std::size_t lanes>
@@ -887,7 +955,7 @@ template <>
                     std::int64_t,
                     typename std::conditional <
                         sizeof (T) == 16 || sizeof (T) == 12 || sizeof (T) == 10,
-#if defined(__clang__)
+#if defined (__clang__)
                         __int128_t,
 #elif defined (__GNUG__)
                         __int128,
@@ -914,7 +982,7 @@ template <>
                     std::uint64_t,
                     typename std::conditional <
                         sizeof (T) == 16 || sizeof (T) == 12 || sizeof (T) == 10,
-#if defined(__clang__)
+#if defined (__clang__)
                         __uint128_t,
 #elif defined (__GNUG__)
                         unsigned __int128,
@@ -929,7 +997,7 @@ template <>
     template <typename T, std::size_t lanes>
     class simd_type_base
     {
-#if defined(__clang__)
+#if defined (__clang__)
         static_assert (
             std::is_arithmetic <T>::value ||
                 std::is_same <T, __int128_t>::value ||
@@ -950,25 +1018,30 @@ template <>
             "template parameter value lanes must be nonzero"
         );
 
+        using base_value_type = T;
+
     public:
-        using integral_type = integral_type_switch <T>;
+        using integral_type          = integral_type_switch <T>;
         using unsigned_integral_type = unsigned_integral_type_switch <T>;
-        using signed_integral_type = integral_type;
+        using signed_integral_type   = integral_type_switch <T>;
 
         static_assert (
             !std::is_same <integral_type, void>::value &&
-                !std::is_same <integral_type, void>::value,
+                !std::is_same <unsigned_integral_type, void>::value,
             "template parameter typename T is too large"
         );
 
-        using vector_type_impl =
-            typename vector_type_specialization <T, lanes>::type;
+        static_assert (
+            sizeof (integral_type) == sizeof (unsigned_integral_type) &&
+            sizeof (integral_type) == sizeof (signed_integral_type),
+            "error in selecting integral types: sizes do not compare equal"
+        );
+
+        using vector_type_impl = typename vext::vector <T, lanes>::type;
 
         static constexpr std::size_t alignment =
-            vector_type_specialization <T, lanes>::alignment;
-
-        static constexpr std::size_t size =
-            vector_type_specialization <T, lanes>::size;
+            vext::vector <T, lanes>::alignment;
+        static constexpr std::size_t size = vext::vector <T, lanes>::size;
 
         simd_type_base (void) noexcept = default;
         simd_type_base (simd_type_base const &) noexcept = default;
@@ -1066,7 +1139,7 @@ template <>
     private:
         template <std::size_t ... L>
         static constexpr
-        vector_type_impl unpack_impl (T const (&arr) [lanes],
+        vector_type_impl unpack_impl (base_value_type const (&arr) [lanes],
                                       util::index_sequence <L...>) noexcept
         {
             return vector_type_impl {arr [L]...};
@@ -1074,42 +1147,34 @@ template <>
 
         template <std::size_t ... L>
         static constexpr
-        vector_type_impl unpack_impl (std::array <T, lanes> const & arr,
-                                      util::index_sequence <L...>) noexcept
+        vector_type_impl
+            unpack_impl (std::array <base_value_type, lanes> const & arr,
+                         util::index_sequence <L...>) noexcept
         {
             return vector_type_impl {arr [L]...};
-        }
-
-        template <std::size_t ... L>
-        static constexpr
-        vector_type_impl extend_impl (T val, util::index_sequence <L...>)
-            noexcept
-        {
-            return vector_type_impl {((void) L, val)...};
         }
 
     protected:
         static constexpr
-        vector_type_impl unpack (T const (&arr) [lanes]) noexcept
+        vector_type_impl unpack (base_value_type const (&arr) [lanes]) noexcept
         {
             return simd_type_base::unpack_impl (
                 arr, util::make_index_sequence <lanes> {}
             );
         }
 
-        static constexpr
-        vector_type_impl unpack (std::array <T, lanes> const & arr) noexcept
+        static constexpr vector_type_impl
+            unpack (std::array <base_value_type, lanes> const & arr) noexcept
         {
             return simd_type_base::unpack_impl (
                 arr, util::make_index_sequence <lanes> {}
             );
         }
 
-        static constexpr vector_type_impl extend (T val) noexcept
+        template <typename ... Ts>
+        static constexpr vector_type_impl extend (Ts const & ... ts) noexcept
         {
-            return simd_type_base::extend_impl (
-                val, util::make_index_sequence <lanes> {}
-            );
+            return vector_type_impl {static_cast <base_value_type> (ts)...};
         }
 
     public:
@@ -1147,12 +1212,15 @@ template <>
             {}
 
             constexpr pointer_proxy (element_type & e) noexcept
-                : _pointer {static_cast <pointer> (static_cast <void_pointer> (&e))}
+                : _pointer {
+                    static_cast <pointer> (static_cast <void_pointer> (&e))
+                }
             {}
 
             constexpr pointer_proxy (pointer_proxy const &) noexcept = default;
 
-            advanced_constexpr pointer_proxy & operator= (pointer_proxy p) noexcept
+            advanced_constexpr pointer_proxy & operator= (pointer_proxy p)
+                noexcept
             {
                 this->_pointer = p._pointer;
                 return *this;
@@ -1174,17 +1242,17 @@ template <>
                 return static_cast <bool> (this->_pointer);
             }
 
-            reference operator * (void) const noexcept
+            reference operator* (void) const noexcept
             {
                 return *this->_pointer;
             }
 
-            pointer operator -> (void) const noexcept
+            pointer operator-> (void) const noexcept
             {
                 return this->_pointer;
             }
 
-            reference operator [] (std::ptrdiff_t n) const noexcept
+            reference operator[] (std::ptrdiff_t n) const noexcept
             {
                 return this->_pointer [n];
             }
@@ -1215,96 +1283,96 @@ template <>
                 return tmp;
             }
 
-            pointer_proxy & operator += (std::ptrdiff_t n) noexcept
+            pointer_proxy & operator+= (std::ptrdiff_t n) noexcept
             {
                 this->_poiner += n;
                 return *this;
             }
 
-            pointer_proxy & operator -= (std::ptrdiff_t n) noexcept
+            pointer_proxy & operator-= (std::ptrdiff_t n) noexcept
             {
                 this->_poiner -= n;
                 return *this;
             }
 
-            pointer_proxy operator + (std::ptrdiff_t n) const noexcept
+            pointer_proxy operator+ (std::ptrdiff_t n) const noexcept
             {
                 auto tmp = *this;
                 return tmp += n;
             }
 
-            pointer_proxy operator - (std::ptrdiff_t n) const noexcept
+            pointer_proxy operator- (std::ptrdiff_t n) const noexcept
             {
                 auto tmp = *this;
                 return tmp -= n;
             }
 
-            std::ptrdiff_t operator - (pointer_proxy p) const noexcept
+            std::ptrdiff_t operator- (pointer_proxy p) const noexcept
             {
                 return this->_pointer - p._pointer;
             }
 
-            std::ptrdiff_t operator - (pointer p) const noexcept
+            std::ptrdiff_t operator- (pointer p) const noexcept
             {
                 return this->_pointer - p;
             }
 
-            bool operator == (pointer_proxy p) const noexcept
+            bool operator== (pointer_proxy p) const noexcept
             {
                 return this->_pointer == p._pointer;
             }
 
-            bool operator == (pointer p) const noexcept
+            bool operator== (pointer p) const noexcept
             {
                 return this->_pointer == p;
             }
 
-            bool operator != (pointer_proxy p) const noexcept
+            bool operator!= (pointer_proxy p) const noexcept
             {
                 return this->_pointer != p._pointer;
             }
 
-            bool operator != (pointer p) const noexcept
+            bool operator!= (pointer p) const noexcept
             {
                 return this->_pointer != p;
             }
 
-            bool operator < (pointer_proxy p) const noexcept
+            bool operator< (pointer_proxy p) const noexcept
             {
                 return this->_pointer < p._pointer;
             }
 
-            bool operator < (pointer p) const noexcept
+            bool operator< (pointer p) const noexcept
             {
                 return this->_pointer < p;
             }
 
-            bool operator > (pointer_proxy p) const noexcept
+            bool operator> (pointer_proxy p) const noexcept
             {
                 return this->_pointer > p._pointer;
             }
 
-            bool operator > (pointer p) const noexcept
+            bool operator> (pointer p) const noexcept
             {
                 return this->_pointer > p;
             }
 
-            bool operator <= (pointer_proxy p) const noexcept
+            bool operator<= (pointer_proxy p) const noexcept
             {
                 return this->_pointer <= p._pointer;
             }
 
-            bool operator <= (pointer p) const noexcept
+            bool operator<= (pointer p) const noexcept
             {
                 return this->_pointer <= p;
             }
 
-            bool operator >= (pointer_proxy p) const noexcept
+            bool operator>= (pointer_proxy p) const noexcept
             {
                 return this->_pointer >= p._pointer;
             }
 
-            bool operator >= (pointer p) const noexcept
+            bool operator>= (pointer p) const noexcept
             {
                 return this->_pointer >= p;
             }
@@ -1331,12 +1399,12 @@ template <>
     using simd_type = typename std::conditional <
         (std::is_integral <T>::value &&
             std::is_same <tag, arithmetic_tag>::value) ||
-#if defined(__clang__)
+#if defined (__clang__)
         (std::is_same <T, __int128_t>::value &&
             std::is_same <tag, arithmetic_tag>::value)||
         (std::is_same <T, __uint128_t>::value &&
             std::is_same <tag, arithmetic_tag>::value),
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
         (std::is_same <T, __int128>::value &&
             std::is_same <tag, arithmetic_tag>::value)||
         (std::is_same <T, unsigned __int128>::value &&
@@ -1346,12 +1414,12 @@ template <>
         typename std::conditional <
             (std::is_integral <T>::value &&
                 std::is_same <tag, boolean_tag>::value) ||
-#if defined(__clang__)
+#if defined (__clang__)
             (std::is_same <T, __int128_t>::value &&
                 std::is_same <tag, boolean_tag>::value) ||
             (std::is_same <T, __uint128_t>::value &&
                 std::is_same <tag, boolean_tag>::value),
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
             (std::is_same <T, __int128>::value &&
                 std::is_same <tag, boolean_tag>::value) ||
             (std::is_same <T, unsigned __int128>::value &&
@@ -1394,21 +1462,23 @@ template <>
     template <typename T, std::size_t l, typename tag>
     struct simd_traits_base
     {
-        using base            = simd_type_base <T, l>;
-        using vector_type     = typename base::vector_type_impl;
-        using value_type      = T;
-        using integral_type   = typename base::integral_type;
+        using base                   = simd_type_base <T, l>;
+        using vector_type            = typename base::vector_type_impl;
+        using value_type             = T;
+        using integral_type          = typename base::integral_type;
         using unsigned_integral_type = typename base::unsigned_integral_type;
-        using signed_integral_type = typename base::signed_integral_type;
-        using pointer         = typename base::template pointer_proxy <value_type>;
-        using const_pointer   = typename base::template pointer_proxy <value_type const>;
-        using reference       = value_type &;
-        using const_reference = value_type const &;
-        using iterator        = pointer;
-        using const_iterator  = const_pointer;
+        using signed_integral_type   = typename base::signed_integral_type;
+        using pointer =
+            typename base::template pointer_proxy <value_type>;
+        using const_pointer =
+            typename base::template pointer_proxy <value_type const>;
+        using reference              = value_type &;
+        using const_reference        = value_type const &;
+        using iterator               = pointer;
+        using const_iterator         = const_pointer;
         using reverse_iterator       = std::reverse_iterator <pointer>;
         using const_reverse_iterator = std::reverse_iterator <const_pointer>;
-        using category_tag    = tag;
+        using category_tag           = tag;
 
         static constexpr std::size_t alignment = base::alignment;
         static constexpr std::size_t size = base::size;
@@ -1436,20 +1506,24 @@ template <>
     template <typename T, std::size_t l>
     struct simd_traits <complex_simd_type <T, l>>
     {
-        using base            = simd_type_base <T, l>;
-        using vector_type     = typename base::vector_type_impl;
-        using value_type      = std::complex <T>;
-        using integral_type   = typename base::integral_type;
+        using base                   = simd_type_base <T, l>;
+        using vector_type            = typename base::vector_type_impl;
+        using value_type             = std::complex <T>;
+        using integral_type          = typename base::integral_type;
         using unsigned_integral_type = typename base::unsigned_integral_type;
-        using signed_integral_type = typename base::signed_integral_type;
-        using pointer         = typename base::template pointer_proxy <value_type>;
-        using const_pointer   = typename base::template pointer_proxy <value_type const>;
-        using reference       = value_type &;
-        using const_reference = value_type const &;
-        using iterator        = typename complex_simd_type <T, l>::iterator;
-        using const_iterator  =
+        using signed_integral_type   = typename base::signed_integral_type;
+        using pointer =
+            typename base::template pointer_proxy <value_type>;
+        using const_pointer =
+            typename base::template pointer_proxy <value_type const>;
+        using reference              = value_type &;
+        using const_reference        = value_type const &;
+        using iterator =
+            typename complex_simd_type <T, l>::iterator;
+        using const_iterator =
             typename complex_simd_type <T, l>::const_iterator;
-        using reverse_iterator       = typename complex_simd_type <T, l>::reverse_iterator;
+        using reverse_iterator =
+            typename complex_simd_type <T, l>::reverse_iterator;
         using const_reverse_iterator =
             typename complex_simd_type <T, l>::const_reverse_iterator;
         using category_tag    = complex_tag;
@@ -1480,31 +1554,39 @@ template <>
     public:
         static_assert (
             std::is_integral <T>::value ||
-#if defined(__clang__)
+#if defined (__clang__)
             std::is_same <T, __int128_t>::value ||
             std::is_same <T, __uint128_t>::value,
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
             std::is_same <T, __int128>::value ||
             std::is_same <T, unsigned __int128>::value,
 #endif
             "template parameter typename T must be an integral type"
         );
 
-        using vector_type     = typename base::vector_type_impl;
-        using value_type      = T;
-        using integral_type   = typename base::integral_type;
+        using vector_type            = typename base::vector_type_impl;
+        using value_type             = T;
+        using integral_type          = typename base::integral_type;
         using unsigned_integral_type = typename base::unsigned_integral_type;
-        using signed_integral_type = typename base::signed_integral_type;
-        using pointer         = typename base::template pointer_proxy <value_type>;
-        using const_pointer   = typename base::template pointer_proxy <value_type const>;
-        using reference       = value_type &;
-        using const_reference = value_type const &;
-        using iterator        = pointer;
-        using const_iterator  = const_pointer;
+        using signed_integral_type   = typename base::signed_integral_type;
+        using pointer                =
+            typename base::template pointer_proxy <value_type>;
+        using const_pointer          =
+            typename base::template pointer_proxy <value_type const>;
+        using reference              = value_type &;
+        using const_reference        = value_type const &;
+        using iterator               = pointer;
+        using const_iterator         = const_pointer;
         using reverse_iterator       = std::reverse_iterator <pointer>;
         using const_reverse_iterator = std::reverse_iterator <const_pointer>;
-        using category_tag    = arithmetic_tag;
+        using category_tag           = arithmetic_tag;
         static constexpr std::size_t lanes = l;
+
+        static_assert (
+            sizeof (value_type) == sizeof (integral_type),
+            "error in selecting integral type: size of value type does not"
+            " compare equal"
+        );
 
         template <typename U, std::size_t L, typename tag>
         using rebind = simd_type <U, L, tag>;
@@ -1540,35 +1622,21 @@ template <>
             : _vec {base::extend (value_type {})}
         {}
 
-        explicit constexpr integral_simd_type (value_type val) noexcept
-            : _vec {base::extend (val)}
-        {}
-
-        advanced_constexpr integral_simd_type (std::initializer_list <value_type> vals) noexcept
-            : _vec {}
-        {
-#if __cplusplus >= 201402L
-            static_assert (
-                vals.size () == lanes,
-                "vector constructor must be provided a number of values equal"
-                " to the number of vector lanes"
-            );
-#else
-            assert (
-                vals.size () == lanes &&
-                "vector constructor must be provided a number of values equal"
-                " to the number of vector lanes"
-            );
-#endif
-            auto iter = vals.begin ();
-            for (std::size_t i = 0; i < std::min (lanes, vals.size ()); ++i) {
-                _vec [i] = *iter++;
-            }
-        }
-
         explicit constexpr integral_simd_type (vector_type const & vec) noexcept
             : _vec {vec}
         {}
+
+        template <typename ... value_types>
+        explicit constexpr integral_simd_type (value_types const & ... vals) noexcept
+            : _vec {base::extend (vals...)}
+        {
+            static_assert (
+                sizeof... (value_types) == 1 ||
+                sizeof... (value_types) == lanes,
+                "vector constructor must be provided a number of values equal"
+                " to one or equal to the number of vector lanes"
+            );
+        }
 
         constexpr
         integral_simd_type (integral_simd_type const & sv) noexcept
@@ -1603,14 +1671,15 @@ template <>
                 " without conversion"
             );
 
-            this->_vec = base::extend (static_cast <value_type> (val));
+            this->_vec = base::extend (val);
             return *this;
         }
 
     private:
         template <std::size_t ... L>
-        advanced_constexpr void fill_array (std::array <value_type, lanes> & arr,
-                                            util::index_sequence <L...>) const noexcept
+        advanced_constexpr void
+            fill_array (std::array <value_type, lanes> & arr,
+                        util::index_sequence <L...>) const noexcept
         {
             value_type _unused [] = {
                 (std::get <L> (arr) = this->template get <L> ())...
@@ -1619,8 +1688,8 @@ template <>
         }
 
     public:
-        explicit advanced_constexpr operator std::array <value_type, lanes> (void) const
-            noexcept
+        explicit advanced_constexpr
+            operator std::array <value_type, lanes> (void) const noexcept
         {
             std::array <value_type, lanes> result {};
             this->fill_array (result, util::make_index_sequence <lanes> {});
@@ -1628,7 +1697,7 @@ template <>
         }
 
         template <typename SimdT>
-        explicit advanced_constexpr operator SimdT (void) const noexcept
+        constexpr SimdT as (void) const noexcept
         {
             static_assert (
                 is_simd_type <SimdT>::value,
@@ -1699,12 +1768,12 @@ template <>
             return this->_arr [n];
         }
 
-        advanced_constexpr reference operator [] (std::size_t n) & noexcept
+        advanced_constexpr reference operator[] (std::size_t n) & noexcept
         {
             return this->_arr [n];
         }
 
-        constexpr const_reference operator [] (std::size_t n) const & noexcept
+        constexpr const_reference operator[] (std::size_t n) const & noexcept
         {
             return this->_arr [n];
         }
@@ -1713,14 +1782,18 @@ template <>
         {
             return n < lanes ?
                 this->_arr [n] :
-                throw std::out_of_range {"access attempt to out-of-bounds vector lane"};
+                throw std::out_of_range {
+                    "access attempt to out-of-bounds vector lane"
+                };
         }
 
         constexpr const_reference at (std::size_t n) const &
         {
             return n < lanes ?
                 this->_arr [n] :
-                throw std::out_of_range {"access attempt to out-of-bounds vector lane"};
+                throw std::out_of_range {
+                    "access attempt to out-of-bounds vector lane"
+                };
         }
 
         advanced_constexpr iterator begin (void) & noexcept
@@ -1835,9 +1908,7 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec + base::extend (static_cast <value_type> (val))
-            };
+            return integral_simd_type {this->_vec + base::extend (val)};
         }
 
         constexpr integral_simd_type operator- (integral_simd_type const & sv)
@@ -1855,9 +1926,7 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec - base::extend (static_cast <value_type> (val))
-            };
+            return integral_simd_type {this->_vec - base::extend (val)};
         }
 
         constexpr integral_simd_type operator* (integral_simd_type const & sv)
@@ -1875,9 +1944,7 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec * base::extend (static_cast <value_type> (val))
-            };
+            return integral_simd_type {this->_vec * base::extend (val)};
         }
 
         constexpr integral_simd_type operator/ (integral_simd_type const & sv)
@@ -1895,9 +1962,7 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec / base::extend (static_cast <value_type> (val))
-            };
+            return integral_simd_type {this->_vec / base::extend (val)};
         }
 
         constexpr integral_simd_type operator% (integral_simd_type const & sv)
@@ -1915,9 +1980,7 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec % base::extend (static_cast <value_type> (val))
-            };
+            return integral_simd_type {this->_vec % base::extend (val)};
         }
 
         constexpr integral_simd_type operator~ (void) const noexcept
@@ -1940,9 +2003,7 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec & base::extend (static_cast <value_type> (val))
-            };
+            return integral_simd_type {this->_vec & base::extend (val)};
         }
 
         constexpr integral_simd_type operator| (integral_simd_type const & sv)
@@ -1960,9 +2021,7 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec | base::extend (static_cast <value_type> (val))
-            };
+            return integral_simd_type {this->_vec | base::extend (val)};
         }
 
         constexpr integral_simd_type operator^ (integral_simd_type const & sv)
@@ -1980,9 +2039,7 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec ^ base::extend (static_cast <value_type> (val))
-            };
+            return integral_simd_type {this->_vec ^ base::extend (val)};
         }
 
         constexpr integral_simd_type operator! (void) const noexcept
@@ -2005,9 +2062,7 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec && base::extend (static_cast <value_type> (val))
-            };
+            return integral_simd_type {this->_vec && base::extend (val)};
         }
 
         constexpr integral_simd_type operator|| (integral_simd_type const & sv)
@@ -2025,61 +2080,31 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec || base::extend (static_cast <value_type> (val))
-            };
+            return integral_simd_type {this->_vec || base::extend (val)};
         }
 
-        constexpr integral_simd_type
-            operator<< (rebind <signed_integral_type, lanes, arithmetic_tag> const & sv)
+        constexpr integral_simd_type operator<< (integral_simd_type const & sv)
             const noexcept
         {
-            return integral_simd_type {this->_vec << sv.data ()};
+            return integral_simd_type {this->_vec << sv._vec};
         }
 
-        constexpr integral_simd_type
-            operator<< (rebind <unsigned_integral_type, lanes, arithmetic_tag> const & sv)
+        constexpr integral_simd_type operator<< (value_type shl_val)
             const noexcept
         {
-            return integral_simd_type {this->_vec << sv.data ()};
+            return *this << integral_simd_type {shl_val};
         }
 
-        constexpr integral_simd_type operator<< (signed_integral_type shl_val) const noexcept
-        {
-            using type = rebind <signed_integral_type, lanes, arithmetic_tag>;
-            return *this << type (shl_val);
-        }
-
-        constexpr integral_simd_type operator<< (unsigned_integral_type shl_val) const noexcept
-        {
-            using type = rebind <unsigned_integral_type, lanes, arithmetic_tag>;
-            return *this << type (shl_val);
-        }
-
-        constexpr integral_simd_type
-            operator>> (rebind <signed_integral_type, lanes, arithmetic_tag> const & sv)
+        constexpr integral_simd_type operator>> (integral_simd_type const & sv)
             const noexcept
         {
-            return integral_simd_type {this->_vec >> sv.data ()};
+            return integral_simd_type {this->_vec >> sv._vec};
         }
 
-        constexpr integral_simd_type
-            operator>> (rebind <unsigned_integral_type, lanes, arithmetic_tag> const & sv)
+        constexpr integral_simd_type operator>> (value_type shl_val)
             const noexcept
         {
-            return integral_simd_type {this->_vec >> sv.data ()};
-        }
-
-        constexpr integral_simd_type operator>> (signed_integral_type shr_val) const noexcept
-        {
-            using type = rebind <signed_integral_type, lanes, arithmetic_tag>;
-            return *this >> type (shr_val);
-        }
-
-        constexpr integral_simd_type operator>> (unsigned_integral_type shr_val) const noexcept
-        {
-            using type = rebind <unsigned_integral_type, lanes, arithmetic_tag>;
-            return *this >> type (shr_val);
+            return *this >> integral_simd_type {shl_val};
         }
 
         advanced_constexpr
@@ -2099,7 +2124,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec += base::extend (static_cast <value_type> (val));
+            this->_vec += base::extend (val);
             return *this;
         }
 
@@ -2120,7 +2145,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec -= base::extend (static_cast <value_type> (val));
+            this->_vec -= base::extend (val);
             return *this;
         }
 
@@ -2141,7 +2166,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec *= base::extend (static_cast <value_type> (val));
+            this->_vec *= base::extend (val);
             return *this;
         }
 
@@ -2162,7 +2187,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec /= base::extend (static_cast <value_type> (val));
+            this->_vec /= base::extend (val);
             return *this;
         }
 
@@ -2183,7 +2208,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec %= base::extend (static_cast <value_type> (val));
+            this->_vec %= base::extend (val);
             return *this;
         }
 
@@ -2204,7 +2229,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec &= base::extend (static_cast <value_type> (val));
+            this->_vec &= base::extend (val);
             return *this;
         }
 
@@ -2225,7 +2250,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec |= base::extend (static_cast <value_type> (val));
+            this->_vec |= base::extend (val);
             return *this;
         }
 
@@ -2246,7 +2271,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec ^= base::extend (static_cast <value_type> (val));
+            this->_vec ^= base::extend (val);
             return *this;
         }
 
@@ -2267,7 +2292,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec <<= base::extend (static_cast <value_type> (val));
+            this->_vec <<= base::extend (val);
             return *this;
         }
 
@@ -2288,15 +2313,18 @@ template <>
                 " without conversion"
             );
 
-            this->_vec >>= base::extend (static_cast <value_type> (val));
+            this->_vec >>= base::extend (val);
             return *this;
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator== (integral_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec == sv._vec
+                static_cast <boolean_vector_type> (this->_vec == sv._vec)
             };
         }
 
@@ -2310,15 +2338,18 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec == base::extend (static_cast <value_type> (val))
-            };
+            return *this == integral_simd_type {val};
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator!= (integral_simd_type const & sv) const noexcept
         {
-            return boolean_simd_type <integral_type, lanes> {this->_vec != sv._vec};
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
+            return boolean_simd_type <integral_type, lanes> {
+                static_cast <boolean_vector_type> (this->_vec != sv._vec)
+            };
         }
 
         template <typename U>
@@ -2331,19 +2362,22 @@ template <>
                 " without conversion"
             );
 
+            return *this != integral_simd_type {val};
+        }
+
+        constexpr boolean_simd_type <integral_type, lanes>
+            operator> (integral_simd_type const & sv) const noexcept
+        {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec != base::extend (static_cast <value_type> (val))
+                static_cast <boolean_vector_type> (this->_vec > sv._vec)
             };
         }
 
-        constexpr integral_simd_type <integral_type, lanes>
-            operator> (integral_simd_type const & sv) const noexcept
-        {
-            return integral_simd_type {this->_vec > sv._vec};
-        }
-
         template <typename U>
-        constexpr integral_simd_type <integral_type, lanes>
+        constexpr boolean_simd_type <integral_type, lanes>
             operator> (U val) const noexcept
         {
             static_assert (
@@ -2352,19 +2386,22 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec > base::extend (static_cast <value_type> (val))
+            return *this > integral_simd_type {val};
+        }
+
+        constexpr boolean_simd_type <integral_type, lanes>
+            operator< (integral_simd_type const & sv) const noexcept
+        {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
+            return boolean_simd_type <integral_type, lanes> {
+                static_cast <boolean_vector_type> (this->_vec < sv._vec)
             };
         }
 
-        constexpr integral_simd_type <integral_type, lanes>
-            operator< (integral_simd_type const & sv) const noexcept
-        {
-            return integral_simd_type {this->_vec < sv._vec};
-        }
-
         template <typename U>
-        constexpr integral_simd_type <integral_type, lanes>
+        constexpr boolean_simd_type <integral_type, lanes>
             operator< (U val) const noexcept
         {
             static_assert (
@@ -2373,19 +2410,22 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec < base::extend (static_cast <value_type> (val))
+            return *this < integral_simd_type {val};
+        }
+
+        constexpr boolean_simd_type <integral_type, lanes>
+            operator>= (integral_simd_type const & sv) const noexcept
+        {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
+            return boolean_simd_type <integral_type, lanes> {
+                static_cast <boolean_vector_type> (this->_vec >= sv._vec)
             };
         }
 
-        constexpr integral_simd_type <integral_type, lanes>
-            operator>= (integral_simd_type const & sv) const noexcept
-        {
-            return integral_simd_type {this->_vec >= sv._vec};
-        }
-
         template <typename U>
-        constexpr integral_simd_type <integral_type, lanes>
+        constexpr boolean_simd_type <integral_type, lanes>
             operator>= (U val) const noexcept
         {
             static_assert (
@@ -2394,19 +2434,22 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec >= base::extend (static_cast <value_type> (val))
+            return *this >= integral_simd_type {val};
+        }
+
+        constexpr boolean_simd_type <integral_type, lanes>
+            operator<= (integral_simd_type const & sv) const noexcept
+        {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
+            return boolean_simd_type <integral_type, lanes> {
+                static_cast <boolean_vector_type> (this->_vec <= sv._vec)
             };
         }
 
-        constexpr integral_simd_type <integral_type, lanes>
-            operator<= (integral_simd_type const & sv) const noexcept
-        {
-            return integral_simd_type {this->_vec <= sv._vec};
-        }
-
         template <typename U>
-        constexpr integral_simd_type <integral_type, lanes>
+        constexpr boolean_simd_type <integral_type, lanes>
             operator<= (U val) const noexcept
         {
             static_assert (
@@ -2415,9 +2458,7 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {
-                this->_vec <= base::extend (static_cast <value_type> (val))
-            };
+            return *this <= integral_simd_type {val};
         }
     };
 #pragma GCC diagnostic pop
@@ -2479,35 +2520,20 @@ template <>
             : _vec {base::extend (value_type {})}
         {}
 
-        explicit constexpr fp_simd_type (value_type const & val) noexcept
-            : _vec {base::extend (val)}
-        {}
-
-        advanced_constexpr fp_simd_type (std::initializer_list <value_type> vals) noexcept
-            : _vec {}
-        {
-#if __cplusplus >= 201402L
-            static_assert (
-                vals.size () == lanes,
-                "vector constructor must be provided a number of values equal"
-                " to the number of vector lanes"
-            );
-#else
-            assert (
-                vals.size () == lanes &&
-                "vector constructor must be provided a number of values equal"
-                " to the number of vector lanes"
-            );
-#endif
-            auto iter = vals.begin ();
-            for (std::size_t i = 0; i < std::min (lanes, vals.size ()); ++i) {
-                _vec [i] = *iter++;
-            }
-        }
-
         explicit constexpr fp_simd_type (vector_type const & vec) noexcept
             : _vec {vec}
         {}
+
+        template <typename ... value_types>
+        explicit constexpr fp_simd_type (value_types const & ... vals) noexcept
+            : _vec {base::extend (vals...)}
+        {
+            static_assert (
+                sizeof... (value_types) == 1 || sizeof... (value_types) == lanes,
+                "vector constructor must be provided a number of values equal"
+                " to one or equal to the number of vector lanes"
+            );
+        }
 
         constexpr fp_simd_type (fp_simd_type const & sv) noexcept
             : base {}
@@ -2539,7 +2565,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec = base::extend (static_cast <value_type> (val));
+            this->_vec = base::extend (val);
             return *this;
         }
 
@@ -2564,7 +2590,7 @@ template <>
         }
 
         template <typename SimdT>
-        explicit constexpr operator SimdT (void) const noexcept
+        constexpr SimdT as (void) const noexcept
         {
             static_assert (
                 is_simd_type <SimdT>::value,
@@ -2635,12 +2661,12 @@ template <>
             return this->_arr [n];
         }
 
-        advanced_constexpr reference operator [] (std::size_t n) & noexcept
+        advanced_constexpr reference operator[] (std::size_t n) & noexcept
         {
             return this->_arr [n];
         }
 
-        constexpr const_reference operator [] (std::size_t n) const & noexcept
+        constexpr const_reference operator[] (std::size_t n) const & noexcept
         {
             return this->_arr [n];
         }
@@ -2745,7 +2771,7 @@ template <>
             );
 
             return fp_simd_type {
-                this->_vec + base::extend (static_cast <value_type> (val))
+                this->_vec + base::extend (val)
             };
         }
 
@@ -2765,7 +2791,7 @@ template <>
             );
 
             return fp_simd_type {
-                this->_vec - base::extend (static_cast <value_type> (val))
+                this->_vec - base::extend (val)
             };
         }
 
@@ -2785,7 +2811,7 @@ template <>
             );
 
             return fp_simd_type {
-                this->_vec * base::extend (static_cast <value_type> (val))
+                this->_vec * base::extend (val)
             };
         }
 
@@ -2805,7 +2831,7 @@ template <>
             );
 
             return fp_simd_type {
-                this->_vec / base::extend (static_cast <value_type> (val))
+                this->_vec / base::extend (val)
             };
         }
 
@@ -2830,7 +2856,7 @@ template <>
             );
 
             return fp_simd_type {
-                this->_vec && base::extend (static_cast <value_type> (val))
+                this->_vec && base::extend (val)
             };
         }
 
@@ -2850,7 +2876,7 @@ template <>
             );
 
             return fp_simd_type {
-                this->_vec || base::extend (static_cast <value_type> (val))
+                this->_vec || base::extend (val)
             };
         }
 
@@ -2869,7 +2895,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec += base::extend (static_cast <value_type> (val));
+            this->_vec += base::extend (val);
             return *this;
         }
 
@@ -2888,7 +2914,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec -= base::extend (static_cast <value_type> (val));
+            this->_vec -= base::extend (val);
             return *this;
         }
 
@@ -2907,11 +2933,12 @@ template <>
                 " without conversion"
             );
 
-            this->_vec *= base::extend (static_cast <value_type> (val));
+            this->_vec *= base::extend (val);
             return *this;
         }
 
-        advanced_constexpr fp_simd_type & operator/= (fp_simd_type const & sv) & noexcept
+        advanced_constexpr fp_simd_type & operator/= (fp_simd_type const & sv) &
+            noexcept
         {
             this->_vec /= sv._vec;
             return *this;
@@ -2926,15 +2953,18 @@ template <>
                 " without conversion"
             );
 
-            this->_vec /= base::extend (static_cast <value_type> (val));
+            this->_vec /= base::extend (val);
             return *this;
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator== (fp_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec == sv._vec
+                static_cast <boolean_vector_type> (this->_vec == sv._vec)
             };
         }
 
@@ -2948,22 +2978,23 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec == base::extend (static_cast <value_type> (val))
-            };
+            return *this == fp_simd_type {val};
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator!= (fp_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec != sv._vec
+                static_cast <boolean_vector_type> (this->_vec != sv._vec)
             };
         }
 
         template <typename U>
-        constexpr boolean_simd_type <integral_type, lanes> operator!= (U val)
-            const noexcept
+        constexpr boolean_simd_type <integral_type, lanes>
+            operator!= (U val) const noexcept
         {
             static_assert (
                 std::is_convertible <U, value_type>::value,
@@ -2971,16 +3002,17 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec != base::extend (static_cast <value_type> (val))
-            };
+            return *this != fp_simd_type {val};
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator> (fp_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec > sv._vec
+                static_cast <boolean_vector_type> (this->_vec > sv._vec)
             };
         }
 
@@ -2994,16 +3026,17 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec > base::extend (static_cast <value_type> (val))
-            };
+            return *this > fp_simd_type {val};
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator< (fp_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec < sv._vec
+                static_cast <boolean_vector_type> (this->_vec < sv._vec)
             };
         }
 
@@ -3017,16 +3050,17 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec < base::extend (static_cast <value_type> (val))
-            };
+            return *this < fp_simd_type {val};
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator>= (fp_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec >= sv._vec
+                static_cast <boolean_vector_type> (this->_vec >= sv._vec)
             };
         }
 
@@ -3040,16 +3074,17 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec >= base::extend (static_cast <value_type> (val))
-            };
+            return *this >= fp_simd_type {val};
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator<= (fp_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec <= sv._vec
+                static_cast <boolean_vector_type> (this->_vec <= sv._vec)
             };
         }
 
@@ -3063,9 +3098,7 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec <= base::extend (static_cast <value_type> (val))
-            };
+            return *this <= fp_simd_type {val};
         }
     };
 #pragma GCC diagnostic pop
@@ -3120,35 +3153,20 @@ template <>
             : _vec {base::extend (value_type {})}
         {}
 
-        explicit constexpr fp_simd_type (value_type const & val) noexcept
-            : _vec {base::extend (val)}
-        {}
-
-        advanced_constexpr fp_simd_type (std::initializer_list <value_type> vals) noexcept
-            : _vec {}
-        {
-#if __cplusplus >= 201402L
-            static_assert (
-                vals.size () == lanes,
-                "vector constructor must be provided a number of values equal"
-                " to the number of vector lanes"
-            );
-#else
-            assert (
-                vals.size () == lanes &&
-                "vector constructor must be provided a number of values equal"
-                " to the number of vector lanes"
-            );
-#endif
-            auto iter = vals.begin ();
-            for (std::size_t i = 0; i < std::min (lanes, vals.size ()); ++i) {
-                _vec [i] = *iter++;
-            }
-        }
-
         explicit constexpr fp_simd_type (vector_type const & vec) noexcept
             : _vec {vec}
         {}
+
+        template <typename ... value_types>
+        explicit constexpr fp_simd_type (value_types const & ... vals) noexcept
+            : _vec {base::extend (vals...)}
+        {
+            static_assert (
+                sizeof... (value_types) == 1 || sizeof... (value_types) == lanes,
+                "vector constructor must be provided a number of values equal"
+                " to one or equal to the number of vector lanes"
+            );
+        }
 
         constexpr fp_simd_type (fp_simd_type const & sv) noexcept
             : base {}
@@ -3180,7 +3198,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec = base::extend (static_cast <value_type> (val));
+            this->_vec = base::extend (val);
             return *this;
         }
 
@@ -3205,7 +3223,7 @@ template <>
         }
 
         template <typename SimdT>
-        explicit advanced_constexpr operator SimdT (void) const noexcept
+        constexpr SimdT as (void) const noexcept
         {
             static_assert (
                 is_simd_type <SimdT>::value,
@@ -3276,12 +3294,12 @@ template <>
             return this->_arr [n];
         }
 
-        advanced_constexpr reference operator [] (std::size_t n) & noexcept
+        advanced_constexpr reference operator[] (std::size_t n) & noexcept
         {
             return this->_arr [n];
         }
 
-        constexpr const_reference operator [] (std::size_t n) const & noexcept
+        constexpr const_reference operator[] (std::size_t n) const & noexcept
         {
             return this->_arr [n];
         }
@@ -3386,7 +3404,7 @@ template <>
             );
 
             return fp_simd_type {
-                this->_vec + base::extend (static_cast <value_type> (val))
+                this->_vec + base::extend (val)
             };
         }
 
@@ -3406,7 +3424,7 @@ template <>
             );
 
             return fp_simd_type {
-                this->_vec - base::extend (static_cast <value_type> (val))
+                this->_vec - base::extend (val)
             };
         }
 
@@ -3426,7 +3444,7 @@ template <>
             );
 
             return fp_simd_type {
-                this->_vec * base::extend (static_cast <value_type> (val))
+                this->_vec * base::extend (val)
             };
         }
 
@@ -3446,7 +3464,7 @@ template <>
             );
 
             return fp_simd_type {
-                this->_vec / base::extend (static_cast <value_type> (val))
+                this->_vec / base::extend (val)
             };
         }
 
@@ -3471,7 +3489,7 @@ template <>
             );
 
             return fp_simd_type {
-                this->_vec && base::extend (static_cast <value_type> (val))
+                this->_vec && base::extend (val)
             };
         }
 
@@ -3491,7 +3509,7 @@ template <>
             );
 
             return fp_simd_type {
-                this->_vec || base::extend (static_cast <value_type> (val))
+                this->_vec || base::extend (val)
             };
         }
 
@@ -3510,7 +3528,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec += base::extend (static_cast <value_type> (val));
+            this->_vec += base::extend (val);
             return *this;
         }
 
@@ -3529,7 +3547,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec -= base::extend (static_cast <value_type> (val));
+            this->_vec -= base::extend (val);
             return *this;
         }
 
@@ -3548,11 +3566,12 @@ template <>
                 " without conversion"
             );
 
-            this->_vec *= base::extend (static_cast <value_type> (val));
+            this->_vec *= base::extend (val);
             return *this;
         }
 
-        advanced_constexpr fp_simd_type & operator/= (fp_simd_type const & sv) & noexcept
+        advanced_constexpr fp_simd_type & operator/= (fp_simd_type const & sv) &
+            noexcept
         {
             this->_vec /= sv._vec;
             return *this;
@@ -3567,15 +3586,18 @@ template <>
                 " without conversion"
             );
 
-            this->_vec /= base::extend (static_cast <value_type> (val));
+            this->_vec /= base::extend (val);
             return *this;
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator== (fp_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec == sv._vec
+                static_cast <boolean_vector_type> (this->_vec == sv._vec)
             };
         }
 
@@ -3589,22 +3611,23 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec == base::extend (static_cast <value_type> (val))
-            };
+            return *this == fp_simd_type {val};
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator!= (fp_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec != sv._vec
+                static_cast <boolean_vector_type> (this->_vec != sv._vec)
             };
         }
 
         template <typename U>
-        constexpr boolean_simd_type <integral_type, lanes> operator!= (U val)
-            const noexcept
+        constexpr boolean_simd_type <integral_type, lanes>
+            operator!= (U val) const noexcept
         {
             static_assert (
                 std::is_convertible <U, value_type>::value,
@@ -3612,16 +3635,17 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec != base::extend (static_cast <value_type> (val))
-            };
+            return *this != fp_simd_type {val};
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator> (fp_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec > sv._vec
+                static_cast <boolean_vector_type> (this->_vec > sv._vec)
             };
         }
 
@@ -3635,16 +3659,17 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec > base::extend (static_cast <value_type> (val))
-            };
+            return *this > fp_simd_type {val};
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator< (fp_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec < sv._vec
+                static_cast <boolean_vector_type> (this->_vec < sv._vec)
             };
         }
 
@@ -3658,16 +3683,17 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec < base::extend (static_cast <value_type> (val))
-            };
+            return *this < fp_simd_type {val};
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator>= (fp_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec >= sv._vec
+                static_cast <boolean_vector_type> (this->_vec >= sv._vec)
             };
         }
 
@@ -3681,16 +3707,17 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec >= base::extend (static_cast <value_type> (val))
-            };
+            return *this >= fp_simd_type {val};
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
             operator<= (fp_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_vec <= sv._vec
+                static_cast <boolean_vector_type> (this->_vec <= sv._vec)
             };
         }
 
@@ -3704,9 +3731,7 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec <= base::extend (static_cast <value_type> (val))
-            };
+            return *this <= fp_simd_type {val};
         }
     };
 #pragma GCC diagnostic pop
@@ -3768,28 +3793,33 @@ template <>
             {}
 
             pointer_proxy (element_type & real, element_type & imag) noexcept
-                : _realpointer {static_cast <pointer> (static_cast <void_pointer> (&real))}
-                , _imagpointer {static_cast <pointer> (static_cast <void_pointer> (&imag))}
+                : _realpointer {
+                    static_cast <pointer> (static_cast <void_pointer> (&real))
+                }
+                , _imagpointer {
+                    static_cast <pointer> (static_cast <void_pointer> (&imag))
+                }
             {}
 
             pointer_proxy (pointer_proxy const &) noexcept = default;
-            pointer_proxy & operator = (pointer_proxy const &) noexcept = default;
+            pointer_proxy & operator= (pointer_proxy const &) noexcept
+                = default;
 
-            pointer_proxy & operator ++ (void) noexcept
+            pointer_proxy & operator++ (void) noexcept
             {
                 this->_realpointer += 1;
                 this->_imagpointer += 1;
                 return *this;
             }
 
-            pointer_proxy & operator -- (void) noexcept
+            pointer_proxy & operator-- (void) noexcept
             {
                 this->_realpointer -= 1;
                 this->_imagpointer -= 1;
                 return *this;
             }
 
-            pointer_proxy & operator ++ (int) noexcept
+            pointer_proxy & operator++ (int) noexcept
             {
                 auto const tmp = *this;
                 this->_realpointer += 1;
@@ -3797,7 +3827,7 @@ template <>
                 return tmp;
             }
 
-            pointer_proxy & operator -- (int) noexcept
+            pointer_proxy & operator-- (int) noexcept
             {
                 auto const tmp = *this;
                 this->_realpointer -= 1;
@@ -3805,27 +3835,27 @@ template <>
                 return tmp;
             }
 
-            pointer_proxy & operator += (difference_type n) noexcept
+            pointer_proxy & operator+= (difference_type n) noexcept
             {
                 this->_realpointer += n;
                 this->_imagpointer += n;
                 return *this;
             }
 
-            pointer_proxy & operator -= (difference_type n) noexcept
+            pointer_proxy & operator-= (difference_type n) noexcept
             {
                 this->_realpointer -= n;
                 this->_imagpointer -= n;
                 return *this;
             }
 
-            pointer_proxy operator + (difference_type n) const noexcept
+            pointer_proxy operator+ (difference_type n) const noexcept
             {
                 auto tmp = *this;
                 return tmp += n;
             }
 
-            pointer_proxy operator - (difference_type n) const noexcept
+            pointer_proxy operator- (difference_type n) const noexcept
             {
                 auto tmp = *this;
                 return tmp -= n;
@@ -3837,25 +3867,25 @@ template <>
                        (this->_imagpointer == other._imagpointer);
             }
 
-            bool operator < (pointer_proxy const & other) const noexcept
+            bool operator< (pointer_proxy const & other) const noexcept
             {
                 return (this->_realpointer < other._realpointer) &&
                        (this->_imagpointer < other._imagpointer);
             }
 
-            bool operator > (pointer_proxy const & other) const noexcept
+            bool operator> (pointer_proxy const & other) const noexcept
             {
                 return (this->_realpointer > other._realpointer) &&
                        (this->_imagpointer > other._imagpointer);
             }
 
-            bool operator <= (pointer_proxy const & other) const noexcept
+            bool operator<= (pointer_proxy const & other) const noexcept
             {
                 return (this->_realpointer <= other._realpointer) &&
                        (this->_imagpointer <= other._imagpointer);
             }
 
-            bool operator >= (pointer_proxy const & other) const noexcept
+            bool operator>= (pointer_proxy const & other) const noexcept
             {
                 return (this->_realpointer >= other._realpointer) &&
                        (this->_imagpointer >= other._imagpointer);
@@ -3866,7 +3896,7 @@ template <>
                 return U {*this->_realpointer, *this->_imagpointer};
             }
 
-            U operator [] (difference_type n) const noexcept
+            U operator[] (difference_type n) const noexcept
             {
                 return *(*this + n);
             }
@@ -3991,20 +4021,6 @@ template <>
     private:
         template <std::size_t ... L>
         static constexpr vector_type
-            extend_real_impl (value_type const & val, util::index_sequence <L...>) noexcept
-        {
-            return vector_type {((void) L, val.real ())...};
-        }
-
-        template <std::size_t ... L>
-        static constexpr vector_type
-            extend_imag_impl (value_type const & val, util::index_sequence <L...>) noexcept
-        {
-            return vector_type {((void) L, val.imag ())...};
-        }
-
-        template <std::size_t ... L>
-        static constexpr vector_type
             unpack_real_impl (value_type const (& arr) [lanes], util::index_sequence <L...>) noexcept
         {
             return vector_type {arr [L].real ()...};
@@ -4031,18 +4047,6 @@ template <>
             return vector_type {std::get <L> (arr).imag ()...};
         }
 
-        static constexpr vector_type extend_real (value_type const & val)
-            noexcept
-        {
-            return extend_real_impl (val, util::make_index_sequence <lanes> {});
-        }
-
-        static constexpr vector_type extend_imag (value_type const & val)
-            noexcept
-        {
-            return extend_imag_impl (val, util::make_index_sequence <lanes> {});
-        }
-
         static constexpr vector_type
             unpack_real (value_type const (& arr) [lanes]) noexcept
         {
@@ -4067,6 +4071,20 @@ template <>
             return unpack_imag_impl (arr, util::make_index_sequence <lanes> {});
         }
 
+        template <typename ... Ts>
+        static constexpr vector_type extend_real (Ts const & ... ts)
+            noexcept
+        {
+            return vector_type {static_cast <value_type> (ts).real ()...};
+        }
+
+        template <typename ... Ts>
+        static constexpr vector_type extend_imag (Ts const & ... ts)
+            noexcept
+        {
+            return vector_type {static_cast <value_type> (ts).imag ()...};
+        }
+
     public:
         static complex_simd_type load (value_type const * addr) noexcept
         {
@@ -4081,46 +4099,29 @@ template <>
         }
 
         constexpr complex_simd_type (void) noexcept
-            : _realvec {extend_real (value_type {}.real ())}
-            , _imagvec {extend_imag (value_type {}.imag ())}
+            : _realvec {extend_real (value_type {})}
+            , _imagvec {extend_imag (value_type {})}
         {}
-
-        explicit constexpr complex_simd_type (value_type val) noexcept
-            : _realvec {extend_real (val)}
-            , _imagvec {extend_imag (val)}
-        {}
-
-        advanced_constexpr complex_simd_type (std::initializer_list <value_type> vals) noexcept
-            : _realvec {}
-            , _imagvec {}
-        {
-#if __cplusplus >= 201402L
-            static_assert (
-                vals.size () == lanes,
-                "vector constructor must be provided a number of values equal"
-                " to the number of vector lanes"
-            );
-#else
-            assert (
-                vals.size () == lanes &&
-                "vector constructor must be provided a number of values equal"
-                " to the number of vector lanes"
-            );
-#endif
-            auto iter = vals.begin ();
-            for (std::size_t i = 0; i < std::min (lanes, vals.size ()); ++i) {
-                _realvec [i] = iter->real ();
-                _imagvec [i] = iter->imag ();
-                iter += 1;
-            }
-        }
 
         explicit constexpr
-        complex_simd_type (vector_type const & realvec, vector_type const & imagvec)
-            noexcept
+            complex_simd_type (vector_type const & realvec,
+                               vector_type const & imagvec) noexcept
             : _realvec {realvec}
             , _imagvec {imagvec}
         {}
+
+        template <typename ... value_types>
+        explicit constexpr complex_simd_type (value_types const & ... vals) noexcept
+            : _realvec {extend_real (vals...)}
+            , _imagvec {extend_imag (vals...)}
+        {
+            static_assert (
+                sizeof... (value_types) == 1 ||
+                sizeof... (value_types) == lanes,
+                "vector constructor must be provided a number of values equal"
+                " to one or equal to the number of vector lanes"
+            );
+        }
 
         constexpr
         complex_simd_type (complex_simd_type const & sv)
@@ -4185,7 +4186,7 @@ template <>
         }
 
         template <typename SimdT>
-        explicit advanced_constexpr operator SimdT (void) const noexcept
+        constexpr SimdT as (void) const noexcept
         {
             static_assert (
                 is_simd_type <SimdT>::value,
@@ -4309,12 +4310,12 @@ template <>
             return this->_imagarr [lane];
         }
 
-        advanced_constexpr std::pair <T &, T &> operator [] (std::size_t n) & noexcept
+        advanced_constexpr std::pair <T &, T &> operator[] (std::size_t n) & noexcept
         {
             return std::make_pair (this->_realarr [n], this->_imagarr [n]);
         }
 
-        constexpr std::pair <T const &, T const &> operator [] (std::size_t n) const & noexcept
+        constexpr std::pair <T const &, T const &> operator[] (std::size_t n) const & noexcept
         {
             return std::make_pair (this->_realarr [n], this->_imagarr [n]);
         }
@@ -4611,9 +4612,14 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator== (complex_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_realvec == sv._realvec &&
-                this->_imagvec == sv._imagvec
+                static_cast <boolean_vector_type> (
+                    this->_realvec == sv._realvec &&
+                    this->_imagvec == sv._imagvec
+                )
             };
         }
 
@@ -4633,9 +4639,14 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator!= (complex_simd_type const & sv) const noexcept
         {
+            using boolean_vector_type =
+                typename boolean_simd_type <integral_type, lanes>::vector_type;
+
             return boolean_simd_type <integral_type, lanes> {
-                this->_realvec != sv._realvec ||
-                this->_imagvec != sv._imagvec
+                static_cast <boolean_vector_type> (
+                    this->_realvec != sv._realvec ||
+                    this->_imagvec != sv._imagvec
+                )
             };
         }
 
@@ -4702,13 +4713,20 @@ template <>
             : _vec {base::extend (value_type {})}
         {}
 
-        explicit constexpr boolean_simd_type (value_type val) noexcept
-            : _vec {base::extend (val)}
-        {}
-
         explicit constexpr boolean_simd_type (vector_type const & vec) noexcept
             : _vec {vec}
         {}
+
+        template <typename ... value_types>
+        explicit constexpr boolean_simd_type (value_types const & ... vals) noexcept
+            : _vec {base::extend (vals...)}
+        {
+            static_assert (
+                sizeof... (value_types) == 1 || sizeof... (value_types) == lanes,
+                "vector constructor must be provided a number of values equal"
+                " to one or equal to the number of vector lanes"
+            );
+        }
 
         constexpr boolean_simd_type (boolean_simd_type const & sv) noexcept
             : base {}
@@ -4724,28 +4742,6 @@ template <>
         boolean_simd_type (std::array <value_type, lanes> const & arr) noexcept
             : _vec {base::unpack (arr)}
         {}
-
-        advanced_constexpr boolean_simd_type (std::initializer_list <value_type> vals) noexcept
-            : _vec {}
-        {
-#if __cplusplus >= 201402L
-            static_assert (
-                vals.size () == lanes,
-                "vector constructor must be provided a number of values equal"
-                " to the number of vector lanes"
-            );
-#else
-            assert (
-                vals.size () == lanes &&
-                "vector constructor must be provided a number of values equal"
-                " to the number of vector lanes"
-            );
-#endif
-            auto iter = vals.begin ();
-            for (std::size_t i = 0; i < std::min (lanes, vals.size ()); ++i) {
-                _vec [i] = *iter++;
-            }
-        }
 
         advanced_constexpr boolean_simd_type & operator= (boolean_simd_type const & sv) &
             noexcept
@@ -4763,7 +4759,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec = base::extend (static_cast <value_type> (val));
+            this->_vec = base::extend (val);
             return *this;
         }
 
@@ -4788,7 +4784,7 @@ template <>
         }
 
         template <typename SimdT>
-        explicit constexpr operator SimdT (void) const noexcept
+        constexpr SimdT as (void) const noexcept
         {
             static_assert (
                 is_simd_type <SimdT>::value,
@@ -4859,12 +4855,12 @@ template <>
             return this->_arr [n];
         }
 
-        advanced_constexpr reference operator [] (std::size_t n) & noexcept
+        advanced_constexpr reference operator[] (std::size_t n) & noexcept
         {
             return this->_arr [n];
         }
 
-        constexpr const_reference operator [] (std::size_t n) const & noexcept
+        constexpr const_reference operator[] (std::size_t n) const & noexcept
         {
             return this->_arr [n];
         }
@@ -5065,7 +5061,7 @@ template <>
             );
 
             return boolean_simd_type {
-                this->_vec & base::extend (static_cast <value_type> (val))
+                this->_vec & base::extend (val)
             };
         }
 
@@ -5085,7 +5081,7 @@ template <>
             );
 
             return boolean_simd_type {
-                this->_vec | base::extend (static_cast <value_type> (val))
+                this->_vec | base::extend (val)
             };
         }
 
@@ -5105,7 +5101,7 @@ template <>
             );
 
             return boolean_simd_type {
-                this->_vec ^ base::extend (static_cast <value_type> (val))
+                this->_vec ^ base::extend (val)
             };
         }
 
@@ -5130,7 +5126,7 @@ template <>
             );
 
             return boolean_simd_type {
-                this->_vec && base::extend (static_cast <value_type> (val))
+                this->_vec && base::extend (val)
             };
         }
 
@@ -5150,12 +5146,12 @@ template <>
             );
 
             return boolean_simd_type {
-                this->_vec || base::extend (static_cast <value_type> (val))
+                this->_vec || base::extend (val)
             };
         }
 
-        advanced_constexpr boolean_simd_type & operator&= (boolean_simd_type const & sv)
-            & noexcept
+        advanced_constexpr boolean_simd_type &
+            operator&= (boolean_simd_type const & sv) & noexcept
         {
             this->_vec &= sv._vec;
             return *this;
@@ -5170,12 +5166,12 @@ template <>
                 " without conversion"
             );
 
-            this->_vec &= base::extend (static_cast <value_type> (val));
+            this->_vec &= base::extend (val);
             return *this;
         }
 
-        advanced_constexpr boolean_simd_type & operator|= (boolean_simd_type const & sv)
-            & noexcept
+        advanced_constexpr boolean_simd_type &
+            operator|= (boolean_simd_type const & sv) & noexcept
         {
             this->_vec |= sv._vec;
             return *this;
@@ -5190,12 +5186,12 @@ template <>
                 " without conversion"
             );
 
-            this->_vec |= base::extend (static_cast <value_type> (val));
+            this->_vec |= base::extend (val);
             return *this;
         }
 
-        advanced_constexpr boolean_simd_type & operator^= (boolean_simd_type const & sv)
-            & noexcept
+        advanced_constexpr boolean_simd_type &
+            operator^= (boolean_simd_type const & sv) & noexcept
         {
             this->_vec ^= sv._vec;
             return *this;
@@ -5210,7 +5206,7 @@ template <>
                 " without conversion"
             );
 
-            this->_vec ^= base::extend (static_cast <value_type> (val));
+            this->_vec ^= base::extend (val);
             return *this;
         }
 
@@ -5229,9 +5225,7 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type {
-                this->_vec == base::extend (static_cast <value_type> (val))
-            };
+            return *this == boolean_simd_type {val};
         }
 
         constexpr boolean_simd_type operator!= (boolean_simd_type const & sv)
@@ -5249,9 +5243,7 @@ template <>
                 " without conversion"
             );
 
-            return boolean_simd_type {
-                this->_vec != base::extend (static_cast <value_type> (val))
-            };
+            return *this != boolean_simd_type {val};
         }
     };
 #pragma GCC diagnostic pop
@@ -7113,33 +7105,33 @@ inline namespace common
 
     /* Guaranteed 128-bit integer SIMD vectors */
     /* 1 128-bit lane */
-#if defined(__clang__)
+#if defined (__clang__)
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
 #endif
 
     /* 2 128-bit lanes */
-#if defined(__clang__)
+#if defined (__clang__)
     using bool128x2_t = simd_type <__int128_t, 2, simd::boolean_tag>;
     using int128x2_t  = simd_type <__int128_t, 2>;
     using uint128x2_t = simd_type <__uint128_t, 2>;
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     using bool128x2_t = simd_type <__int128, 2, simd::boolean_tag>;
     using int128x2_t  = simd_type <__int128, 2>;
     using uint128x2_t = simd_type <unsigned __int128, 2>;
 #endif
 
     /* 4 128-bit lanes */
-#if defined(__clang__)
+#if defined (__clang__)
     using bool128x4_t = simd_type <__int128_t, 4, simd::boolean_tag>;
     using int128x4_t  = simd_type <__int128_t, 4>;
     using uint128x4_t = simd_type <__uint128_t, 4>;
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     using bool128x4_t = simd_type <__int128, 4, simd::boolean_tag>;
     using int128x4_t  = simd_type <__int128, 4>;
     using uint128x4_t = simd_type <unsigned __int128, 4>;
@@ -7258,11 +7250,11 @@ namespace sse2
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined(__clang__)
+#if defined (__clang__)
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -7324,11 +7316,11 @@ namespace sse3
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined(__clang__)
+#if defined (__clang__)
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -7384,11 +7376,11 @@ namespace ssse3
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined(__clang__)
+#if defined (__clang__)
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -7444,11 +7436,11 @@ namespace sse4
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined(__clang__)
+#if defined (__clang__)
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -7507,11 +7499,11 @@ namespace sse4a
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined(__clang__)
+#if defined (__clang__)
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -7567,11 +7559,11 @@ namespace avx
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined(__clang__)
+#if defined (__clang__)
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -7636,11 +7628,11 @@ namespace avx2
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined(__clang__)
+#if defined (__clang__)
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -7711,11 +7703,11 @@ namespace avx512
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined(__clang__)
+#if defined (__clang__)
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined(__GNUG__)
+#elif defined (__GNUG__)
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -7802,6 +7794,19 @@ namespace neon
 }   // namespace simd
 
 #undef advanced_constexpr
+#undef simd_arm
+#undef simd_neon
+#undef simd_x86
+#undef simd_mmx
+#undef simd_sse
+#undef simd_sse2
+#undef simd_sse3
+#undef simd_ssse3
+#undef simd_see4_1
+#undef simd_see4_2
+#undef simd_avx
+#undef simd_avx2
+#undef simd_avx512
 
 #include <cctype>    // std::is[x]digit
 #include <cwctype>   // std::isw[x]digit
@@ -7814,10 +7819,14 @@ namespace neon
  *      - std::hash
  */
 
-template <typename T, std::size_t lanes, typename tag>
-std::ostream & operator<< (std::ostream & os,
-                           simd::simd_type <T, lanes, tag> const & v)
+template <
+    typename SimdT,
+    typename = typename std::enable_if <simd::detail::is_simd_type <SimdT>::value>::type
+>
+std::ostream & operator<< (std::ostream & os, SimdT const & v)
 {
+    static constexpr std::size_t lanes = simd::simd_traits <SimdT>::lanes;
+
     os << '(';
     for (std::size_t i = 0; i < lanes - 1; ++i) {
         os << v [i] << "; ";
@@ -7827,10 +7836,14 @@ std::ostream & operator<< (std::ostream & os,
     return os;
 }
 
-template <typename T, std::size_t lanes, typename tag>
-std::wostream & operator<< (std::wostream & os,
-                            simd::simd_type <T, lanes, tag> const & v)
+template <
+    typename SimdT,
+    typename = typename std::enable_if <simd::detail::is_simd_type <SimdT>::value>::type
+>
+std::wostream & operator<< (std::wostream & os, SimdT const & v)
 {
+    static constexpr std::size_t lanes = simd::simd_traits <SimdT>::lanes;
+
     os << L'(';
     for (std::size_t i = 0; i < lanes - 1; ++i) {
         os << v [i] << L';' << L' ';
@@ -7840,10 +7853,14 @@ std::wostream & operator<< (std::wostream & os,
     return os;
 }
 
-template <typename T, std::size_t lanes, typename tag>
-std::istream & operator>> (std::istream & is,
-                           simd::simd_type <T, lanes, tag> & v)
+template <
+    typename SimdT,
+    typename = typename std::enable_if <simd::detail::is_simd_type <SimdT>::value>::type
+>
+std::istream & operator>> (std::istream & is, SimdT & v)
 {
+    static constexpr std::size_t lanes = simd::simd_traits <SimdT>::lanes;
+
     auto nonnum = [](std::istream & _is) -> std::istream &
     {
         while (!_is.eof () && !_is.bad ()) {
@@ -7892,10 +7909,14 @@ std::istream & operator>> (std::istream & is,
     return is;
 }
 
-template <typename T, std::size_t lanes, typename tag>
-std::wistream & operator>> (std::wistream & wis,
-                            simd::simd_type <T, lanes, tag> & v)
+template <
+    typename SimdT,
+    typename = typename std::enable_if <simd::detail::is_simd_type <SimdT>::value>::type
+>
+std::wistream & operator>> (std::wistream & wis, SimdT & v)
 {
+    static constexpr std::size_t lanes = simd::simd_traits <SimdT>::lanes;
+
     auto nonnum = [](std::wistream & _wis) -> std::wistream &
     {
         while (!_wis.eof () && !_wis.bad ()) {
@@ -7955,7 +7976,7 @@ namespace std
         typedef simd::simd_type <ty, lanes, tag> argument_type;\
         typedef std::size_t result_type;\
 \
-        result_type operator () (argument_type const & s) const noexcept\
+        result_type operator() (argument_type const & s) const noexcept\
         {\
             using value_type = typename simd::simd_traits <\
                 argument_type\
@@ -7973,48 +7994,48 @@ namespace std
     };
 
 #define std_hash_impl_lanes(ty)\
-    std_hash_impl(ty, 1, simd::boolean_tag);\
-    std_hash_impl(ty, 2, simd::boolean_tag);\
-    std_hash_impl(ty, 4, simd::boolean_tag);\
-    std_hash_impl(ty, 8, simd::boolean_tag);\
-    std_hash_impl(ty, 16, simd::boolean_tag);\
-    std_hash_impl(ty, 32, simd::boolean_tag);\
-    std_hash_impl(ty, 64, simd::boolean_tag);\
-    std_hash_impl(ty, 1, simd::arithmetic_tag);\
-    std_hash_impl(ty, 2, simd::arithmetic_tag);\
-    std_hash_impl(ty, 4, simd::arithmetic_tag);\
-    std_hash_impl(ty, 8, simd::arithmetic_tag);\
-    std_hash_impl(ty, 16, simd::arithmetic_tag);\
-    std_hash_impl(ty, 32, simd::arithmetic_tag);\
-    std_hash_impl(ty, 64, simd::arithmetic_tag);\
-    std_hash_impl(unsigned ty, 1, simd::arithmetic_tag);\
-    std_hash_impl(unsigned ty, 2, simd::arithmetic_tag);\
-    std_hash_impl(unsigned ty, 4, simd::arithmetic_tag);\
-    std_hash_impl(unsigned ty, 8, simd::arithmetic_tag);\
-    std_hash_impl(unsigned ty, 16, simd::arithmetic_tag);\
-    std_hash_impl(unsigned ty, 32, simd::arithmetic_tag);\
-    std_hash_impl(unsigned ty, 64, simd::arithmetic_tag);
+    std_hash_impl(ty, 1, simd::boolean_tag)\
+    std_hash_impl(ty, 2, simd::boolean_tag)\
+    std_hash_impl(ty, 4, simd::boolean_tag)\
+    std_hash_impl(ty, 8, simd::boolean_tag)\
+    std_hash_impl(ty, 16, simd::boolean_tag)\
+    std_hash_impl(ty, 32, simd::boolean_tag)\
+    std_hash_impl(ty, 64, simd::boolean_tag)\
+    std_hash_impl(ty, 1, simd::arithmetic_tag)\
+    std_hash_impl(ty, 2, simd::arithmetic_tag)\
+    std_hash_impl(ty, 4, simd::arithmetic_tag)\
+    std_hash_impl(ty, 8, simd::arithmetic_tag)\
+    std_hash_impl(ty, 16, simd::arithmetic_tag)\
+    std_hash_impl(ty, 32, simd::arithmetic_tag)\
+    std_hash_impl(ty, 64, simd::arithmetic_tag)\
+    std_hash_impl(unsigned ty, 1, simd::arithmetic_tag)\
+    std_hash_impl(unsigned ty, 2, simd::arithmetic_tag)\
+    std_hash_impl(unsigned ty, 4, simd::arithmetic_tag)\
+    std_hash_impl(unsigned ty, 8, simd::arithmetic_tag)\
+    std_hash_impl(unsigned ty, 16, simd::arithmetic_tag)\
+    std_hash_impl(unsigned ty, 32, simd::arithmetic_tag)\
+    std_hash_impl(unsigned ty, 64, simd::arithmetic_tag)
 
-    std_hash_impl_lanes(char);
-    std_hash_impl_lanes(short);
-    std_hash_impl_lanes(int);
-    std_hash_impl_lanes(long);
-    std_hash_impl_lanes(long long);
+    std_hash_impl_lanes(char)
+    std_hash_impl_lanes(short)
+    std_hash_impl_lanes(int)
+    std_hash_impl_lanes(long)
+    std_hash_impl_lanes(long long)
 
 #undef std_hash_impl_lanes
 
 #define std_hash_impl_float_lanes(ty)\
-    std_hash_impl(ty, 1, simd::arithmetic_tag);\
-    std_hash_impl(ty, 2, simd::arithmetic_tag);\
-    std_hash_impl(ty, 4, simd::arithmetic_tag);\
-    std_hash_impl(ty, 8, simd::arithmetic_tag);\
-    std_hash_impl(ty, 16, simd::arithmetic_tag);\
-    std_hash_impl(ty, 32, simd::arithmetic_tag);\
-    std_hash_impl(ty, 64, simd::arithmetic_tag);
+    std_hash_impl(ty, 1, simd::arithmetic_tag)\
+    std_hash_impl(ty, 2, simd::arithmetic_tag)\
+    std_hash_impl(ty, 4, simd::arithmetic_tag)\
+    std_hash_impl(ty, 8, simd::arithmetic_tag)\
+    std_hash_impl(ty, 16, simd::arithmetic_tag)\
+    std_hash_impl(ty, 32, simd::arithmetic_tag)\
+    std_hash_impl(ty, 64, simd::arithmetic_tag)
 
-    std_hash_impl_float_lanes(float);
-    std_hash_impl_float_lanes(double);
-    std_hash_impl_float_lanes(long double);
+    std_hash_impl_float_lanes(float)
+    std_hash_impl_float_lanes(double)
+    std_hash_impl_float_lanes(long double)
 
 #undef std_hash_impl_float_lanes
 #undef std_hash_impl
@@ -8025,19 +8046,27 @@ namespace std
         typedef simd::simd_type <ty, lanes, tag> argument_type;\
         typedef std::size_t result_type;\
 \
-        result_type operator () (argument_type const & s) const noexcept\
+        result_type operator() (argument_type const & s) const noexcept\
         {\
             struct alias {\
-                simd::simd_type <std::uint64_t, lanes, simd::arithmetic_tag> v1;\
-                simd::simd_type <std::uint64_t, lanes, simd::arithmetic_tag> v2;\
+                simd::simd_type <std::uint64_t, lanes, simd::arithmetic_tag>\
+                    v1;\
+                simd::simd_type <std::uint64_t, lanes, simd::arithmetic_tag>\
+                    v2;\
             };\
 \
             auto const & a = reinterpret_cast <alias const &> (s);\
             auto h1 = simd::hash <decltype (a.v1)> (a.v1);\
             auto h2 = simd::hash <decltype (a.v2)> (a.v2);\
 \
+            using hash_type = decltype (h1);\
+            using hash_value_type =\
+                typename simd::simd_traits <hash_type>::value_type;\
             return simd::accumulate (\
-                h1 ^ (h2 << std::uint64_t {1}), std::size_t {0},\
+                h1 ^ ((h2  + hash_type {hash_value_type {0x9e3779b9}}) +\
+                      (h1 << hash_type {hash_value_type {6}}) +\
+                      (h1 >> hash_type {hash_value_type {2}})),\
+                std::size_t {0},\
                 [] (std::size_t const & seed, std::uint64_t const & t) {\
                     return simd::detail::util::hash_combine <std::uint64_t> (\
                             seed, t\
@@ -8047,50 +8076,50 @@ namespace std
         }\
     };
 
-#if defined(__clang__)
-    std_hash_impl_int128(__int128_t, 1, simd::boolean_tag);
-    std_hash_impl_int128(__int128_t, 2, simd::boolean_tag);
-    std_hash_impl_int128(__int128_t, 4, simd::boolean_tag);
-    std_hash_impl_int128(__int128_t, 8, simd::boolean_tag);
-    std_hash_impl_int128(__int128_t, 16, simd::boolean_tag);
-    std_hash_impl_int128(__int128_t, 32, simd::boolean_tag);
-    std_hash_impl_int128(__int128_t, 64, simd::boolean_tag);
-    std_hash_impl_int128(__int128_t, 1, simd::arithmetic_tag);
-    std_hash_impl_int128(__int128_t, 2, simd::arithmetic_tag);
-    std_hash_impl_int128(__int128_t, 4, simd::arithmetic_tag);
-    std_hash_impl_int128(__int128_t, 8, simd::arithmetic_tag);
-    std_hash_impl_int128(__int128_t, 16, simd::arithmetic_tag);
-    std_hash_impl_int128(__int128_t, 32, simd::arithmetic_tag);
-    std_hash_impl_int128(__int128_t, 64, simd::arithmetic_tag);
-    std_hash_impl_int128(__uint128_t, 1, simd::arithmetic_tag);
-    std_hash_impl_int128(__uint128_t, 2, simd::arithmetic_tag);
-    std_hash_impl_int128(__uint128_t, 4, simd::arithmetic_tag);
-    std_hash_impl_int128(__uint128_t, 8, simd::arithmetic_tag);
-    std_hash_impl_int128(__uint128_t, 16, simd::arithmetic_tag);
-    std_hash_impl_int128(__uint128_t, 32, simd::arithmetic_tag);
-    std_hash_impl_int128(__uint128_t, 64, simd::arithmetic_tag);
-#elif defined(__GNUG__)
-    std_hash_impl_int128(__int128, 1, simd::boolean_tag);
-    std_hash_impl_int128(__int128, 2, simd::boolean_tag);
-    std_hash_impl_int128(__int128, 4, simd::boolean_tag);
-    std_hash_impl_int128(__int128, 8, simd::boolean_tag);
-    std_hash_impl_int128(__int128, 16, simd::boolean_tag);
-    std_hash_impl_int128(__int128, 32, simd::boolean_tag);
-    std_hash_impl_int128(__int128, 64, simd::boolean_tag);
-    std_hash_impl_int128(__int128, 1, simd::arithmetic_tag);
-    std_hash_impl_int128(__int128, 2, simd::arithmetic_tag);
-    std_hash_impl_int128(__int128, 4, simd::arithmetic_tag);
-    std_hash_impl_int128(__int128, 8, simd::arithmetic_tag);
-    std_hash_impl_int128(__int128, 16, simd::arithmetic_tag);
-    std_hash_impl_int128(__int128, 32, simd::arithmetic_tag);
-    std_hash_impl_int128(__int128, 64, simd::arithmetic_tag);
-    std_hash_impl_int128(unsigned __int128, 1, simd::arithmetic_tag);
-    std_hash_impl_int128(unsigned __int128, 2, simd::arithmetic_tag);
-    std_hash_impl_int128(unsigned __int128, 4, simd::arithmetic_tag);
-    std_hash_impl_int128(unsigned __int128, 8, simd::arithmetic_tag);
-    std_hash_impl_int128(unsigned __int128, 16, simd::arithmetic_tag);
-    std_hash_impl_int128(unsigned __int128, 32, simd::arithmetic_tag);
-    std_hash_impl_int128(unsigned __int128, 64, simd::arithmetic_tag);
+#if defined (__clang__)
+    std_hash_impl_int128(__int128_t, 1, simd::boolean_tag)
+    std_hash_impl_int128(__int128_t, 2, simd::boolean_tag)
+    std_hash_impl_int128(__int128_t, 4, simd::boolean_tag)
+    std_hash_impl_int128(__int128_t, 8, simd::boolean_tag)
+    std_hash_impl_int128(__int128_t, 16, simd::boolean_tag)
+    std_hash_impl_int128(__int128_t, 32, simd::boolean_tag)
+    std_hash_impl_int128(__int128_t, 64, simd::boolean_tag)
+    std_hash_impl_int128(__int128_t, 1, simd::arithmetic_tag)
+    std_hash_impl_int128(__int128_t, 2, simd::arithmetic_tag)
+    std_hash_impl_int128(__int128_t, 4, simd::arithmetic_tag)
+    std_hash_impl_int128(__int128_t, 8, simd::arithmetic_tag)
+    std_hash_impl_int128(__int128_t, 16, simd::arithmetic_tag)
+    std_hash_impl_int128(__int128_t, 32, simd::arithmetic_tag)
+    std_hash_impl_int128(__int128_t, 64, simd::arithmetic_tag)
+    std_hash_impl_int128(__uint128_t, 1, simd::arithmetic_tag)
+    std_hash_impl_int128(__uint128_t, 2, simd::arithmetic_tag)
+    std_hash_impl_int128(__uint128_t, 4, simd::arithmetic_tag)
+    std_hash_impl_int128(__uint128_t, 8, simd::arithmetic_tag)
+    std_hash_impl_int128(__uint128_t, 16, simd::arithmetic_tag)
+    std_hash_impl_int128(__uint128_t, 32, simd::arithmetic_tag)
+    std_hash_impl_int128(__uint128_t, 64, simd::arithmetic_tag)
+#elif defined (__GNUG__)
+    std_hash_impl_int128(__int128, 1, simd::boolean_tag)
+    std_hash_impl_int128(__int128, 2, simd::boolean_tag)
+    std_hash_impl_int128(__int128, 4, simd::boolean_tag)
+    std_hash_impl_int128(__int128, 8, simd::boolean_tag)
+    std_hash_impl_int128(__int128, 16, simd::boolean_tag)
+    std_hash_impl_int128(__int128, 32, simd::boolean_tag)
+    std_hash_impl_int128(__int128, 64, simd::boolean_tag)
+    std_hash_impl_int128(__int128, 1, simd::arithmetic_tag)
+    std_hash_impl_int128(__int128, 2, simd::arithmetic_tag)
+    std_hash_impl_int128(__int128, 4, simd::arithmetic_tag)
+    std_hash_impl_int128(__int128, 8, simd::arithmetic_tag)
+    std_hash_impl_int128(__int128, 16, simd::arithmetic_tag)
+    std_hash_impl_int128(__int128, 32, simd::arithmetic_tag)
+    std_hash_impl_int128(__int128, 64, simd::arithmetic_tag)
+    std_hash_impl_int128(unsigned __int128, 1, simd::arithmetic_tag)
+    std_hash_impl_int128(unsigned __int128, 2, simd::arithmetic_tag)
+    std_hash_impl_int128(unsigned __int128, 4, simd::arithmetic_tag)
+    std_hash_impl_int128(unsigned __int128, 8, simd::arithmetic_tag)
+    std_hash_impl_int128(unsigned __int128, 16, simd::arithmetic_tag)
+    std_hash_impl_int128(unsigned __int128, 32, simd::arithmetic_tag)
+    std_hash_impl_int128(unsigned __int128, 64, simd::arithmetic_tag)
 #endif
 
 #undef std_hash_impl_int128
