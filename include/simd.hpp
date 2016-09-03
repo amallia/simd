@@ -21,7 +21,6 @@
 #define SIMD_IMPLEMENTATION_HEADER
 
 #include <array>                // std::array
-#include <cassert>              // std::assert
 #include <cfloat>               // FLT_RADIX
 #include <complex>              // std::complex
 #include <cstddef>              // std::size_t
@@ -35,7 +34,8 @@
 #include <numeric>              // std::accumulate
 #include <stdexcept>            // std::bad_alloc
 #include <type_traits>          // std::conditional, std::is_arithmetic
-#include <utility>              // util::index_sequence
+#include <utility>              // std::forward, std::index_sequence
+
 
 #if !defined (__clang__) && !defined (__GNUG__)
     #error "simd implemention requires clang or gcc vector extensions"
@@ -51,68 +51,57 @@
     #define advanced_constexpr
 #endif
 
-#if defined (__arm__)
-    #if !(defined (__ARM_NEON__) || defined (__ARM_NEON))
-        #error "simd implementation requires ARM NEON extension support"
-    #else
-        #include <arm_neon.h>
-        #define simd_arm
-        #define simd_neon
-    #endif
-#endif
-
-#if defined (__x86__)\
- || defined (__x86_64__)\
- || defined (__x86_64)\
- || defined (__amd64__)\
- || defined (__amd64)
-    #if !(defined (__MMX__)\
-       || defined (__SSE__)\
-       || defined (__SSE2__)\
-       || defined (__SSE3__)\
-       || defined (__SSSE3__)\
-       || defined (__SSE4_1__)\
-       || defined (__SSE4_2__)\
-       || defined (__AVX__)\
-       || defined (__AVX2__)\
-       || defined (__AVX512F__))
-        #error "simd implementation requires x86 SIMD extension support"
-    #else
-        #include <x86intrin.h>
-        #define simd_x86
-        #if defined (__MMX__)
-            #define simd_mmx
-        #endif
-        #if defined (__SSE__)
-            #define simd_sse
-        #endif
-        #if defined (__SSE2__)
-            #define simd_sse2
-        #endif
-        #if defined (__SSE3__)
-            #define simd_sse3
-        #endif
-        #if defined (__SSSE3__)
-            #define simd_ssse3
-        #endif
-        #if defined (__SSE4_1__)
-            #define simd_see4_1
-        #endif
-        #if defined (__SSE4_2__)
-            #define simd_see4_2
-        #endif
-        #if defined (__AVX__)
-            #define simd_avx
-        #endif
-        #if defined (__AVX2__)
-            #define simd_avx2
-        #endif
-        #if defined (__AVX512F__)
-            #define simd_avx512
-        #endif
-    #endif
-#endif
-
+/* -- Implementation Notes --
+ *
+ * Vector type specializations:
+ *      Due to implementation details in the clang C++ compiler, it is
+ *      impossible to declare templated typedefs of vector extension types.
+ *      Moreover, the declaration requires an integer literal for the
+ *      vector_size attribute. Therefore we must create a list of all the
+ *      possible specializations for the underlying vector types.
+ *
+ *      It should also be noted that we specialize for vector types which are
+ *      technically smaller and larger than "true" SIMD vector types for any
+ *      particular architecture. In particular, for each possible base type we
+ *      provide vector types with lane counts: 1, 2, 4, 8, 16, 32, 64. This is
+ *      to allow general mappings over SIMD vector types without fear that the
+ *      resulting SIMD vector type does not have a defined vector type
+ *      specialization.
+ *
+ *      This is okay since both Clang and GCC will synthesize instructions that
+ *      are not present on the target architecure.
+ *
+ * Alignment concerns:
+ *      It should also be noted that we provide alignment values equal to the
+ *      size of each vector type. This is required to prevent penalties or
+ *      exceptions for unaligned memory accesses on architectures supporting
+ *      only aligned accesses for SIMD vector types. Often these alignment
+ *      values will be larger than the value alignof (std::max_align_t), and so
+ *      with GCC in particular warnings of attribute alignment greater than
+ *      alignof (std::max_align_t) will be emitted. I have taken the liberty to
+ *      insert #pragma GCC diagnostic push/pop/ignored "-Wattributes" blocks
+ *      around declarations using alignas to supporess these warnings (these are
+ *      the only place #pragma blocks are used). They are not necessary and can
+ *      be searched for and removed if desired.
+ *
+ * ABI concerns:
+ *      Each SIMD vector type (depending on underlying type and lane count),
+ *      requires backing either by a particular SIMD technology or synthesized
+ *      instructions when no appropriate SIMD technology is available on the
+ *      target architecure. In the case of the latter GCC may emit warnings
+ *      about vector return types (in the -Wpsabi catgeory). It may also be
+ *      useful to the user of this library to explicitly enable the target SIMD
+ *      technology they wish to use, this may be one of, but is not limited to:
+ *      -mmmx, -msse, -msse2, -msse3, -mssse3, -msse4, -msse4.{1,2}, -mavx,
+ *      -mavx2, -mavx512{f,bw,cd,dq,er,ifma,pf,vbmi,vl}, -mneon.
+ *
+ * Vector comparisons generated by GCC vs. those generated by Clang
+ *      GCC vector comparison operations return vector types with lane type
+ *      equal to the signed integer with size equal to the size of the original
+ *      vector lane type. However, the result type of vector comparisons
+ *      generated by Clang are ext_vector_types (OpenCL vector types). For that
+ *      reason we must perform manual comparisons when Clang is being used.
+ */
 
 namespace simd
 {
@@ -372,47 +361,10 @@ namespace util
     }
 }   // namespace util
 
-    /*
-     * Due to implementation details in the clang C++ compiler, it is impossible
-     * to declare templated typedefs of vector extension types. Moreover, the
-     * declaration requires an integer literal for the vector_size attribute.
-     * Therefore we must create a list of all the possible specializations for
-     * the underlying vector types.
-     *
-     * It should also be noted that we specialize for vector types which are
-     * technically smaller and larger than "true" SIMD vector types for any
-     * particular architecture. For each possible base type we provide vector
-     * types with lane counts: 1, 2, 4, 8, 16, 32, 64. This is to allow general
-     * mappings over SIMD vector types without fear that the resulting SIMD
-     * vector type does not have a defined vector type specialization.
-     *
-     * This is okay since both Clang and GCC will synthesize instructions that
-     * are not present on the target architecure.
-     *
-     * It should also be noted that we provide alignment values equal to the
-     * size of each vector type. This is required to prevent penalties or
-     * exceptions for unaligned memory accesses on architectures supporting only
-     * aligned accesses for SIMD vector types. Often these alignment values will
-     * be larger than the value alignof (std::max_align_t), and so with GCC in
-     * particular warnings of attribute alignment greater than
-     * alignof (std::max_align_t) will be emitted. I have taken the liberty to
-     * insert #pragma GCC diagnostic push/pop/ignored "-Wattributes" blocks
-     * around declarations using alignas to supporess these warnings (these are
-     * the only place #pragma blocks are used). They are not necessary and can
-     * be searched for and removed if desired.
-     *
-     * Each SIMD vector type (depending on underlying type and lane count),
-     * requires backing either by a particular SIMD technology or synthesized
-     * instructions when no appropriate SIMD technology is available on the
-     * target architecure. In the case of the latter GCC may emit warnings
-     * about vector return types (in the -Wpsabi catgeory). It may also be
-     * useful to the user of this library to explicitly enable the target SIMD
-     * technology they wish to use, this may be one of, but is not limited to:
-     * -mmmx, -msse, -msse2, -msse3, -mssse3, -msse4, -msse4.{1,2}, -mavx,
-     * -mavx2, -mavx512{f,bw,cd,dq,er,ifma,pf,vbmi,vl}, -mneon.
-     */
 namespace vext
 {
+#define vsize(lanes, size) vector_size ((lanes) * (size))
+
     template <typename, std::size_t, typename enable = void>
     struct vector_type_specialization;
 
@@ -421,256 +373,119 @@ struct vector_type_specialization <signed char, lanes>
     : public vector_type_specialization <char, lanes>
 {};
 
-#define char_spec(lanes) template <>\
-struct vector_type_specialization <char, lanes>\
+#define specialize(ty, lanes) template <>\
+struct vector_type_specialization <ty, lanes>\
 {\
-    typedef char type\
-        __attribute__ ((vector_size (lanes * sizeof (char))));\
-    static constexpr std::size_t alignment = lanes * alignof (char);\
-    static constexpr std::size_t size = lanes * sizeof (char);\
+    typedef ty type __attribute__ ((vsize(lanes, sizeof (ty))));\
+    static constexpr std::size_t alignment = lanes * alignof (ty);\
+    static constexpr std::size_t size = lanes * sizeof (ty);\
 };
 
-    char_spec(1);
-    char_spec(2);
-    char_spec(4);
-    char_spec(8);
-    char_spec(16);
-    char_spec(32);
-    char_spec(64);
+    specialize(char, 1)
+    specialize(char, 2)
+    specialize(char, 4)
+    specialize(char, 8)
+    specialize(char, 16)
+    specialize(char, 32)
+    specialize(char, 64)
 
-#undef char_spec
+    specialize(unsigned char, 1)
+    specialize(unsigned char, 2)
+    specialize(unsigned char, 4)
+    specialize(unsigned char, 8)
+    specialize(unsigned char, 16)
+    specialize(unsigned char, 32)
+    specialize(unsigned char, 64)
 
-#define unsigned_char_spec(lanes) template <>\
-struct vector_type_specialization <unsigned char, lanes>\
-{\
-    typedef unsigned char type\
-        __attribute__ ((vector_size (lanes * sizeof (unsigned char))));\
-    static constexpr std::size_t alignment = lanes * alignof (unsigned char);\
-    static constexpr std::size_t size = lanes * sizeof (unsigned char);\
-};
+    specialize(short, 1)
+    specialize(short, 2)
+    specialize(short, 4)
+    specialize(short, 8)
+    specialize(short, 16)
+    specialize(short, 32)
+    specialize(short, 64)
 
-    unsigned_char_spec(1);
-    unsigned_char_spec(2);
-    unsigned_char_spec(4);
-    unsigned_char_spec(8);
-    unsigned_char_spec(16);
-    unsigned_char_spec(32);
-    unsigned_char_spec(64);
+    specialize(unsigned short, 1)
+    specialize(unsigned short, 2)
+    specialize(unsigned short, 4)
+    specialize(unsigned short, 8)
+    specialize(unsigned short, 16)
+    specialize(unsigned short, 32)
+    specialize(unsigned short, 64)
 
-#undef unsigned_char_spec
+    specialize(int, 1)
+    specialize(int, 2)
+    specialize(int, 4)
+    specialize(int, 8)
+    specialize(int, 16)
+    specialize(int, 32)
+    specialize(int, 64)
 
-#define short_spec(lanes) template <>\
-struct vector_type_specialization <short, lanes>\
-{\
-    typedef short type\
-        __attribute__ ((vector_size (lanes * sizeof (short))));\
-    static constexpr std::size_t alignment = lanes * alignof (short);\
-    static constexpr std::size_t size = lanes * sizeof (short);\
-};
+    specialize(unsigned int, 1)
+    specialize(unsigned int, 2)
+    specialize(unsigned int, 4)
+    specialize(unsigned int, 8)
+    specialize(unsigned int, 16)
+    specialize(unsigned int, 32)
+    specialize(unsigned int, 64)
 
-    short_spec(1);
-    short_spec(2);
-    short_spec(4);
-    short_spec(8);
-    short_spec(16);
-    short_spec(32);
-    short_spec(64);
+    specialize(long, 1)
+    specialize(long, 2)
+    specialize(long, 4)
+    specialize(long, 8)
+    specialize(long, 16)
+    specialize(long, 32)
+    specialize(long, 64)
 
-#undef short_spec
+    specialize(unsigned long, 1)
+    specialize(unsigned long, 2)
+    specialize(unsigned long, 4)
+    specialize(unsigned long, 8)
+    specialize(unsigned long, 16)
+    specialize(unsigned long, 32)
+    specialize(unsigned long, 64)
 
-#define unsigned_short_spec(lanes) template <>\
-struct vector_type_specialization <unsigned short, lanes>\
-{\
-    typedef unsigned short type\
-        __attribute__ ((vector_size (lanes * sizeof (unsigned short))));\
-    static constexpr std::size_t alignment = lanes * alignof (unsigned short);\
-    static constexpr std::size_t size = lanes * sizeof (unsigned short);\
-};
+    specialize(long long, 1)
+    specialize(long long, 2)
+    specialize(long long, 4)
+    specialize(long long, 8)
+    specialize(long long, 16)
+    specialize(long long, 32)
+    specialize(long long, 64)
 
-    unsigned_short_spec(1);
-    unsigned_short_spec(2);
-    unsigned_short_spec(4);
-    unsigned_short_spec(8);
-    unsigned_short_spec(16);
-    unsigned_short_spec(32);
-    unsigned_short_spec(64);
+    specialize(unsigned long long, 1)
+    specialize(unsigned long long, 2)
+    specialize(unsigned long long, 4)
+    specialize(unsigned long long, 8)
+    specialize(unsigned long long, 16)
+    specialize(unsigned long long, 32)
+    specialize(unsigned long long, 64)
 
-#undef unsigned_short_spec
+    specialize(float, 1)
+    specialize(float, 2)
+    specialize(float, 4)
+    specialize(float, 8)
+    specialize(float, 16)
+    specialize(float, 32)
+    specialize(float, 64)
 
-#define int_spec(lanes) template <>\
-struct vector_type_specialization <int, lanes>\
-{\
-    typedef int type\
-        __attribute__ ((vector_size (lanes * sizeof (int))));\
-    static constexpr std::size_t alignment = lanes * alignof (int);\
-    static constexpr std::size_t size = lanes * sizeof (int);\
-};
+    specialize(double, 1)
+    specialize(double, 2)
+    specialize(double, 4)
+    specialize(double, 8)
+    specialize(double, 16)
+    specialize(double, 32)
+    specialize(double, 64)
 
-    int_spec(1);
-    int_spec(2);
-    int_spec(4);
-    int_spec(8);
-    int_spec(16);
-    int_spec(32);
-    int_spec(64);
+    specialize(long double, 1)
+    specialize(long double, 2)
+    specialize(long double, 4)
+    specialize(long double, 8)
+    specialize(long double, 16)
+    specialize(long double, 32)
+    specialize(long double, 64)
 
-#undef int_spec
-
-#define unsigned_int_spec(lanes) template <>\
-struct vector_type_specialization <unsigned int, lanes>\
-{\
-    typedef unsigned int type\
-        __attribute__ ((vector_size (lanes * sizeof (unsigned int))));\
-    static constexpr std::size_t alignment = lanes * alignof (unsigned int);\
-    static constexpr std::size_t size = lanes * sizeof (unsigned int);\
-};
-
-    unsigned_int_spec(1);
-    unsigned_int_spec(2);
-    unsigned_int_spec(4);
-    unsigned_int_spec(8);
-    unsigned_int_spec(16);
-    unsigned_int_spec(32);
-    unsigned_int_spec(64);
-
-#undef unsigned_int_spec
-
-#define long_spec(lanes) template <>\
-struct vector_type_specialization <long, lanes>\
-{\
-    typedef long type\
-        __attribute__ ((vector_size (lanes * sizeof (long))));\
-    static constexpr std::size_t alignment = lanes * alignof (long);\
-    static constexpr std::size_t size = lanes * sizeof (long);\
-};
-
-    long_spec(1);
-    long_spec(2);
-    long_spec(4);
-    long_spec(8);
-    long_spec(16);
-    long_spec(32);
-    long_spec(64);
-
-#undef long_spec
-
-#define unsigned_long_spec(lanes) template <>\
-struct vector_type_specialization <unsigned long, lanes>\
-{\
-    typedef unsigned long type\
-        __attribute__ ((vector_size (lanes * sizeof (unsigned long))));\
-    static constexpr std::size_t alignment = lanes * alignof (unsigned long);\
-    static constexpr std::size_t size = lanes * sizeof (unsigned long);\
-};
-
-    unsigned_long_spec(1);
-    unsigned_long_spec(2);
-    unsigned_long_spec(4);
-    unsigned_long_spec(8);
-    unsigned_long_spec(16);
-    unsigned_long_spec(32);
-    unsigned_long_spec(64);
-
-#undef unsigned_long_spec
-
-#define long_long_spec(lanes) template <>\
-struct vector_type_specialization <long long, lanes>\
-{\
-    typedef long long type\
-        __attribute__ ((vector_size (lanes * sizeof (long long))));\
-    static constexpr std::size_t alignment = lanes * alignof (long long);\
-    static constexpr std::size_t size = lanes * sizeof (long long);\
-};
-
-    long_long_spec(1);
-    long_long_spec(2);
-    long_long_spec(4);
-    long_long_spec(8);
-    long_long_spec(16);
-    long_long_spec(32);
-    long_long_spec(64);
-
-#undef long_long_spec
-
-#define unsigned_long_long_spec(lanes) template <>\
-struct vector_type_specialization <unsigned long long, lanes>\
-{\
-    typedef unsigned long long type\
-        __attribute__ ((vector_size (lanes * sizeof (unsigned long long))));\
-    static constexpr std::size_t alignment =\
-        lanes * alignof (unsigned long long);\
-    static constexpr std::size_t size = lanes * sizeof (unsigned long long);\
-};
-
-    unsigned_long_long_spec(1);
-    unsigned_long_long_spec(2);
-    unsigned_long_long_spec(4);
-    unsigned_long_long_spec(8);
-    unsigned_long_long_spec(16);
-    unsigned_long_long_spec(32);
-    unsigned_long_long_spec(64);
-
-#undef unsigned_long_long_spec
-
-#define float_spec(lanes) template <>\
-struct vector_type_specialization <float, lanes>\
-{\
-    typedef float type\
-        __attribute__ ((vector_size (lanes * sizeof (float))));\
-    static constexpr std::size_t alignment = lanes * alignof (float);\
-    static constexpr std::size_t size = lanes * sizeof (float);\
-};
-
-    float_spec(1);
-    float_spec(2);
-    float_spec(4);
-    float_spec(8);
-    float_spec(16);
-    float_spec(32);
-    float_spec(64);
-
-#undef float_spec
-
-#define double_spec(lanes) template <>\
-struct vector_type_specialization <double, lanes>\
-{\
-    typedef double type\
-        __attribute__ ((vector_size (lanes * sizeof (double))));\
-    static constexpr std::size_t alignment = lanes * alignof (double);\
-    static constexpr std::size_t size = lanes * sizeof (double);\
-};
-
-    double_spec(1);
-    double_spec(2);
-    double_spec(4);
-    double_spec(8);
-    double_spec(16);
-    double_spec(32);
-    double_spec(64);
-
-#undef double_spec
-
-    template <std::size_t lanes>
-    struct long_double_specialization;
-    
-#define long_double_spec(lanes) template <>\
-struct vector_type_specialization <long double, lanes>\
-{\
-    typedef long double type\
-        __attribute__ ((vector_size (lanes * sizeof (long double))));\
-    static constexpr std::size_t alignment = lanes * alignof (long double);\
-    static constexpr std::size_t size = lanes * sizeof (long double);\
-};
-
-    long_double_spec(1);
-    long_double_spec(2);
-    long_double_spec(4);
-    long_double_spec(8);
-    long_double_spec(16);
-    long_double_spec(32);
-    long_double_spec(64);
-
-#undef long_double_spec
+#undef specialize
 
     template <>
     struct vector_type_specialization <
@@ -683,12 +498,15 @@ struct vector_type_specialization <long double, lanes>\
     >
     {
 #if defined (__clang__)
-        typedef __int128_t type __attribute__ ((vector_size (16)));
+        typedef __int128_t type
+            __attribute__ ((vsize (1, sizeof (__int128_t))));
+        static constexpr std::size_t alignment = 1 * alignof (__int128_t);
+        static constexpr std::size_t size      = 1 * sizeof (__int128_t);
 #elif defined (__GNUG__)
-        typedef __int128 type __attribute__ ((vector_size (16)));
+        typedef __int128 type __attribute__ ((vsize (1, sizeof (__int128))));
+        static constexpr std::size_t alignment = 1 * alignof (__int128);
+        static constexpr std::size_t size      = 1 * sizeof (__int128);
 #endif
-        static constexpr std::size_t alignment = 16;
-        static constexpr std::size_t size = 16;
     };
 
     template <>
@@ -702,12 +520,15 @@ struct vector_type_specialization <long double, lanes>\
     >
     {
 #if defined (__clang__)
-        typedef __int128_t type __attribute__ ((vector_size (32)));
+        typedef __int128_t type
+            __attribute__ ((vsize (2, sizeof (__int128_t))));
+        static constexpr std::size_t alignment = 2 * alignof (__int128_t);
+        static constexpr std::size_t size      = 2 * sizeof (__int128_t);
 #elif defined (__GNUG__)
-        typedef __int128 type __attribute__ ((vector_size (32)));
+        typedef __int128 type __attribute__ ((vsize (2, sizeof (__int128))));
+        static constexpr std::size_t alignment = 2 * alignof (__int128);
+        static constexpr std::size_t size      = 2 * sizeof (__int128);
 #endif
-        static constexpr std::size_t alignment = 32;
-        static constexpr std::size_t size = 32;
     };
 
 template <>
@@ -721,12 +542,15 @@ template <>
     >
     {
 #if defined (__clang__)
-        typedef __int128_t type __attribute__ ((vector_size (64)));
+        typedef __int128_t type
+            __attribute__ ((vsize (4, sizeof (__int128_t))));
+        static constexpr std::size_t alignment = 4 * alignof (__int128_t);
+        static constexpr std::size_t size      = 4 * sizeof (__int128_t);
 #elif defined (__GNUG__)
-        typedef __int128 type __attribute__ ((vector_size (64)));
+        typedef __int128 type __attribute__ ((vsize (4, sizeof (__int128))));
+        static constexpr std::size_t alignment = 4 * alignof (__int128);
+        static constexpr std::size_t size      = 4 * sizeof (__int128);
 #endif
-        static constexpr std::size_t alignment = 64;
-        static constexpr std::size_t size = 64;
     };
 
     template <>
@@ -740,12 +564,15 @@ template <>
     >
     {
 #if defined (__clang__)
-        typedef __int128_t type __attribute__ ((vector_size (128)));
+        typedef __int128_t type
+            __attribute__ ((vsize (8, sizeof (__int128_t))));
+        static constexpr std::size_t alignment = 8 * alignof (__int128_t);
+        static constexpr std::size_t size      = 8 * sizeof (__int128_t);
 #elif defined (__GNUG__)
-        typedef __int128 type __attribute__ ((vector_size (128)));
+        typedef __int128 type __attribute__ ((vsize (8, sizeof (__int128))));
+        static constexpr std::size_t alignment = 8 * alignof (__int128);
+        static constexpr std::size_t size      = 8 * sizeof (__int128);
 #endif
-        static constexpr std::size_t alignment = 128;
-        static constexpr std::size_t size = 128;
     };
 
     template <>
@@ -759,12 +586,15 @@ template <>
     >
     {
 #if defined (__clang__)
-        typedef __int128_t type __attribute__ ((vector_size (256)));
+        typedef __int128_t type
+            __attribute__ ((vsize (16, sizeof (__int128_t))));
+        static constexpr std::size_t alignment = 16 * alignof (__int128_t);
+        static constexpr std::size_t size      = 16 * sizeof (__int128_t);
 #elif defined (__GNUG__)
-        typedef __int128 type __attribute__ ((vector_size (256)));
+        typedef __int128 type __attribute__ ((vsize (16, sizeof (__int128))));
+        static constexpr std::size_t alignment = 16 * alignof (__int128);
+        static constexpr std::size_t size      = 16 * sizeof (__int128);
 #endif
-        static constexpr std::size_t alignment = 256;
-        static constexpr std::size_t size = 256;
     };
 
 template <>
@@ -778,12 +608,15 @@ template <>
     >
     {
 #if defined (__clang__)
-        typedef __int128_t type __attribute__ ((vector_size (512)));
+        typedef __int128_t type
+            __attribute__ ((vsize (32, sizeof (__int128_t))));
+        static constexpr std::size_t alignment = 32 * alignof (__int128_t);
+        static constexpr std::size_t size      = 32 * sizeof (__int128_t);
 #elif defined (__GNUG__)
-        typedef __int128 type __attribute__ ((vector_size (512)));
+        typedef __int128 type __attribute__ ((vsize (32, sizeof (__int128))));
+        static constexpr std::size_t alignment = 32 * alignof (__int128);
+        static constexpr std::size_t size      = 32 * sizeof (__int128);
 #endif
-        static constexpr std::size_t alignment = 512;
-        static constexpr std::size_t size = 512;
     };
 
     template <>
@@ -797,12 +630,15 @@ template <>
     >
     {
 #if defined (__clang__)
-        typedef __int128_t type __attribute__ ((vector_size (1024)));
+        typedef __int128_t type
+            __attribute__ ((vsize (64, sizeof (__int128_t))));
+        static constexpr std::size_t alignment = 64 * alignof (__int128_t);
+        static constexpr std::size_t size      = 64 * sizeof (__int128_t);
 #elif defined (__GNUG__)
-        typedef __int128 type __attribute__ ((vector_size (1024)));
+        typedef __int128 type __attribute__ ((vsize (64, sizeof (__int128))));
+        static constexpr std::size_t alignment = 64 * alignof (__int128);
+        static constexpr std::size_t size      = 64 * sizeof (__int128);
 #endif
-        static constexpr std::size_t alignment = 1024;
-        static constexpr std::size_t size = 1024;
     };
 
     template <>
@@ -816,12 +652,17 @@ template <>
     >
     {
 #if defined (__clang__)
-        typedef __uint128_t type __attribute__ ((vector_size (16)));
+        typedef __uint128_t type
+            __attribute__ ((vsize (1, sizeof (__uint128_t))));
+        static constexpr std::size_t alignment = 1 * alignof (__uint128_t);
+        static constexpr std::size_t size      = 1 * sizeof (__uint128_t);
 #elif defined (__GNUG__)
-        typedef unsigned __int128 type __attribute__ ((vector_size (16)));
+        typedef unsigned __int128 type
+            __attribute__ ((vsize (1, sizeof (unsigned __int128))));
+        static constexpr std::size_t alignment
+            = 1 * alignof (unsigned __int128);
+        static constexpr std::size_t size = 1 * sizeof (unsigned __int128);
 #endif
-        static constexpr std::size_t alignment = 16;
-        static constexpr std::size_t size = 16;
     };
 
     template <>
@@ -835,12 +676,17 @@ template <>
     >
     {
 #if defined (__clang__)
-        typedef __uint128_t type __attribute__ ((vector_size (32)));
+        typedef __uint128_t type
+            __attribute__ ((vsize (2, sizeof (__uint128_t))));
+        static constexpr std::size_t alignment = 2 * alignof (__uint128_t);
+        static constexpr std::size_t size      = 2 * sizeof (__uint128_t);
 #elif defined (__GNUG__)
-        typedef unsigned __int128 type __attribute__ ((vector_size (32)));
+        typedef unsigned __int128 type
+            __attribute__ ((vsize (2, sizeof (unsigned __int128))));
+        static constexpr std::size_t alignment
+            = 2 * alignof (unsigned __int128);
+        static constexpr std::size_t size = 2 * sizeof (unsigned __int128);
 #endif
-        static constexpr std::size_t alignment = 32;
-        static constexpr std::size_t size = 32;
     };
 
 template <>
@@ -854,12 +700,17 @@ template <>
     >
     {
 #if defined (__clang__)
-        typedef __uint128_t type __attribute__ ((vector_size (64)));
+        typedef __uint128_t type
+            __attribute__ ((vsize (4, sizeof (__uint128_t))));
+        static constexpr std::size_t alignment = 4 * alignof (__uint128_t);
+        static constexpr std::size_t size      = 4 * sizeof (__uint128_t);
 #elif defined (__GNUG__)
-        typedef unsigned __int128 type __attribute__ ((vector_size (64)));
+        typedef unsigned __int128 type
+            __attribute__ ((vsize (4, sizeof (unsigned __int128))));
+        static constexpr std::size_t alignment
+            = 4 * alignof (unsigned __int128);
+        static constexpr std::size_t size = 4 * sizeof (unsigned __int128);
 #endif
-        static constexpr std::size_t alignment = 64;
-        static constexpr std::size_t size = 64;
     };
 
     template <>
@@ -873,12 +724,17 @@ template <>
     >
     {
 #if defined (__clang__)
-        typedef __uint128_t type __attribute__ ((vector_size (128)));
+        typedef __uint128_t type
+            __attribute__ ((vsize (8, sizeof (__uint128_t))));
+        static constexpr std::size_t alignment = 8 * alignof (__uint128_t);
+        static constexpr std::size_t size      = 8 * sizeof (__uint128_t);
 #elif defined (__GNUG__)
-        typedef unsigned __int128 type __attribute__ ((vector_size (128)));
+        typedef unsigned __int128 type
+            __attribute__ ((vsize (8, sizeof (unsigned __int128))));
+        static constexpr std::size_t alignment
+            = 8 * alignof (unsigned __int128);
+        static constexpr std::size_t size = 8 * sizeof (unsigned __int128);
 #endif
-        static constexpr std::size_t alignment = 128;
-        static constexpr std::size_t size = 128;
     };
 
     template <>
@@ -892,12 +748,17 @@ template <>
     >
     {
 #if defined (__clang__)
-        typedef __uint128_t type __attribute__ ((vector_size (256)));
+        typedef __uint128_t type
+            __attribute__ ((vsize (16, sizeof (__uint128_t))));
+        static constexpr std::size_t alignment = 16 * alignof (__uint128_t);
+        static constexpr std::size_t size      = 16 * sizeof (__uint128_t);
 #elif defined (__GNUG__)
-        typedef unsigned __int128 type __attribute__ ((vector_size (256)));
+        typedef unsigned __int128 type
+            __attribute__ ((vsize (16, sizeof (unsigned __int128))));
+        static constexpr std::size_t alignment
+            = 16 * alignof (unsigned __int128);
+        static constexpr std::size_t size = 16 * sizeof (unsigned __int128);
 #endif
-        static constexpr std::size_t alignment = 256;
-        static constexpr std::size_t size = 256;
     };
 
 template <>
@@ -911,12 +772,18 @@ template <>
     >
     {
 #if defined (__clang__)
-        typedef __uint128_t type __attribute__ ((vector_size (512)));
+        typedef __uint128_t type
+            __attribute__ ((vsize (32, sizeof (__uint128_t))));
+        static constexpr std::size_t alignment
+            = 32 * alignof (__uint128_t);
+        static constexpr std::size_t size = 32 * sizeof (__uint128_t);
 #elif defined (__GNUG__)
-        typedef unsigned __int128 type __attribute__ ((vector_size (512)));
+        typedef unsigned __int128 type
+            __attribute__ ((vsize (32, sizeof (unsigned __int128))));
+        static constexpr std::size_t alignment
+            = 32 * alignof (unsigned __int128);
+        static constexpr std::size_t size = 32 * sizeof (unsigned __int128);
 #endif
-        static constexpr std::size_t alignment = 512;
-        static constexpr std::size_t size = 512;
     };
 
     template <>
@@ -930,16 +797,23 @@ template <>
     >
     {
 #if defined (__clang__)
-        typedef __uint128_t type __attribute__ ((vector_size (1024)));
+        typedef __uint128_t type
+            __attribute__ ((vsize (64, sizeof (__uint128_t))));
+        static constexpr std::size_t alignment = 64 * alignof (__uint128_t);
+        static constexpr std::size_t size      = 64 * sizeof (__uint128_t);
 #elif defined (__GNUG__)
-        typedef unsigned __int128 type __attribute__ ((vector_size (1024)));
+        typedef unsigned __int128 type
+            __attribute__ ((vsize (64, sizeof (unsigned __int128))));
+        static constexpr std::size_t alignment
+            = 64 * alignof (unsigned __int128);
+        static constexpr std::size_t size = 64 * sizeof (unsigned __int128);
 #endif
-        static constexpr std::size_t alignment = 1024;
-        static constexpr std::size_t size = 1024;
     };
 
     template <typename T, std::size_t lanes>
     using vector = vector_type_specialization <T, lanes>;
+
+#undef vsize
 }   // namespace vext
 
     template <typename T, std::size_t lanes>
@@ -1628,6 +1502,11 @@ template <>
             return result;
         }
 
+        static integral_simd_type load (vector_type const * addr) noexcept
+        {
+            return integral_simd_type {*addr};
+        }
+
         constexpr integral_simd_type (void) noexcept
             : _vec {base::extend (value_type {})}
         {}
@@ -1636,17 +1515,19 @@ template <>
             : _vec {vec}
         {}
 
-        template <typename ... value_types>
-        explicit constexpr integral_simd_type (value_types const & ... vals) noexcept
-            : _vec {base::extend (vals...)}
-        {
-            static_assert (
-                sizeof... (value_types) == 1 ||
-                sizeof... (value_types) == lanes,
-                "vector constructor must be provided a number of values equal"
-                " to one or equal to the number of vector lanes"
-            );
-        }
+        explicit constexpr integral_simd_type (value_type const & val) noexcept
+            : _vec {base::extend (val)}
+        {}
+
+        template <
+            typename ... value_types,
+            typename = typename std::enable_if <
+                sizeof... (value_types) == lanes && lanes != 1
+            >::type
+        >
+        explicit constexpr integral_simd_type (value_types && ... vals) noexcept
+            : _vec {base::extend (std::forward <value_types> (vals)...)}
+        {}
 
         constexpr
         integral_simd_type (integral_simd_type const & sv) noexcept
@@ -2327,15 +2208,32 @@ template <>
             return *this;
         }
 
+#if defined (__clang__)
+    private:
+        template <typename Comparison, std::size_t ... L>
+        static constexpr boolean_simd_type <integral_type, lanes>
+            unpack_comparison (Comparison && c, util::index_sequence <L...>)
+            noexcept
+        {
+            return boolean_simd_type <integral_type, lanes> {
+                std::forward <Comparison> (c) [L]...
+            };
+        }
+
+    public:
+#endif
         constexpr boolean_simd_type <integral_type, lanes>
             operator== (integral_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec == sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec == sv._vec)
+                this->_vec == sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -2354,12 +2252,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator!= (integral_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec != sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec != sv._vec)
+                this->_vec != sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -2378,12 +2279,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator> (integral_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec > sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec > sv._vec)
+                this->_vec > sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -2402,12 +2306,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator< (integral_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec < sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec < sv._vec)
+                this->_vec < sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -2426,12 +2333,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator>= (integral_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec >= sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec >= sv._vec)
+                this->_vec >= sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -2450,12 +2360,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator<= (integral_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec <= sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec <= sv._vec)
+                this->_vec <= sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -2526,6 +2439,11 @@ template <>
             return result;
         }
 
+        static fp_simd_type load (vector_type const * addr) noexcept
+        {
+            return fp_simd_type {*addr};
+        }
+
         constexpr fp_simd_type (void) noexcept
             : _vec {base::extend (value_type {})}
         {}
@@ -2534,16 +2452,19 @@ template <>
             : _vec {vec}
         {}
 
-        template <typename ... value_types>
-        explicit constexpr fp_simd_type (value_types const & ... vals) noexcept
-            : _vec {base::extend (vals...)}
-        {
-            static_assert (
-                sizeof... (value_types) == 1 || sizeof... (value_types) == lanes,
-                "vector constructor must be provided a number of values equal"
-                " to one or equal to the number of vector lanes"
-            );
-        }
+        explicit constexpr fp_simd_type (value_type const & val) noexcept
+            : _vec {base::extend (val)}
+        {}
+
+        template <
+            typename ... value_types,
+            typename = typename std::enable_if <
+                sizeof... (value_types) == lanes && lanes != 1
+            >::type
+        >
+        explicit constexpr fp_simd_type (value_types && ... vals) noexcept
+            : _vec {base::extend (std::forward <value_types> (vals)...)}
+        {}
 
         constexpr fp_simd_type (fp_simd_type const & sv) noexcept
             : base {}
@@ -2967,15 +2888,32 @@ template <>
             return *this;
         }
 
+#if defined (__clang__)
+    private:
+        template <typename Comparison, std::size_t ... L>
+        static constexpr boolean_simd_type <integral_type, lanes>
+            unpack_comparison (Comparison && c, util::index_sequence <L...>)
+            noexcept
+        {
+            return boolean_simd_type <integral_type, lanes> {
+                std::forward <Comparison> (c) [L]...
+            };
+        }
+
+    public:
+#endif
         constexpr boolean_simd_type <integral_type, lanes>
             operator== (fp_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec == sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec == sv._vec)
+                this->_vec == sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -2994,12 +2932,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator!= (fp_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec != sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec != sv._vec)
+                this->_vec != sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -3018,12 +2959,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator> (fp_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec > sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec > sv._vec)
+                this->_vec > sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -3042,12 +2986,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator< (fp_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec < sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec < sv._vec)
+                this->_vec < sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -3066,12 +3013,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator>= (fp_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec >= sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec >= sv._vec)
+                this->_vec >= sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -3090,12 +3040,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator<= (fp_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec <= sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec <= sv._vec)
+                this->_vec <= sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -3112,7 +3065,7 @@ template <>
         }
     };
 #pragma GCC diagnostic pop
-
+/*
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wattributes"
     template <std::size_t l>
@@ -3159,6 +3112,11 @@ template <>
             return result;
         }
 
+        static fp_simd_type load (vector_type const * addr) noexcept
+        {
+            return fp_simd_type {*addr};
+        }
+
         constexpr fp_simd_type (void) noexcept
             : _vec {base::extend (value_type {})}
         {}
@@ -3167,16 +3125,19 @@ template <>
             : _vec {vec}
         {}
 
-        template <typename ... value_types>
-        explicit constexpr fp_simd_type (value_types const & ... vals) noexcept
-            : _vec {base::extend (vals...)}
-        {
-            static_assert (
-                sizeof... (value_types) == 1 || sizeof... (value_types) == lanes,
-                "vector constructor must be provided a number of values equal"
-                " to one or equal to the number of vector lanes"
-            );
-        }
+        explicit constexpr fp_simd_type (value_type const & val) noexcept
+            : _vec {base::extend (val)}
+        {}
+
+        template <
+            typename ... value_types,
+            typename = typename std::enable_if <
+                sizeof... (value_types) == lanes && lanes != 1
+            >::type
+        >
+        explicit constexpr fp_simd_type (value_types && ... vals) noexcept
+            : _vec {base::extend (std::forward <value_types> (vals)...)}
+        {}
 
         constexpr fp_simd_type (fp_simd_type const & sv) noexcept
             : base {}
@@ -3600,15 +3561,32 @@ template <>
             return *this;
         }
 
+#if defined (__clang__)
+    private:
+        template <typename Comparison, std::size_t ... L>
+        static constexpr boolean_simd_type <integral_type, lanes>
+            unpack_comparison (Comparison && c, util::index_sequence <L...>)
+            noexcept
+        {
+            return boolean_simd_type <integral_type, lanes> {
+                std::forward <Comparison> (c) [L]...
+            };
+        }
+
+    public:
+#endif
         constexpr boolean_simd_type <integral_type, lanes>
             operator== (fp_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec == sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec == sv._vec)
+                this->_vec == sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -3627,12 +3605,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator!= (fp_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec != sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec != sv._vec)
+                this->_vec != sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -3651,12 +3632,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator> (fp_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec > sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec > sv._vec)
+                this->_vec > sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -3675,12 +3659,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator< (fp_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec < sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec < sv._vec)
+                this->_vec < sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -3699,12 +3686,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator>= (fp_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec >= sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec >= sv._vec)
+                this->_vec >= sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -3723,12 +3713,15 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator<= (fp_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec <= sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (this->_vec <= sv._vec)
+                this->_vec <= sv._vec
             };
+#endif
         }
 
         template <typename U>
@@ -3745,7 +3738,7 @@ template <>
         }
     };
 #pragma GCC diagnostic pop
-
+*/
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wattributes"
     template <typename T, std::size_t l>
@@ -4099,13 +4092,25 @@ template <>
         static complex_simd_type load (value_type const * addr) noexcept
         {
             complex_simd_type result {};
-            std::memcpy (&result.data (), addr, lanes * sizeof (value_type));
+            std::memcpy (&result._realarr, addr, lanes * sizeof (value_type));
+            std::memcpy (&result._imagarr, addr, lanes * sizeof (value_type));
             return result;
         }
 
-        static complex_simd_type load (complex_simd_type const * addr) noexcept
+        static complex_simd_type load_interleaved (value_type const * addr) noexcept
         {
-            return *addr;
+            complex_simd_type result {};
+            for (std::size_t i = 0; i < lanes; ++i) {
+                result._realarr [i] = addr [i];
+                result._imagarr [i] = addr [i + 1];
+            }
+            return result;
+        }
+
+        static complex_simd_type load (vector_type const * real_addr,
+                                       vector_type const * imag_addr) noexcept
+        {
+            return complex_simd_type {*real_addr, *imag_addr};
         }
 
         constexpr complex_simd_type (void) noexcept
@@ -4120,18 +4125,21 @@ template <>
             , _imagvec {imagvec}
         {}
 
-        template <typename ... value_types>
-        explicit constexpr complex_simd_type (value_types const & ... vals) noexcept
-            : _realvec {extend_real (vals...)}
-            , _imagvec {extend_imag (vals...)}
-        {
-            static_assert (
-                sizeof... (value_types) == 1 ||
-                sizeof... (value_types) == lanes,
-                "vector constructor must be provided a number of values equal"
-                " to one or equal to the number of vector lanes"
-            );
-        }
+        explicit constexpr complex_simd_type (value_type const & val) noexcept
+            : _realvec {extend_real (val)}
+            , _imagvec {extend_imag (val)}
+        {}
+
+        template <
+            typename ... value_types,
+            typename = typename std::enable_if <
+                sizeof... (value_types) == lanes && lanes != 1
+            >::type
+        >
+        explicit constexpr complex_simd_type (value_types && ... vals) noexcept
+            : _realvec {extend_real (std::forward <value_types> (vals)...)}
+            , _imagvec {extend_imag (std::forward <value_types> (vals)...)}
+        {}
 
         constexpr
         complex_simd_type (complex_simd_type const & sv)
@@ -4196,7 +4204,7 @@ template <>
         }
 
         template <typename SimdT>
-        constexpr SimdT as (void) const noexcept
+        advanced_constexpr SimdT as (void) const noexcept
         {
             static_assert (
                 is_simd_type <SimdT>::value,
@@ -4217,6 +4225,7 @@ template <>
                 "cannot perform up-sizing or down-sizing vector cast unless"
                 " the result type and source type have an equal number of lanes"
             );
+
             static_assert (
                 sizeof (value_type) ==
                     sizeof (typename rebind_type::value_type),
@@ -4619,18 +4628,35 @@ template <>
             return *this;
         }
 
+#if defined (__clang__)
+    private:
+        template <typename Comparison, std::size_t ... L>
+        static constexpr boolean_simd_type <integral_type, lanes>
+            unpack_comparison (Comparison && c, util::index_sequence <L...>)
+            noexcept
+        {
+            return boolean_simd_type <integral_type, lanes> {
+                std::forward <Comparison> (c) [L]...
+            };
+        }
+
+    public:
+#endif
         constexpr boolean_simd_type <integral_type, lanes>
             operator== (complex_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_realvec == sv._realvec &&
+                this->_imagvec == sv._imagvec,
+                util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (
-                    this->_realvec == sv._realvec &&
-                    this->_imagvec == sv._imagvec
-                )
+                this->_realvec == sv._realvec &&
+                this->_imagvec == sv._imagvec
             };
+#endif
         }
 
         template <typename U>
@@ -4649,15 +4675,18 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator!= (complex_simd_type const & sv) const noexcept
         {
-            using boolean_vector_type =
-                typename boolean_simd_type <integral_type, lanes>::vector_type;
-
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_realvec != sv._realvec ||
+                this->_imagvec != sv._imagvec,
+                util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type <integral_type, lanes> {
-                static_cast <boolean_vector_type> (
-                    this->_realvec != sv._realvec ||
-                    this->_imagvec != sv._imagvec
-                )
+                this->_realvec != sv._realvec ||
+                this->_imagvec != sv._imagvec
             };
+#endif
         }
 
         template <typename U>
@@ -4719,6 +4748,11 @@ template <>
             return result;
         }
 
+        static boolean_simd_type load (vector_type const * addr) noexcept
+        {
+            return boolean_simd_type {*addr};
+        }
+
         constexpr boolean_simd_type (void) noexcept
             : _vec {base::extend (value_type {})}
         {}
@@ -4727,16 +4761,19 @@ template <>
             : _vec {vec}
         {}
 
-        template <typename ... value_types>
-        explicit constexpr boolean_simd_type (value_types const & ... vals) noexcept
-            : _vec {base::extend (vals...)}
-        {
-            static_assert (
-                sizeof... (value_types) == 1 || sizeof... (value_types) == lanes,
-                "vector constructor must be provided a number of values equal"
-                " to one or equal to the number of vector lanes"
-            );
-        }
+        explicit constexpr boolean_simd_type (value_type const & val) noexcept
+            : _vec {base::extend (val)}
+        {}
+
+        template <
+            typename ... value_types,
+            typename = typename std::enable_if <
+                sizeof... (value_types) == lanes && lanes != 1
+            >::type
+        >
+        explicit constexpr boolean_simd_type (value_types && ... vals) noexcept
+            : _vec {base::extend (std::forward <value_types> (vals)...)}
+        {}
 
         constexpr boolean_simd_type (boolean_simd_type const & sv) noexcept
             : base {}
@@ -5220,10 +5257,30 @@ template <>
             return *this;
         }
 
+#if defined (__clang__)
+    private:
+        template <typename Comparison, std::size_t ... L>
+        static constexpr boolean_simd_type
+            unpack_comparison (Comparison && c, util::index_sequence <L...>)
+            noexcept
+        {
+            return boolean_simd_type <integral_type, lanes> {
+                std::forward <Comparison> (c) [L]...
+            };
+        }
+
+    public:
+#endif
         constexpr boolean_simd_type operator== (boolean_simd_type const & sv)
             const noexcept
         {
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec == sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type {this->_vec == sv._vec};
+#endif
         }
 
         template <typename U>
@@ -5241,11 +5298,18 @@ template <>
         constexpr boolean_simd_type operator!= (boolean_simd_type const & sv)
             const noexcept
         {
+#if defined (__clang__)
+            return unpack_comparison (
+                this->_vec != sv._vec, util::make_index_sequence <lanes> {}
+            );
+#elif defined (__GNUG__)
             return boolean_simd_type {this->_vec != sv._vec};
+#endif
         }
 
         template <typename U>
-        constexpr boolean_simd_type operator!= (U val) const noexcept
+        constexpr boolean_simd_type
+            operator!= (U val) const noexcept
         {
             static_assert (
                 std::is_convertible <U, value_type>::value,
@@ -7837,11 +7901,14 @@ std::ostream & operator<< (std::ostream & os, SimdT const & v)
 {
     static constexpr std::size_t lanes = simd::simd_traits <SimdT>::lanes;
 
-    os << '(';
-    for (std::size_t i = 0; i < lanes - 1; ++i) {
-        os << v [i] << "; ";
+    std::ostream::sentry s {os};
+    if (s) {
+        os << '(';
+        for (std::size_t i = 0; i < lanes - 1; ++i) {
+            os << v [i] << "; ";
+        }
+        os << v [lanes - 1] << ')';
     }
-    os << v [lanes - 1] << ')';
 
     return os;
 }
@@ -7854,11 +7921,14 @@ std::wostream & operator<< (std::wostream & os, SimdT const & v)
 {
     static constexpr std::size_t lanes = simd::simd_traits <SimdT>::lanes;
 
-    os << L'(';
-    for (std::size_t i = 0; i < lanes - 1; ++i) {
-        os << v [i] << L';' << L' ';
+    std::wostream::sentry s {os};
+    if (s) {
+        os << L'(';
+        for (std::size_t i = 0; i < lanes - 1; ++i) {
+            os << v [i] << L';' << L' ';
+        }
+        os << v [lanes - 1] << L')';
     }
-    os << v [lanes - 1] << L')';
 
     return os;
 }
@@ -7869,7 +7939,9 @@ template <
 >
 std::istream & operator>> (std::istream & is, SimdT & v)
 {
-    static constexpr std::size_t lanes = simd::simd_traits <SimdT>::lanes;
+    using traits = simd::simd_traits <SimdT>;
+    using value_type = typename traits::value_type;
+    static constexpr std::size_t lanes = traits::lanes;
 
     auto nonnum = [](std::istream & _is) -> std::istream &
     {
@@ -7914,6 +7986,10 @@ std::istream & operator>> (std::istream & is, SimdT & v)
                 i += 1;
             }
         }
+
+        for (; i < lanes; ++i) {
+            v [i] = value_type {0};
+        }
     }
 
     return is;
@@ -7925,7 +8001,9 @@ template <
 >
 std::wistream & operator>> (std::wistream & wis, SimdT & v)
 {
-    static constexpr std::size_t lanes = simd::simd_traits <SimdT>::lanes;
+    using traits = simd::simd_traits <SimdT>;
+    using value_type = typename traits::value_type;
+    static constexpr std::size_t lanes = traits::lanes;
 
     auto nonnum = [](std::wistream & _wis) -> std::wistream &
     {
@@ -7969,6 +8047,10 @@ std::wistream & operator>> (std::wistream & wis, SimdT & v)
             } else {
                 i += 1;
             }
+        }
+
+        for (; i < lanes; ++i) {
+            v [i] = value_type {0};
         }
     }
 
