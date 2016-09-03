@@ -2,6 +2,10 @@
 // verifies alignment requirements for simd types
 //
 
+#if defined (NDEBUG)
+    #undef NDEBUG
+#endif
+
 #include <cassert>   // assert
 #include <cstddef>   // std::size_t
 #include <cstdint>   // std::uintptr_t
@@ -9,7 +13,7 @@
 #include <new>       // new, delete
 #include <vector>    // std::vector
 
-#include <simd>
+#include "simd.hpp"
 
 
 template <typename T>
