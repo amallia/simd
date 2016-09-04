@@ -52,15 +52,27 @@ cxx_flgs := $(cxx_vflg) -std=$(cxx_std) $(cxx_slflg) $(cxx_gflg) $(cxx_oflg) \
 
 benchmark_executables := $(benchmark_bin_dir)/arithmetic
 test_executables := $(test_bin_dir)/alignment $(test_bin_dir)/arithmetic
-
+example_executables := $(benchmark_bin_dir)/mandelbrot
 
 .PHONY: benchmark test example clean
 
+benchmark: $(benchmark_executables)
+
 test: $(test_executables)
+
+example: $(example_executables)
 
 clean:
 	@rm -rf $(build_dir)
 
+$(benchmark_bin_dir)/%: $(benchmark_dir)/%.cpp
+	@mkdir -p $(dir $@)
+	$(cxx) $(cxx_flgs) $< -o $@ $(cxx_lflg)
+
 $(test_bin_dir)/%: $(test_dir)/%.cpp
+	@mkdir -p $(dir $@)
+	$(cxx) $(cxx_flgs) $< -o $@ $(cxx_lflg)
+
+$(example_bin_dir)/%: $(example_dir)/%.cpp
 	@mkdir -p $(dir $@)
 	$(cxx) $(cxx_flgs) $< -o $@ $(cxx_lflg)
