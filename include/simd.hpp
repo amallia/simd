@@ -1075,6 +1075,13 @@ template <>
             return vector_type_impl {arr [L]...};
         }
 
+        template <typename U, std::size_t ... L>
+        static constexpr vector_type_impl
+            extend_impl (U const & u, util::index_sequence <L...>) noexcept
+        {
+            return vector_type_impl {((void) L, u)...};
+        }
+
     protected:
         static constexpr vector_type_impl
             unpack (base_value_type const (&arr) [lanes]) noexcept
@@ -1092,7 +1099,18 @@ template <>
             );
         }
 
-        template <typename ... Ts>
+        template <typename U>
+        static constexpr vector_type_impl extend (U const & u) noexcept
+        {
+            return extend_impl (u, util::make_index_sequence <lanes> {});
+        }
+
+        template <
+            typename ... Ts,
+            typename = typename std::enable_if <
+                sizeof... (Ts) == lanes && lanes != 1
+            >::type
+        >
         static constexpr vector_type_impl extend (Ts const & ... ts) noexcept
         {
             return vector_type_impl {static_cast <base_value_type> (ts)...};
@@ -3754,6 +3772,20 @@ template <>
             return vector_type {std::get <L> (arr).imag ()...};
         }
 
+        template <typename U, std::size_t ... L>
+        static constexpr vector_type
+            extend_real_impl (value_type const & v, util::index_sequence <L...>) noexcept
+        {
+            return vector_type {((void) L, v.real ())...};
+        }
+
+        template <typename U, std::size_t ... L>
+        static constexpr vector_type
+            extend_imag_impl (value_type const & v, util::index_sequence <L...>) noexcept
+        {
+            return vector_type {((void) L, v.imag ())...};
+        }
+
         static constexpr vector_type
             unpack_real (value_type const (& arr) [lanes]) noexcept
         {
@@ -3778,14 +3810,40 @@ template <>
             return unpack_imag_impl (arr, util::make_index_sequence <lanes> {});
         }
 
-        template <typename ... Ts>
+        template <typename U>
+        static constexpr vector_type extend_real (U const & u) noexcept
+        {
+            return extend_real_impl (
+                static_cast <value_type> (u), util::make_index_sequence <lanes> {}
+            );
+        }
+
+        template <
+            typename ... Ts,
+            typename = typename std::enable_if <
+                sizeof... (Ts) == lanes && lanes != 1
+            >::type
+        >
         static constexpr vector_type extend_real (Ts const & ... ts)
             noexcept
         {
             return vector_type {static_cast <value_type> (ts).real ()...};
         }
 
-        template <typename ... Ts>
+        template <typename U>
+        static constexpr vector_type extend_imag (U const & u) noexcept
+        {
+            return extend_imag_impl (
+                static_cast <value_type> (u), util::make_index_sequence <lanes> {}
+            );
+        }
+
+        template <
+            typename ... Ts,
+            typename = typename std::enable_if <
+                sizeof... (Ts) == lanes && lanes != 1
+            >::type
+        >
         static constexpr vector_type extend_imag (Ts const & ... ts)
             noexcept
         {
@@ -4774,86 +4832,259 @@ template <>
         }
 
     private:
-        advanced_constexpr bool any_of_impl (bool (&&array) [lanes]) const
-            noexcept
-        {
-            for (auto b : array) {
-                if (b) {
-                    return true;
-                }
-            }
+        template <std::size_t L>
+        struct lane_tag {};
 
-            return false;
+        constexpr bool any_of_impl (lane_tag <1>) const noexcept
+        {
+            return static_cast <bool> (this->_vec [0]);
         }
 
-        advanced_constexpr bool all_of_impl (bool (&&array) [lanes]) const
-            noexcept
+        constexpr bool any_of_impl (lane_tag <2>) const noexcept
         {
-            for (auto b : array) {
-                if (!b) {
-                    return false;
-                }
-            }
-
-            return true;
+            return this->_vec [0] || this->_vec [1];
         }
 
-        advanced_constexpr bool none_of_impl (bool (&&array) [lanes]) const
-            noexcept
+        constexpr bool any_of_impl (lane_tag <4>) const noexcept
         {
-            for (auto b : array) {
-                if (b) {
-                    return false;
-                }
-            }
-
-            return true;
+            return
+                this->_vec [0] || this->_vec [1] ||
+                this->_vec [2] || this->_vec [3];
         }
 
-        template <std::size_t ... L>
-        advanced_constexpr bool any_of_impl (util::index_sequence <L...>) const
-            noexcept
+        constexpr bool any_of_impl (lane_tag <8>) const noexcept
         {
-            return any_of_impl (
-                {static_cast <bool> (this->template get <L> ())...}
-            );
+            return
+                this->_vec [0] || this->_vec [1] ||
+                this->_vec [2] || this->_vec [3] ||
+                this->_vec [4] || this->_vec [5] ||
+                this->_vec [6] || this->_vec [7];
         }
 
-        template <std::size_t ... L>
-        advanced_constexpr bool all_of_impl (util::index_sequence <L...>) const
-            noexcept
+        constexpr bool any_of_impl (lane_tag <16>) const noexcept
         {
-            return all_of_impl (
-                {static_cast <bool> (this->template get <L> ())...}
-            );
+            return
+                this->_vec [0]  || this->_vec [1]  ||
+                this->_vec [2]  || this->_vec [3]  ||
+                this->_vec [4]  || this->_vec [5]  ||
+                this->_vec [6]  || this->_vec [7]  ||
+                this->_vec [8]  || this->_vec [9]  ||
+                this->_vec [10] || this->_vec [11] ||
+                this->_vec [12] || this->_vec [13] ||
+                this->_vec [14] || this->_vec [15];
         }
 
-        template <std::size_t ... L>
-        advanced_constexpr bool none_of_impl (util::index_sequence <L...>) const
-            noexcept
+        constexpr bool any_of_impl (lane_tag <32>) const noexcept
         {
-            return none_of_impl (
-                {static_cast <bool> (this->template get <L> ())...}
-            );
+            return
+                this->_vec [0]  || this->_vec [1]  ||
+                this->_vec [2]  || this->_vec [3]  ||
+                this->_vec [4]  || this->_vec [5]  ||
+                this->_vec [6]  || this->_vec [7]  ||
+                this->_vec [8]  || this->_vec [9]  ||
+                this->_vec [10] || this->_vec [11] ||
+                this->_vec [12] || this->_vec [13] ||
+                this->_vec [14] || this->_vec [15] ||
+                this->_vec [16] || this->_vec [17] ||
+                this->_vec [18] || this->_vec [19] ||
+                this->_vec [20] || this->_vec [21] ||
+                this->_vec [22] || this->_vec [23] ||
+                this->_vec [24] || this->_vec [25] ||
+                this->_vec [26] || this->_vec [27] ||
+                this->_vec [28] || this->_vec [29] ||
+                this->_vec [30] || this->_vec [31];
+        }
+
+        constexpr bool any_of_impl (lane_tag <64>) const noexcept
+        {
+            return
+                this->_vec [0]  || this->_vec [1]  ||
+                this->_vec [2]  || this->_vec [3]  ||
+                this->_vec [4]  || this->_vec [5]  ||
+                this->_vec [6]  || this->_vec [7]  ||
+                this->_vec [8]  || this->_vec [9]  ||
+                this->_vec [10] || this->_vec [11] ||
+                this->_vec [12] || this->_vec [13] ||
+                this->_vec [14] || this->_vec [15] ||
+                this->_vec [16] || this->_vec [17] ||
+                this->_vec [18] || this->_vec [19] ||
+                this->_vec [20] || this->_vec [21] ||
+                this->_vec [22] || this->_vec [23] ||
+                this->_vec [24] || this->_vec [25] ||
+                this->_vec [26] || this->_vec [27] ||
+                this->_vec [28] || this->_vec [29] ||
+                this->_vec [30] || this->_vec [31] ||
+                this->_vec [32] || this->_vec [33] ||
+                this->_vec [34] || this->_vec [35] ||
+                this->_vec [36] || this->_vec [37] ||
+                this->_vec [38] || this->_vec [39] ||
+                this->_vec [40] || this->_vec [41] ||
+                this->_vec [42] || this->_vec [43] ||
+                this->_vec [44] || this->_vec [45] ||
+                this->_vec [46] || this->_vec [47] ||
+                this->_vec [48] || this->_vec [49] ||
+                this->_vec [50] || this->_vec [51] ||
+                this->_vec [52] || this->_vec [53] ||
+                this->_vec [54] || this->_vec [55] ||
+                this->_vec [56] || this->_vec [57] ||
+                this->_vec [58] || this->_vec [59] ||
+                this->_vec [60] || this->_vec [61] ||
+                this->_vec [62] || this->_vec [63];
+        }
+
+        constexpr bool all_of_impl (lane_tag <1>) const noexcept
+        {
+            return static_cast <bool> (this->_vec [0]);
+        }
+
+        constexpr bool all_of_impl (lane_tag <2>) const noexcept
+        {
+            return this->_vec [0] && this->_vec [1];
+        }
+
+        constexpr bool all_of_impl (lane_tag <4>) const noexcept
+        {
+            return
+                this->_vec [0] && this->_vec [1] &&
+                this->_vec [2] && this->_vec [3];
+        }
+
+        constexpr bool all_of_impl (lane_tag <8>) const noexcept
+        {
+            return
+                this->_vec [0] && this->_vec [1] &&
+                this->_vec [2] && this->_vec [3] &&
+                this->_vec [4] && this->_vec [5] &&
+                this->_vec [6] && this->_vec [7];
+        }
+
+        constexpr bool all_of_impl (lane_tag <16>) const noexcept
+        {
+            return
+                this->_vec [0]  && this->_vec [1]  &&
+                this->_vec [2]  && this->_vec [3]  &&
+                this->_vec [4]  && this->_vec [5]  &&
+                this->_vec [6]  && this->_vec [7]  &&
+                this->_vec [8]  && this->_vec [9]  &&
+                this->_vec [10] && this->_vec [11] &&
+                this->_vec [12] && this->_vec [13] &&
+                this->_vec [14] && this->_vec [15];
+        }
+
+        constexpr bool all_of_impl (lane_tag <32>) const noexcept
+        {
+            return
+                this->_vec [0]  && this->_vec [1]  &&
+                this->_vec [2]  && this->_vec [3]  &&
+                this->_vec [4]  && this->_vec [5]  &&
+                this->_vec [6]  && this->_vec [7]  &&
+                this->_vec [8]  && this->_vec [9]  &&
+                this->_vec [10] && this->_vec [11] &&
+                this->_vec [12] && this->_vec [13] &&
+                this->_vec [14] && this->_vec [15] &&
+                this->_vec [16] && this->_vec [17] &&
+                this->_vec [18] && this->_vec [19] &&
+                this->_vec [20] && this->_vec [21] &&
+                this->_vec [22] && this->_vec [23] &&
+                this->_vec [24] && this->_vec [25] &&
+                this->_vec [26] && this->_vec [27] &&
+                this->_vec [28] && this->_vec [29] &&
+                this->_vec [30] && this->_vec [31];
+        }
+
+        constexpr bool all_of_impl (lane_tag <64>) const noexcept
+        {
+            return
+                this->_vec [0]  && this->_vec [1]  &&
+                this->_vec [2]  && this->_vec [3]  &&
+                this->_vec [4]  && this->_vec [5]  &&
+                this->_vec [6]  && this->_vec [7]  &&
+                this->_vec [8]  && this->_vec [9]  &&
+                this->_vec [10] && this->_vec [11] &&
+                this->_vec [12] && this->_vec [13] &&
+                this->_vec [14] && this->_vec [15] &&
+                this->_vec [16] && this->_vec [17] &&
+                this->_vec [18] && this->_vec [19] &&
+                this->_vec [20] && this->_vec [21] &&
+                this->_vec [22] && this->_vec [23] &&
+                this->_vec [24] && this->_vec [25] &&
+                this->_vec [26] && this->_vec [27] &&
+                this->_vec [28] && this->_vec [29] &&
+                this->_vec [30] && this->_vec [31] &&
+                this->_vec [32] && this->_vec [33] &&
+                this->_vec [34] && this->_vec [35] &&
+                this->_vec [36] && this->_vec [37] &&
+                this->_vec [38] && this->_vec [39] &&
+                this->_vec [40] && this->_vec [41] &&
+                this->_vec [42] && this->_vec [43] &&
+                this->_vec [44] && this->_vec [45] &&
+                this->_vec [46] && this->_vec [47] &&
+                this->_vec [48] && this->_vec [49] &&
+                this->_vec [50] && this->_vec [51] &&
+                this->_vec [52] && this->_vec [53] &&
+                this->_vec [54] && this->_vec [55] &&
+                this->_vec [56] && this->_vec [57] &&
+                this->_vec [58] && this->_vec [59] &&
+                this->_vec [60] && this->_vec [61] &&
+                this->_vec [62] && this->_vec [63];
+        }
+
+        constexpr bool none_of_impl (lane_tag <1>) const noexcept
+        {
+            return !this->any_of_impl (lane_tag <1> {});
+        }
+
+        constexpr bool none_of_impl (lane_tag <2>) const noexcept
+        {
+            return !this->any_of_impl (lane_tag <2> {});
+        }
+
+        constexpr bool none_of_impl (lane_tag <4>) const noexcept
+        {
+            return !this->any_of_impl (lane_tag <4> {});
+        }
+
+        constexpr bool none_of_impl (lane_tag <8>) const noexcept
+        {
+            return !this->any_of_impl (lane_tag <8> {});
+        }
+
+        constexpr bool none_of_impl (lane_tag <16>) const noexcept
+        {
+            return !this->any_of_impl (lane_tag <16> {});
+        }
+
+        constexpr bool none_of_impl (lane_tag <32>) const noexcept
+        {
+            return !this->any_of_impl (lane_tag <32> {});
+        }
+
+        constexpr bool none_of_impl (lane_tag <64>) const noexcept
+        {
+            return !this->any_of_impl (lane_tag <64> {});
         }
 
     public:
-        advanced_constexpr bool any_of (void) const noexcept
+        constexpr bool any_of (void) const noexcept
         {
-            return this->any_of_impl (util::make_index_sequence <lanes> {});
+            return this->any_of_impl (lane_tag <lanes> {});
         }
 
         advanced_constexpr bool all_of (void) const noexcept
         {
-            return this->all_of_impl (util::make_index_sequence <lanes> {});
+            return this->all_of_impl (lane_tag <lanes> {});
         }
 
         advanced_constexpr bool none_of (void) const noexcept
         {
-            return this->none_of_impl (util::make_index_sequence <lanes> {});
+            return this->none_of_impl (lane_tag <lanes> {});
         }
 
     private:
+        /*
+        template <std::size_t L>
+        struct lane_tag {};
+        */
         template <std::size_t ... L>
         constexpr boolean_simd_type normalize_impl (util::index_sequence <L...>)
             const noexcept
@@ -5476,11 +5707,8 @@ template <>
             typename select_type::integral_type, lanes, arithmetic_tag
         >;
 
-        integral_simd_type mask {
-            integral_simd_type::increment_vector (lanes) -
-                (selector.to_integral () * integral_simd_type {lanes})
-        };
-
+        auto const mask = integral_simd_type::increment_vector (lanes) -
+                         (selector.to_integral () * integral_simd_type {lanes});
         return shuffle (then_vec, else_vec, mask);
     }
 
