@@ -3746,44 +3746,41 @@ template <>
     private:
         template <std::size_t ... L>
         static constexpr vector_type
-            unpack_real_impl (value_type const (& arr) [lanes], util::index_sequence <L...>) noexcept
+            unpack_real_impl (value_type const (& arr) [lanes],
+                              util::index_sequence <L...>) noexcept
         {
             return vector_type {arr [L].real ()...};
         }
 
         template <std::size_t ... L>
         static constexpr vector_type
-            unpack_real_impl (std::array <value_type, lanes> const & arr, util::index_sequence <L...>) noexcept
+            unpack_real_impl (std::array <value_type, lanes> const & arr,
+                              util::index_sequence <L...>) noexcept
         {
             return vector_type {std::get <L> (arr).real ()...};
         }
 
         template <std::size_t ... L>
         static constexpr vector_type
-            unpack_imag_impl (value_type const (& arr) [lanes], util::index_sequence <L...>) noexcept
+            unpack_imag_impl (value_type const (& arr) [lanes],
+                              util::index_sequence <L...>) noexcept
         {
             return vector_type {arr [L].imag ()...};
         }
 
         template <std::size_t ... L>
         static constexpr vector_type
-            unpack_imag_impl (std::array <value_type, lanes> const & arr, util::index_sequence <L...>) noexcept
+            unpack_imag_impl (std::array <value_type, lanes> const & arr,
+                              util::index_sequence <L...>) noexcept
         {
             return vector_type {std::get <L> (arr).imag ()...};
         }
 
-        template <typename U, std::size_t ... L>
+        template <std::size_t ... L>
         static constexpr vector_type
-            extend_real_impl (value_type const & v, util::index_sequence <L...>) noexcept
+            extend_impl (T const & t, util::index_sequence <L...>) noexcept
         {
-            return vector_type {((void) L, v.real ())...};
-        }
-
-        template <typename U, std::size_t ... L>
-        static constexpr vector_type
-            extend_imag_impl (value_type const & v, util::index_sequence <L...>) noexcept
-        {
-            return vector_type {((void) L, v.imag ())...};
+            return vector_type {((void) L, t)...};
         }
 
         static constexpr vector_type
@@ -3810,12 +3807,9 @@ template <>
             return unpack_imag_impl (arr, util::make_index_sequence <lanes> {});
         }
 
-        template <typename U>
-        static constexpr vector_type extend_real (U const & u) noexcept
+        static constexpr vector_type extend (T const & t) noexcept
         {
-            return extend_real_impl (
-                static_cast <value_type> (u), util::make_index_sequence <lanes> {}
-            );
+            return extend_impl (t, util::make_index_sequence <lanes> {});
         }
 
         template <
@@ -3824,30 +3818,10 @@ template <>
                 sizeof... (Ts) == lanes && lanes != 1
             >::type
         >
-        static constexpr vector_type extend_real (Ts const & ... ts)
+        static constexpr vector_type extend (Ts const & ... ts)
             noexcept
         {
-            return vector_type {static_cast <value_type> (ts).real ()...};
-        }
-
-        template <typename U>
-        static constexpr vector_type extend_imag (U const & u) noexcept
-        {
-            return extend_imag_impl (
-                static_cast <value_type> (u), util::make_index_sequence <lanes> {}
-            );
-        }
-
-        template <
-            typename ... Ts,
-            typename = typename std::enable_if <
-                sizeof... (Ts) == lanes && lanes != 1
-            >::type
-        >
-        static constexpr vector_type extend_imag (Ts const & ... ts)
-            noexcept
-        {
-            return vector_type {static_cast <value_type> (ts).imag ()...};
+            return vector_type {ts...};
         }
 
     public:
@@ -3859,7 +3833,8 @@ template <>
             return result;
         }
 
-        static complex_simd_type load_interleaved (value_type const * addr) noexcept
+        static complex_simd_type load_interleaved (value_type const * addr)
+            noexcept
         {
             complex_simd_type result {};
             for (std::size_t i = 0; i < lanes; ++i) {
@@ -3876,8 +3851,8 @@ template <>
         }
 
         constexpr complex_simd_type (void) noexcept
-            : _realvec {extend_real (value_type {})}
-            , _imagvec {extend_imag (value_type {})}
+            : _realvec {extend (value_type {}.real ())}
+            , _imagvec {extend (value_type {}.imag ())}
         {}
 
         explicit constexpr
@@ -3888,8 +3863,8 @@ template <>
         {}
 
         explicit constexpr complex_simd_type (value_type const & val) noexcept
-            : _realvec {extend_real (val)}
-            , _imagvec {extend_imag (val)}
+            : _realvec {extend (val.real ())}
+            , _imagvec {extend (val.imag ())}
         {}
 
         template <
@@ -3899,8 +3874,20 @@ template <>
             >::type
         >
         explicit constexpr complex_simd_type (value_types && ... vals) noexcept
-            : _realvec {extend_real (std::forward <value_types> (vals)...)}
-            , _imagvec {extend_imag (std::forward <value_types> (vals)...)}
+            : _realvec {
+                extend (
+                    static_cast <value_type> (
+                        std::forward <value_types> (vals)
+                    ).real ()...
+                )
+            }
+            , _imagvec {
+                extend (
+                    static_cast <value_type> (
+                        std::forward <value_types> (vals)
+                    ).imag ()...
+                )
+            }
         {}
 
         constexpr
@@ -3940,8 +3927,8 @@ template <>
                 " without conversion"
             );
 
-            this->_realvec = extend_real (static_cast <value_type> (val));
-            this->_imagvec = extend_imag (static_cast <value_type> (val));
+            this->_realvec = extend (static_cast <value_type> (val).real ());
+            this->_imagvec = extend (static_cast <value_type> (val).imag ());
             return *this;
         }
 
@@ -4023,8 +4010,8 @@ template <>
 
         advanced_constexpr void fill (value_type const & val) noexcept
         {
-            this->_realvec = extend_real (val);
-            this->_realvec = extend_imag (val);
+            this->_realvec = extend (val.real ());
+            this->_realvec = extend (val.imag ());
         }
 
         advanced_constexpr void
