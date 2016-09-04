@@ -34,7 +34,7 @@ cxx_wflg := -Wall -Wextra -Wcast-qual -Wctor-dtor-privacy -Wold-style-cast \
 			-Wstrict-overflow=2 -Wswitch-default -Wswitch-enum -Wundef \
 			-Wshadow -Wmissing-braces -Wparentheses -Wuninitialized \
 			-Wstrict-aliasing
-ifneq ($(findstring g++, $(cxx)),)
+ifeq ($(findstring clang++, $(cxx)),)
 cxx_wflg += -Wno-psabi
 endif
 cxx_flgs := -std=$(cxx_std) $(cxx_gflg) $(cxx_oflg) $(cxx_fflg) $(cxx_dflg)\
