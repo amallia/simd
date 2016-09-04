@@ -26,6 +26,7 @@ endif
 cxx_iflg := -I$(include_dir)
 cxx_fflg :=
 cxx_lflg :=
+cxx_slflg :=
 cxx_wflg := -Wall -Wextra -Wcast-qual -Wctor-dtor-privacy -Wold-style-cast \
 			-Wdisabled-optimization -Wformat=2 -Winit-self -Wreturn-type \
 			-Wmissing-include-dirs -Wold-style-cast -Woverloaded-virtual \
@@ -34,14 +35,12 @@ cxx_wflg := -Wall -Wextra -Wcast-qual -Wctor-dtor-privacy -Wold-style-cast \
 			-Wshadow -Wmissing-braces -Wparentheses -Wuninitialized \
 			-Wstrict-aliasing
 ifeq ($(findstring clang++, $(cxx)),)
-cxx_fflg +=
 cxx_wflg += -Wno-psabi
-cxx_slflg += libstdc++
+cxx_lflg += -lstdc++
 else
-cxx_fflg +=
-cxx_slflg += libc++
+cxx_slflg += -stdlib=libc++
 endif
-cxx_flgs := -std=$(cxx_std) -stdlib=$(cxx_slflg) $(cxx_gflg) $(cxx_oflg) \
+cxx_flgs := -std=$(cxx_std) $(cxx_slflg) $(cxx_gflg) $(cxx_oflg) \
 	$(cxx_fflg) $(cxx_dflg) $(cxx_iflg) $(cxx_wflg) $(OPTFLAG)
 
 executables := $(test_bin_dir)/alignment $(test_bin_dir)/arithmetic
