@@ -4,13 +4,14 @@
 
 #if defined (NDEBUG)
     #undef NDEBUG
-#endif
-
-#include <algorithm>    // std::generate
+#endif 
+#include <algorithm>    // std::find_if, std::generate
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <climits>      // CHAR_BIT
 #include <cstdint>      // std::[u]int*_t
+#include <cstdlib>      // std::strtoul
+#include <cstring>      // std::strcmp
 #include <functional>   // std::{plus, minus, multiplies, divides,
                         // modulus, bit_and, bit_or, bit_xor}
 #include <iomanip>      // std::dec
@@ -753,9 +754,32 @@ std::uint64_t run_float_tests (std::string name, std::size_t test_length)
     return test_fail_count;
 }
 
-int main (void)
+int main (int argc, char ** argv)
 {
-    constexpr std::size_t test_length = 5000;
+    auto const test_length =
+        [argc, argv] (void) -> std::size_t
+        {
+            constexpr std::size_t default_test_length = 10000;
+            auto const pos = std::find_if (
+                argv + 1, argv + argc,
+                [] (char const * s) {
+                    return std::strcmp (s, "--test-length") == 0 ||
+                           std::strcmp (s, "-l") == 0;
+                }
+            );
+
+            if (pos == argv + argc || pos == argv + argc - 1) {
+                return default_test_length;
+            } else {
+                auto const conv = std::strtoul (*(pos + 1), nullptr, 10);
+                if (conv == 0 || conv == ULONG_MAX) {
+                    return default_test_length;
+                } else {
+                    return conv;
+                }
+            }
+        }();
+
     std::uint64_t failures = 0;
 
     // 8-bit integer 
@@ -969,5 +993,10 @@ int main (void)
         );
     }
 
-    return failures ? EXIT_FAILURE : EXIT_SUCCESS;
+    if (failures != 0) {
+        std::cout << "failed: " << failures << " cases" << std::endl;
+        return EXIT_FAILURE;
+    } else {
+        return EXIT_SUCCESS;
+    }
 }
