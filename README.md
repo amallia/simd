@@ -45,8 +45,8 @@ SIMD vector extensions.
 
 ### macOS
 
-Test builds fail on GCC 6.1, LLVM Clang 3.7, and LLVM Clang 3.8 due to internal
-compiler errors.
+Test builds fail using GCC 6.1, LLVM Clang 3.7, and LLVM Clang 3.8 due to
+internal compiler errors.
 
 ## info
 
