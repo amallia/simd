@@ -27,6 +27,7 @@
 #include <cstdint>              // std::{u}int{8,16,32,64}_t
 #include <cstring>              // std::memcpy
 #include <functional>           // std::hash
+#include <initializer_list>     // std::initializer_list
 #include <iterator>             // std::iterator, std::reverse_iterator
 #include <memory>               // std::align, std::addressof
 #include <mutex>                // std::lock_guard, std::mutex
@@ -35,7 +36,7 @@
 #include <stdexcept>            // std::bad_alloc
 #include <type_traits>          // std::conditional, std::is_arithmetic
 #include <utility>              // std::forward, std::index_sequence
-
+#include <iostream>
 
 #if !defined (__clang__) && !defined (__GNUG__)
     #error "simd implemention requires clang or gcc vector extensions"
@@ -363,8 +364,6 @@ namespace util
 
 namespace vext
 {
-#define vsize(lanes, size) vector_size ((lanes) * (size))
-
     template <typename, std::size_t, typename enable = void>
     struct vector_type_specialization;
 
@@ -372,6 +371,8 @@ template <std::size_t lanes>
 struct vector_type_specialization <signed char, lanes>
     : public vector_type_specialization <char, lanes>
 {};
+
+#define vsize(lanes, size) vector_size ((lanes) * (size))
 
 #define specialize(ty, lanes) template <>\
 struct vector_type_specialization <ty, lanes>\
@@ -810,10 +811,10 @@ template <>
 #endif
     };
 
+#undef vsize
+
     template <typename T, std::size_t lanes>
     using vector = vector_type_specialization <T, lanes>;
-
-#undef vsize
 }   // namespace vext
 
     template <typename T, std::size_t lanes>
@@ -838,7 +839,9 @@ template <>
                     sizeof (T) == 8,
                     std::int64_t,
                     typename std::conditional <
-                        sizeof (T) == 16 || sizeof (T) == 12 || sizeof (T) == 10,
+                        sizeof (T) == 16 ||
+                        sizeof (T) == 12 ||
+                        sizeof (T) == 10,
 #if defined (__clang__)
                         __int128_t,
 #elif defined (__GNUG__)
@@ -865,7 +868,9 @@ template <>
                     sizeof (T) == 8,
                     std::uint64_t,
                     typename std::conditional <
-                        sizeof (T) == 16 || sizeof (T) == 12 || sizeof (T) == 10,
+                        sizeof (T) == 16 ||
+                        sizeof (T) == 12 ||
+                        sizeof (T) == 10,
 #if defined (__clang__)
                         __uint128_t,
 #elif defined (__GNUG__)
@@ -1039,8 +1044,8 @@ template <>
         }
 
     protected:
-        static constexpr
-        vector_type_impl unpack (base_value_type const (&arr) [lanes]) noexcept
+        static constexpr vector_type_impl
+            unpack (base_value_type const (&arr) [lanes]) noexcept
         {
             return simd_type_base::unpack_impl (
                 arr, util::make_index_sequence <lanes> {}
@@ -1061,44 +1066,178 @@ template <>
             return vector_type_impl {static_cast <base_value_type> (ts)...};
         }
 
-    public:
         /*
-         * This is a pointer proxy object to avoid undefined behavior and
+         * This is a proxy reference object to avoid undefined behavior and
          * type-punning in derived SIMD type classes. It is the returned
-         * type from methds such as {c}{r}begin, and {c}{r}end.
+         * type from methds such as operator[] and at().
          */
-        template <typename U>
+        template <typename VecType, typename ValType>
+        class reference_proxy;
+
+    public:
+        using reference = reference_proxy <
+            vector_type_impl, base_value_type
+        >;
+        using const_reference = reference_proxy <
+            vector_type_impl const, base_value_type const
+        >;
+
+    protected:
+        /*
+         * This is a proxy pointer object to avoid undefined behavior and
+         * type-punning in derived SIMD type classes. It is the returned
+         * type from methds such as {c}{r}begin and {c}{r}end.
+         */
+        template <typename VecType, typename ValType>
+        class pointer_proxy;
+
+    public:
+        using pointer = pointer_proxy <
+            vector_type_impl, base_value_type
+        >;
+        using const_pointer = pointer_proxy <
+            vector_type_impl const, base_value_type const
+        >;
+
+    protected:
+        template <typename VecType, typename ValType>
+        class reference_proxy
+        {
+        private:
+            using vector_type = VecType;
+            using value_type  = ValType;
+            using pointer     = pointer_proxy <vector_type, value_type>;
+            using vecpointer  = typename std::add_pointer <vector_type>::type;
+
+            vecpointer _ref;
+            std::ptrdiff_t _index;
+
+        public:
+            reference_proxy (void) = delete;
+            ~reference_proxy (void) noexcept = default;
+
+            constexpr reference_proxy (vecpointer p, std::ptrdiff_t index)
+                noexcept
+                : _ref   {p}
+                , _index {index}
+            {}
+
+            constexpr
+                reference_proxy (vector_type & v, std::ptrdiff_t index)
+                noexcept
+                : _ref   {&v}
+                , _index {index}
+            {}
+
+            constexpr reference_proxy (reference_proxy const &) noexcept
+                = default;
+
+            template <typename U>
+            reference_proxy & operator= (U && u) noexcept
+            {
+                static_assert (
+                    std::is_convertible <U, value_type>::value,
+                    "cannot assign to vector lane from non-convertible type"
+                );
+
+                (*this->_ref) [this->_index] = static_cast <value_type> (
+                    std::forward <U> (u)
+                );
+                return *this;
+            }
+
+            reference_proxy & operator= (reference_proxy const & r) noexcept
+            {
+                this->_ref = r._ref;
+                this->_index = r._index;
+                return *this;
+            }
+
+            void swap (reference_proxy & r) noexcept
+            {
+                std::swap (this->_ref, r._ref);
+                std::swap (this->_index, r._index);
+            }
+
+            template <typename U>
+            constexpr operator U (void) const noexcept
+            {
+                static_assert (
+                    std::is_convertible <value_type, U>::value,
+                    "cannot perform cast"
+                );
+
+                return static_cast <U> ((*this->_ref) [this->_index]);
+            }
+
+            pointer operator& (void) const noexcept
+            {
+                return pointer {this->_ref, this->_index};
+            }
+
+            constexpr bool operator== (reference_proxy const & r) const noexcept
+            {
+                return (*this->_ref) [this->_index] == (*r._ref) [r._index];
+            }
+
+            constexpr bool operator!= (reference_proxy const & r) const noexcept
+            {
+                return (*this->_ref) [this->_index] != (*r._ref) [r._index];
+            }
+
+            constexpr bool operator> (reference_proxy const & r) const noexcept
+            {
+                return (*this->_ref) [this->_index] > (*r._ref) [r._index];
+            }
+
+            constexpr bool operator< (reference_proxy const & r) const noexcept
+            {
+                return (*this->_ref) [this->_index] < (*r._ref) [r._index];
+            }
+
+            constexpr bool operator>= (reference_proxy const & r) const noexcept
+            {
+                return (*this->_ref) [this->_index] >= (*r._ref) [r._index];
+            }
+
+            constexpr bool operator<= (reference_proxy const & r) const noexcept
+            {
+                return (*this->_ref) [this->_index] <= (*r._ref) [r._index];
+            }
+        };
+
+        template <typename VecType, typename ValType>
         class pointer_proxy
         {
         private:
-            using element_type = U;
-            using void_pointer = typename std::conditional <
-                std::is_const <U>::value,
-                void const *,
-                void *
-            >::type;
-            using pointer   = typename std::add_pointer <U>::type;
-            using reference = typename std::add_lvalue_reference <U>::type;
+            using vector_type = VecType;
+            using value_type  = ValType;
+            using vecpointer  = typename std::add_pointer <vector_type>::type;
+            using reference   = reference_proxy <vector_type, value_type>;
 
-            pointer _pointer;
+            vecpointer _pointer;
+            std::ptrdiff_t _index;
 
         public:
             using iterator_category = std::random_access_iterator_tag;
 
             constexpr pointer_proxy (void) noexcept
                 : _pointer {nullptr}
+                , _index   {0}
             {}
 
             ~pointer_proxy (void) noexcept = default;
 
-            constexpr pointer_proxy (pointer p) noexcept
+            constexpr pointer_proxy (vecpointer p, std::ptrdiff_t index)
+                noexcept
                 : _pointer {p}
+                , _index   {index}
             {}
 
-            constexpr pointer_proxy (element_type & e) noexcept
-                : _pointer {
-                    static_cast <pointer> (static_cast <void_pointer> (&e))
-                }
+            constexpr pointer_proxy (vector_type & v, std::ptrdiff_t index)
+                noexcept
+                : _pointer {&v}
+                , _index   {index}
             {}
 
             constexpr pointer_proxy (pointer_proxy const &) noexcept = default;
@@ -1107,16 +1246,11 @@ template <>
                 noexcept
             {
                 this->_pointer = p._pointer;
+                this->_index = p._index;
                 return *this;
             }
 
-            advanced_constexpr pointer_proxy & operator= (pointer p) noexcept
-            {
-                this->_pointer = p;
-                return *this;
-            }
-
-            operator pointer (void) noexcept
+            operator vecpointer (void) noexcept
             {
                 return this->_pointer;
             }
@@ -1128,54 +1262,54 @@ template <>
 
             reference operator* (void) const noexcept
             {
-                return *this->_pointer;
+                return reference {this->_pointer, this->_index};
             }
 
-            pointer operator-> (void) const noexcept
+            reference operator-> (void) const noexcept
             {
-                return this->_pointer;
+                return reference {this->_pointer, this->_index};
             }
 
             reference operator[] (std::ptrdiff_t n) const noexcept
             {
-                return this->_pointer [n];
+                return reference {this->_pointer, this->_index + n};
             }
 
             pointer_proxy & operator++ (void) noexcept
             {
-                this->_pointer += 1;
+                this->_index += 1;
                 return *this;
             }
 
             pointer_proxy & operator-- (void) noexcept
             {
-                this->_pointer -= 1;
+                this->_index -= 1;
                 return *this;
             }
 
             pointer_proxy operator++ (int) noexcept
             {
                 auto const tmp = *this;
-                this->_pointer += 1;
+                this->_index += 1;
                 return tmp;
             }
 
             pointer_proxy operator-- (int) noexcept
             {
                 auto const tmp = *this;
-                this->_pointer -= 1;
+                this->_index -= 1;
                 return tmp;
             }
 
             pointer_proxy & operator+= (std::ptrdiff_t n) noexcept
             {
-                this->_poiner += n;
+                this->_index += n;
                 return *this;
             }
 
             pointer_proxy & operator-= (std::ptrdiff_t n) noexcept
             {
-                this->_poiner -= n;
+                this->_index -= n;
                 return *this;
             }
 
@@ -1193,72 +1327,47 @@ template <>
 
             std::ptrdiff_t operator- (pointer_proxy p) const noexcept
             {
-                return this->_pointer - p._pointer;
-            }
-
-            std::ptrdiff_t operator- (pointer p) const noexcept
-            {
-                return this->_pointer - p;
+                return this->_index - p._index;
             }
 
             bool operator== (pointer_proxy p) const noexcept
             {
-                return this->_pointer == p._pointer;
-            }
-
-            bool operator== (pointer p) const noexcept
-            {
-                return this->_pointer == p;
+                return this->_pointer == p._pointer &&
+                       this->_index == p._index;
             }
 
             bool operator!= (pointer_proxy p) const noexcept
             {
-                return this->_pointer != p._pointer;
-            }
-
-            bool operator!= (pointer p) const noexcept
-            {
-                return this->_pointer != p;
+                return this->_pointer != p._pointer ||
+                       this->_index != p._index;
             }
 
             bool operator< (pointer_proxy p) const noexcept
             {
-                return this->_pointer < p._pointer;
-            }
-
-            bool operator< (pointer p) const noexcept
-            {
-                return this->_pointer < p;
+                return this->_pointer < p._pointer ||
+                       (this->_pointer == p._pointer &&
+                        this->_index < p._index);
             }
 
             bool operator> (pointer_proxy p) const noexcept
             {
-                return this->_pointer > p._pointer;
-            }
-
-            bool operator> (pointer p) const noexcept
-            {
-                return this->_pointer > p;
+                return this->_pointer > p._pointer ||
+                       (this->_pointer == p._pointer &&
+                        this->_index > p._index);
             }
 
             bool operator<= (pointer_proxy p) const noexcept
             {
-                return this->_pointer <= p._pointer;
-            }
-
-            bool operator<= (pointer p) const noexcept
-            {
-                return this->_pointer <= p;
+                return this->_pointer < p._pointer ||
+                       (this->_pointer == p._pointer &&
+                        this->_index <= p._index);
             }
 
             bool operator>= (pointer_proxy p) const noexcept
             {
-                return this->_pointer >= p._pointer;
-            }
-
-            bool operator>= (pointer p) const noexcept
-            {
-                return this->_pointer >= p;
+                return this->_pointer > p._pointer ||
+                       (this->_pointer == p._pointer &&
+                        this->_index >= p._index);
             }
         };
     };
@@ -1352,16 +1461,12 @@ template <>
         using integral_type          = typename base::integral_type;
         using unsigned_integral_type = typename base::unsigned_integral_type;
         using signed_integral_type   = typename base::signed_integral_type;
-        using pointer =
-            typename base::template pointer_proxy <value_type>;
-        using const_pointer =
-            typename base::template pointer_proxy <value_type const>;
-        using reference              = value_type &;
-        using const_reference        = value_type const &;
-        using iterator               = pointer;
-        using const_iterator         = const_pointer;
-        using reverse_iterator       = std::reverse_iterator <pointer>;
-        using const_reverse_iterator = std::reverse_iterator <const_pointer>;
+        using reference              = typename base::reference;
+        using const_reference        = typename base::const_reference;
+        using iterator               = typename base::pointer;
+        using const_iterator         = typename base::const_pointer;
+        using reverse_iterator       = std::reverse_iterator <iterator>;
+        using const_reverse_iterator = std::reverse_iterator <const_iterator>;
         using category_tag           = tag;
 
         static constexpr std::size_t alignment = base::alignment;
@@ -1396,12 +1501,10 @@ template <>
         using integral_type          = typename base::integral_type;
         using unsigned_integral_type = typename base::unsigned_integral_type;
         using signed_integral_type   = typename base::signed_integral_type;
-        using pointer =
-            typename base::template pointer_proxy <value_type>;
-        using const_pointer =
-            typename base::template pointer_proxy <value_type const>;
-        using reference              = value_type &;
-        using const_reference        = value_type const &;
+        using reference =
+            typename complex_simd_type <T, l>::reference;
+        using const_reference =
+            typename complex_simd_type <T, l>::const_reference;
         using iterator =
             typename complex_simd_type <T, l>::iterator;
         using const_iterator =
@@ -1410,7 +1513,7 @@ template <>
             typename complex_simd_type <T, l>::reverse_iterator;
         using const_reverse_iterator =
             typename complex_simd_type <T, l>::const_reverse_iterator;
-        using category_tag    = complex_tag;
+        using category_tag = complex_tag;
 
         static constexpr std::size_t alignment = base::alignment;
         static constexpr std::size_t size = base::size;
@@ -1426,14 +1529,7 @@ template <>
     private:
         using base = simd_type_base <T, l>;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wattributes"
-        union alignas (base::alignment)
-        {
-            typename base::vector_type_impl _vec;
-            T _arr [l];
-        };
-#pragma GCC diagnostic pop
+        typename base::vector_type_impl _vec;
 
     public:
         static_assert (
@@ -1453,16 +1549,12 @@ template <>
         using integral_type          = typename base::integral_type;
         using unsigned_integral_type = typename base::unsigned_integral_type;
         using signed_integral_type   = typename base::signed_integral_type;
-        using pointer                =
-            typename base::template pointer_proxy <value_type>;
-        using const_pointer          =
-            typename base::template pointer_proxy <value_type const>;
-        using reference              = value_type &;
-        using const_reference        = value_type const &;
-        using iterator               = pointer;
-        using const_iterator         = const_pointer;
-        using reverse_iterator       = std::reverse_iterator <pointer>;
-        using const_reverse_iterator = std::reverse_iterator <const_pointer>;
+        using reference              = typename base::reference;
+        using const_reference        = typename base::const_reference;
+        using iterator               = typename base::pointer;
+        using const_iterator         = typename base::const_pointer;
+        using reverse_iterator       = std::reverse_iterator <iterator>;
+        using const_reverse_iterator = std::reverse_iterator <const_iterator>;
         using category_tag           = arithmetic_tag;
         static constexpr std::size_t lanes = l;
 
@@ -1526,7 +1618,9 @@ template <>
             >::type
         >
         explicit constexpr integral_simd_type (value_types && ... vals) noexcept
-            : _vec {base::extend (std::forward <value_types> (vals)...)}
+            : _vec {
+                static_cast <value_type> (std::forward <value_types> (vals))...
+            }
         {}
 
         constexpr
@@ -1615,11 +1709,6 @@ template <>
             };
         }
 
-        advanced_constexpr void fill (value_type const & val) noexcept
-        {
-            this->_vec = base::extend (val);
-        }
-
         advanced_constexpr void swap (integral_simd_type & other) noexcept
         {
             auto tmp = *this;
@@ -1637,15 +1726,28 @@ template <>
             return this->_vec;
         }
 
-        template <std::size_t n>
-        advanced_constexpr reference get (void) & noexcept
+        advanced_constexpr void fill (value_type const & val) & noexcept
         {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
+            this->_vec = base::extend (val);
+        }
 
-            return this->_arr [n];
+        advanced_constexpr void
+            assign (std::size_t n, value_type const & val) & noexcept
+        {
+            this->_vec [n] = val;
+        }
+
+        advanced_constexpr void
+            assign (std::initializer_list <value_type> & vl) & noexcept
+        {
+            auto vals = vl.begin ();
+            std::size_t i = 0;
+            for (; i < std::min (lanes, vl.size ()); ++i) {
+                this->_vec [i] = vals [i];
+            }
+            for (; i < lanes; ++i) {
+                this->_vec [i] = value_type {0};
+            }
         }
 
         template <std::size_t n>
@@ -1656,32 +1758,62 @@ template <>
                 "cannot access out-of-bounds vector lane"
             );
 
-            return this->_arr [n];
+            return const_reference {
+                &this->_vec, static_cast <std::ptrdiff_t> (n)
+            };
         }
 
-        advanced_constexpr reference operator[] (std::size_t n) & noexcept
+        template <std::size_t n>
+        advanced_constexpr reference get (void) & noexcept
         {
-            return this->_arr [n];
+            static_assert (
+                n < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            return reference {&this->_vec, static_cast <std::ptrdiff_t> (n)};
+        }
+
+        template <std::size_t n>
+        advanced_constexpr integral_simd_type & set (value_type const & val) &
+            noexcept
+        {
+            static_assert (
+                n < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            this->_vec [n] = val;
+            return *this;
         }
 
         constexpr const_reference operator[] (std::size_t n) const & noexcept
         {
-            return this->_arr [n];
+            return const_reference {
+                &this->_vec, static_cast <std::ptrdiff_t> (n)
+            };
         }
 
-        advanced_constexpr reference at (std::size_t n) &
+        advanced_constexpr reference operator[] (std::size_t n) & noexcept
         {
-            return n < lanes ?
-                this->_arr [n] :
-                throw std::out_of_range {
-                    "access attempt to out-of-bounds vector lane"
-                };
+            return reference {
+                &this->_vec, static_cast <std::ptrdiff_t> (n)
+            };
         }
 
         constexpr const_reference at (std::size_t n) const &
         {
             return n < lanes ?
-                this->_arr [n] :
+                const_reference {this->_vec, n} :
+                throw std::out_of_range {
+                    "access attempt to out-of-bounds vector lane"
+                };
+        }
+
+        advanced_constexpr reference at (std::size_t n) &
+        {
+            return n < lanes ?
+                reference {this->_vec, n} :
                 throw std::out_of_range {
                     "access attempt to out-of-bounds vector lane"
                 };
@@ -1689,62 +1821,74 @@ template <>
 
         advanced_constexpr iterator begin (void) & noexcept
         {
-            return iterator {this->_arr [0]};
+            return iterator {this->data (), 0};
         }
 
         advanced_constexpr iterator end (void) & noexcept
         {
-            return iterator {*(&this->_arr [0] + lanes)};
+            return iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         constexpr const_iterator begin (void) const & noexcept
         {
-            return const_iterator {this->_arr [0]};
+            return const_iterator {this->data (), 0};
         }
 
         constexpr const_iterator end (void) const & noexcept
         {
-            return const_iterator {*(&this->_arr [0] + lanes)};
+            return const_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         constexpr const_iterator cbegin (void) const & noexcept
         {
-            return const_iterator {this->_arr [0]};
+            return const_iterator {this->data (), 0};
         }
 
         constexpr const_iterator cend (void) const & noexcept
         {
-            return const_iterator {*(&this->_arr [0] + lanes)};
+            return const_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         advanced_constexpr reverse_iterator rbegin (void) & noexcept
         {
-            return reverse_iterator {*(&this->_arr [0] + lanes)};
+            return reverse_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         advanced_constexpr reverse_iterator rend (void) & noexcept
         {
-            return reverse_iterator {this->_arr [0]};
+            return reverse_iterator {this->data (), 0};
         }
 
         constexpr const_reverse_iterator rbegin (void) const & noexcept
         {
-            return const_reverse_iterator {*(&this->_arr [0] + lanes)};
+            return const_reverse_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         constexpr const_reverse_iterator rend (void) const & noexcept
         {
-            return const_reverse_iterator {this->_arr [0]};
+            return const_reverse_iterator {this->data (), 0};
         }
 
         constexpr const_reverse_iterator crbegin (void) const & noexcept
         {
-            return const_reverse_iterator {*(&this->_arr [0] + lanes)};
+            return const_reverse_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         constexpr const_reverse_iterator crend (void) const & noexcept
         {
-            return const_reverse_iterator {this->_arr [0]};
+            return const_reverse_iterator {this->data (), 0};
         }
 
         constexpr integral_simd_type operator+ (void) const noexcept
@@ -2398,14 +2542,7 @@ template <>
     private:
         using base = simd_type_base <T, l>;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wattributes"
-        union alignas (base::alignment)
-        {
-            typename base::vector_type_impl _vec;
-            T _arr [l];
-        };
-#pragma GCC diagnostic pop
+        typename base::vector_type_impl _vec;
 
     public:
         static_assert (
@@ -2413,20 +2550,18 @@ template <>
             "template parameter typename T must be a floating point type"
         );
 
-        using vector_type     = typename base::vector_type_impl;
-        using value_type      = T;
-        using integral_type   = typename base::integral_type;
+        using vector_type            = typename base::vector_type_impl;
+        using value_type             = T;
+        using integral_type          = typename base::integral_type;
         using unsigned_integral_type = typename base::unsigned_integral_type;
-        using signed_integral_type = typename base::signed_integral_type;
-        using pointer         = typename base::template pointer_proxy <value_type>;
-        using const_pointer   = typename base::template pointer_proxy <value_type const>;
-        using reference       = value_type &;
-        using const_reference = value_type const &;
-        using iterator        = pointer;
-        using const_iterator  = const_pointer;
-        using reverse_iterator       = std::reverse_iterator <pointer>;
-        using const_reverse_iterator = std::reverse_iterator <const_pointer>;
-        using category_tag    = arithmetic_tag;
+        using signed_integral_type   = typename base::signed_integral_type;
+        using reference              = typename base::reference;
+        using const_reference        = typename base::const_reference;
+        using iterator               = typename base::pointer;
+        using const_iterator         = typename base::const_pointer;
+        using reverse_iterator       = std::reverse_iterator <iterator>;
+        using const_reverse_iterator = std::reverse_iterator <const_iterator>;
+        using category_tag           = arithmetic_tag;
         static constexpr std::size_t lanes = l;
 
         template <typename U, std::size_t L, typename tag>
@@ -2463,7 +2598,9 @@ template <>
             >::type
         >
         explicit constexpr fp_simd_type (value_types && ... vals) noexcept
-            : _vec {base::extend (std::forward <value_types> (vals)...)}
+            : _vec {
+                static_cast <value_type> (std::forward <value_types> (vals))...
+            }
         {}
 
         constexpr fp_simd_type (fp_simd_type const & sv) noexcept
@@ -2481,7 +2618,8 @@ template <>
             : _vec {base::unpack (arr)}
         {}
 
-        advanced_constexpr fp_simd_type & operator= (fp_simd_type const & sv) & noexcept
+        advanced_constexpr fp_simd_type &
+            operator= (fp_simd_type const & sv) & noexcept
         {
             this->_vec = sv._vec;
             return *this;
@@ -2502,8 +2640,9 @@ template <>
 
     private:
         template <std::size_t ... L>
-        advanced_constexpr void fill_array (std::array <value_type, lanes> & arr,
-                                   util::index_sequence <L...>) const noexcept
+        advanced_constexpr void
+            fill_array (std::array <value_type, lanes> & arr,
+                        util::index_sequence <L...>) const noexcept
         {
             value_type _unused [] = {
                 (std::get <L> (arr) = this->template get <L> ())...
@@ -2512,8 +2651,8 @@ template <>
         }
 
     public:
-        explicit advanced_constexpr operator std::array <value_type, lanes> (void) const
-            noexcept
+        explicit advanced_constexpr
+            operator std::array <value_type, lanes> (void) const noexcept
         {
             std::array <value_type, lanes> result {};
             this->fill_array (result, util::make_index_sequence <lanes> {});
@@ -2548,11 +2687,6 @@ template <>
             };
         }
 
-        advanced_constexpr void fill (value_type const & val) noexcept
-        {
-            this->_vec = base::extend (val);
-        }
-
         advanced_constexpr void swap (fp_simd_type & other) noexcept
         {
             auto tmp = *this;
@@ -2570,15 +2704,28 @@ template <>
             return this->_vec;
         }
 
-        template <std::size_t n>
-        advanced_constexpr reference get (void) & noexcept
+        advanced_constexpr void fill (value_type const & val) & noexcept
         {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
+            this->_vec = base::extend (val);
+        }
 
-            return this->_arr [n];
+        advanced_constexpr void
+            assign (std::size_t n, value_type const & val) & noexcept
+        {
+            this->_vec [n] = val;
+        }
+
+        advanced_constexpr void
+            assign (std::initializer_list <value_type> & vl) & noexcept
+        {
+            auto vals = vl.begin ();
+            std::size_t i = 0;
+            for (; i < std::min (lanes, vl.size ()); ++i) {
+                this->_vec [i] = vals [i];
+            }
+            for (; i < lanes; ++i) {
+                this->_vec [i] = value_type {0};
+            }
         }
 
         template <std::size_t n>
@@ -2589,91 +2736,137 @@ template <>
                 "cannot access out-of-bounds vector lane"
             );
 
-            return this->_arr [n];
+            return const_reference {
+                &this->_vec, static_cast <std::ptrdiff_t> (n)
+            };
         }
 
-        advanced_constexpr reference operator[] (std::size_t n) & noexcept
+        template <std::size_t n>
+        advanced_constexpr reference get (void) & noexcept
         {
-            return this->_arr [n];
+            static_assert (
+                n < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            return reference {&this->_vec, static_cast <std::ptrdiff_t> (n)};
+        }
+
+        template <std::size_t n>
+        advanced_constexpr fp_simd_type & set (value_type const & val) &
+            noexcept
+        {
+            static_assert (
+                n < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            this->_vec [n] = val;
+            return *this;
         }
 
         constexpr const_reference operator[] (std::size_t n) const & noexcept
         {
-            return this->_arr [n];
+            return const_reference {
+                &this->_vec, static_cast <std::ptrdiff_t> (n)
+            };
         }
 
-        advanced_constexpr reference at (std::size_t n) &
+        advanced_constexpr reference operator[] (std::size_t n) & noexcept
         {
-            return n < lanes ?
-                this->_arr [n] :
-                throw std::out_of_range {"access attempt to out-of-bounds vector lane"};
+            return reference {
+                &this->_vec, static_cast <std::ptrdiff_t> (n)
+            };
         }
 
         constexpr const_reference at (std::size_t n) const &
         {
             return n < lanes ?
-                this->_arr [n] :
-                throw std::out_of_range {"access attempt to out-of-bounds vector lane"};
+                const_reference {this->_vec, n} :
+                throw std::out_of_range {
+                    "access attempt to out-of-bounds vector lane"
+                };
+        }
+
+        advanced_constexpr reference at (std::size_t n) &
+        {
+            return n < lanes ?
+                reference {this->_vec, n} :
+                throw std::out_of_range {
+                    "access attempt to out-of-bounds vector lane"
+                };
         }
 
         advanced_constexpr iterator begin (void) & noexcept
         {
-            return iterator {this->_arr [0]};
+            return iterator {this->data (), 0};
         }
 
         advanced_constexpr iterator end (void) & noexcept
         {
-            return iterator {*(&this->_arr [0] + lanes)};
+            return iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         constexpr const_iterator begin (void) const & noexcept
         {
-            return const_iterator {this->_arr [0]};
+            return const_iterator {this->data (), 0};
         }
 
         constexpr const_iterator end (void) const & noexcept
         {
-            return const_iterator {*(&this->_arr [0] + lanes)};
+            return const_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         constexpr const_iterator cbegin (void) const & noexcept
         {
-            return const_iterator {this->_arr [0]};
+            return const_iterator {this->data (), 0};
         }
 
         constexpr const_iterator cend (void) const & noexcept
         {
-            return const_iterator {*(&this->_arr [0] + lanes)};
+            return const_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         advanced_constexpr reverse_iterator rbegin (void) & noexcept
         {
-            return reverse_iterator {*(&this->_arr [0] + lanes)};
+            return reverse_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         advanced_constexpr reverse_iterator rend (void) & noexcept
         {
-            return reverse_iterator {this->_arr [0]};
+            return reverse_iterator {this->data (), 0};
         }
 
         constexpr const_reverse_iterator rbegin (void) const & noexcept
         {
-            return const_reverse_iterator {*(&this->_arr [0] + lanes)};
+            return const_reverse_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         constexpr const_reverse_iterator rend (void) const & noexcept
         {
-            return const_reverse_iterator {this->_arr [0]};
+            return const_reverse_iterator {this->data (), 0};
         }
 
         constexpr const_reverse_iterator crbegin (void) const & noexcept
         {
-            return const_reverse_iterator {*(&this->_arr [0] + lanes)};
+            return const_reverse_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         constexpr const_reverse_iterator crend (void) const & noexcept
         {
-            return const_reverse_iterator {this->_arr [0]};
+            return const_reverse_iterator {this->data (), 0};
         }
 
         constexpr fp_simd_type operator+ (void) const noexcept
@@ -3065,680 +3258,7 @@ template <>
         }
     };
 #pragma GCC diagnostic pop
-/*
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wattributes"
-    template <std::size_t l>
-    class alignas (simd_type_base <long double, l>::alignment)
-        fp_simd_type <long double, l> : public simd_type_base <long double, l>
-    {
-    private:
-        using T = long double;
-        using base = simd_type_base <T, l>;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wattributes"
-        union alignas (base::alignment)
-        {
-            typename base::vector_type_impl _vec;
-            T _arr [l];
-        };
-#pragma GCC diagnostic pop
-
-    public:
-        using vector_type     = typename base::vector_type_impl;
-        using value_type      = T;
-        using integral_type   = typename base::integral_type;
-        using unsigned_integral_type = typename base::unsigned_integral_type;
-        using signed_integral_type = typename base::signed_integral_type;
-        using pointer         = typename base::template pointer_proxy <value_type>;
-        using const_pointer   = typename base::template pointer_proxy <value_type const>;
-        using reference       = value_type &;
-        using const_reference = value_type const &;
-        using iterator        = pointer;
-        using const_iterator  = const_pointer;
-        using reverse_iterator       = std::reverse_iterator <pointer>;
-        using const_reverse_iterator = std::reverse_iterator <const_pointer>;
-        using category_tag    = arithmetic_tag;
-        static constexpr std::size_t lanes = l;
-
-        template <typename U, std::size_t L, typename tag>
-        using rebind = simd_type <U, L, tag>;
-
-        static fp_simd_type load (value_type const * addr) noexcept
-        {
-            fp_simd_type result {};
-            std::memcpy (&result.data (), addr, lanes * sizeof (value_type));
-            return result;
-        }
-
-        static fp_simd_type load (vector_type const * addr) noexcept
-        {
-            return fp_simd_type {*addr};
-        }
-
-        constexpr fp_simd_type (void) noexcept
-            : _vec {base::extend (value_type {})}
-        {}
-
-        explicit constexpr fp_simd_type (vector_type const & vec) noexcept
-            : _vec {vec}
-        {}
-
-        explicit constexpr fp_simd_type (value_type const & val) noexcept
-            : _vec {base::extend (val)}
-        {}
-
-        template <
-            typename ... value_types,
-            typename = typename std::enable_if <
-                sizeof... (value_types) == lanes && lanes != 1
-            >::type
-        >
-        explicit constexpr fp_simd_type (value_types && ... vals) noexcept
-            : _vec {base::extend (std::forward <value_types> (vals)...)}
-        {}
-
-        constexpr fp_simd_type (fp_simd_type const & sv) noexcept
-            : base {}
-            , _vec {sv._vec}
-        {}
-
-        explicit constexpr
-        fp_simd_type (value_type const (&arr) [lanes]) noexcept
-            : _vec {base::unpack (arr)}
-        {}
-
-        explicit constexpr
-        fp_simd_type (std::array <value_type, lanes> const & arr) noexcept
-            : _vec {base::unpack (arr)}
-        {}
-
-        advanced_constexpr fp_simd_type & operator= (fp_simd_type const & sv) & noexcept
-        {
-            this->_vec = sv._vec;
-            return *this;
-        }
-
-        template <typename U>
-        advanced_constexpr fp_simd_type & operator= (U val) & noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            this->_vec = base::extend (val);
-            return *this;
-        }
-
-    private:
-        template <std::size_t ... L>
-        advanced_constexpr void fill_array (std::array <value_type, lanes> & arr,
-                                   util::index_sequence <L...>) const noexcept
-        {
-            value_type _unused [] = {
-                (std::get <L> (arr) = this->template get <L> ())...
-            };
-            (void) _unused;
-        }
-
-    public:
-        explicit advanced_constexpr operator std::array <value_type, lanes> (void) const
-            noexcept
-        {
-            std::array <value_type, lanes> result {};
-            this->fill_array (result, util::make_index_sequence <lanes> {});
-            return result;
-        }
-
-        template <typename SimdT>
-        constexpr SimdT as (void) const noexcept
-        {
-            static_assert (
-                is_simd_type <SimdT>::value,
-                "cannot perform cast to non-simd type"
-            );
-
-            using traits = simd_traits <SimdT>;
-            using rebind_type = rebind <
-                typename traits::value_type,
-                traits::lanes,
-                typename traits::category_tag
-            >;
-            using rebind_vector_type = typename rebind_type::vector_type;
-
-            static_assert (
-                sizeof (vector_type) == sizeof (rebind_vector_type) ||
-                lanes == traits::lanes,
-                "cannot perform up-sizing or down-sizing vector cast unless"
-                " the result type and source type have an equal number of lanes"
-            );
-
-            return rebind_type {
-                static_cast <rebind_vector_type> (this->_vec)
-            };
-        }
-
-        advanced_constexpr void fill (value_type const & val) noexcept
-        {
-            this->_vec = base::extend (val);
-        }
-
-        advanced_constexpr void swap (fp_simd_type & other) noexcept
-        {
-            auto tmp = *this;
-            *this = other;
-            other = tmp;
-        }
-
-        advanced_constexpr vector_type & data (void) & noexcept
-        {
-            return this->_vec;
-        }
-
-        constexpr vector_type const & data (void) const & noexcept
-        {
-            return this->_vec;
-        }
-
-        template <std::size_t n>
-        advanced_constexpr reference get (void) & noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            return this->_arr [n];
-        }
-
-        template <std::size_t n>
-        constexpr const_reference get (void) const & noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            return this->_arr [n];
-        }
-
-        advanced_constexpr reference operator[] (std::size_t n) & noexcept
-        {
-            return this->_arr [n];
-        }
-
-        constexpr const_reference operator[] (std::size_t n) const & noexcept
-        {
-            return this->_arr [n];
-        }
-
-        advanced_constexpr reference at (std::size_t n) &
-        {
-            return n < lanes ?
-                this->_arr [n] :
-                throw std::out_of_range {"access attempt to out-of-bounds vector lane"};
-        }
-
-        constexpr const_reference at (std::size_t n) const &
-        {
-            return n < lanes ?
-                this->_arr [n] :
-                throw std::out_of_range {"access attempt to out-of-bounds vector lane"};
-        }
-
-        advanced_constexpr iterator begin (void) & noexcept
-        {
-            return iterator {this->_arr [0]};
-        }
-
-        advanced_constexpr iterator end (void) & noexcept
-        {
-            return iterator {*(&this->_arr [0] + lanes)};
-        }
-
-        constexpr const_iterator begin (void) const & noexcept
-        {
-            return const_iterator {this->_arr [0]};
-        }
-
-        constexpr const_iterator end (void) const & noexcept
-        {
-            return const_iterator {*(&this->_arr [0] + lanes)};
-        }
-
-        constexpr const_iterator cbegin (void) const & noexcept
-        {
-            return const_iterator {this->_arr [0]};
-        }
-
-        constexpr const_iterator cend (void) const & noexcept
-        {
-            return const_iterator {*(&this->_arr [0] + lanes)};
-        }
-
-        advanced_constexpr reverse_iterator rbegin (void) & noexcept
-        {
-            return reverse_iterator {*(&this->_arr [0] + lanes)};
-        }
-
-        advanced_constexpr reverse_iterator rend (void) & noexcept
-        {
-            return reverse_iterator {this->_arr [0]};
-        }
-
-        constexpr const_reverse_iterator rbegin (void) const & noexcept
-        {
-            return const_reverse_iterator {*(&this->_arr [0] + lanes)};
-        }
-
-        constexpr const_reverse_iterator rend (void) const & noexcept
-        {
-            return const_reverse_iterator {this->_arr [0]};
-        }
-
-        constexpr const_reverse_iterator crbegin (void) const & noexcept
-        {
-            return const_reverse_iterator {*(&this->_arr [0] + lanes)};
-        }
-
-        constexpr const_reverse_iterator crend (void) const & noexcept
-        {
-            return const_reverse_iterator {this->_arr [0]};
-        }
-
-        constexpr fp_simd_type operator+ (void) const noexcept
-        {
-            return fp_simd_type {+this->_vec};
-        }
-
-        constexpr fp_simd_type operator- (void) const noexcept
-        {
-            return fp_simd_type {-this->_vec};
-        }
-
-        constexpr fp_simd_type operator+ (fp_simd_type const & sv) const
-            noexcept
-        {
-            return fp_simd_type {this->_vec + sv._vec};
-        }
-
-        template <typename U>
-        constexpr fp_simd_type operator+ (U val) const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return fp_simd_type {
-                this->_vec + base::extend (val)
-            };
-        }
-
-        constexpr fp_simd_type operator- (fp_simd_type const & sv) const
-            noexcept
-        {
-            return fp_simd_type {this->_vec - sv._vec};
-        }
-
-        template <typename U>
-        constexpr fp_simd_type operator- (U val) const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return fp_simd_type {
-                this->_vec - base::extend (val)
-            };
-        }
-
-        constexpr fp_simd_type operator* (fp_simd_type const & sv) const
-            noexcept
-        {
-            return fp_simd_type {this->_vec * sv._vec};
-        }
-
-        template <typename U>
-        constexpr fp_simd_type operator* (U val) const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return fp_simd_type {
-                this->_vec * base::extend (val)
-            };
-        }
-
-        constexpr fp_simd_type operator/ (fp_simd_type const & sv) const
-            noexcept
-        {
-            return fp_simd_type {this->_vec / sv._vec};
-        }
-
-        template <typename U>
-        constexpr fp_simd_type operator/ (U val) const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return fp_simd_type {
-                this->_vec / base::extend (val)
-            };
-        }
-
-        constexpr fp_simd_type operator! (void) const noexcept
-        {
-            return fp_simd_type {!this->_vec};
-        }
-
-        constexpr fp_simd_type operator&& (fp_simd_type const & sv) const
-            noexcept
-        {
-            return fp_simd_type {this->_vec && sv._vec};
-        }
-
-        template <typename U>
-        constexpr fp_simd_type operator&& (U val) const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return fp_simd_type {
-                this->_vec && base::extend (val)
-            };
-        }
-
-        constexpr fp_simd_type operator|| (fp_simd_type const & sv) const
-            noexcept
-        {
-            return fp_simd_type {this->_vec || sv._vec};
-        }
-
-        template <typename U>
-        constexpr fp_simd_type operator|| (U val) const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return fp_simd_type {
-                this->_vec || base::extend (val)
-            };
-        }
-
-        advanced_constexpr fp_simd_type & operator+= (fp_simd_type const & sv) & noexcept
-        {
-            this->_vec += sv._vec;
-            return *this;
-        }
-
-        template <typename U>
-        advanced_constexpr fp_simd_type & operator+= (U val) & noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            this->_vec += base::extend (val);
-            return *this;
-        }
-
-        advanced_constexpr fp_simd_type & operator-= (fp_simd_type const & sv) & noexcept
-        {
-            this->_vec -= sv._vec;
-            return *this;
-        }
-
-        template <typename U>
-        advanced_constexpr fp_simd_type & operator-= (U val) & noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            this->_vec -= base::extend (val);
-            return *this;
-        }
-
-        advanced_constexpr fp_simd_type & operator*= (fp_simd_type const & sv) & noexcept
-        {
-            this->_vec *= sv._vec;
-            return *this;
-        }
-
-        template <typename U>
-        advanced_constexpr fp_simd_type & operator*= (U val) & noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            this->_vec *= base::extend (val);
-            return *this;
-        }
-
-        advanced_constexpr fp_simd_type & operator/= (fp_simd_type const & sv) &
-            noexcept
-        {
-            this->_vec /= sv._vec;
-            return *this;
-        }
-
-        template <typename U>
-        advanced_constexpr fp_simd_type & operator/= (U val) & noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            this->_vec /= base::extend (val);
-            return *this;
-        }
-
-#if defined (__clang__)
-    private:
-        template <typename Comparison, std::size_t ... L>
-        static constexpr boolean_simd_type <integral_type, lanes>
-            unpack_comparison (Comparison && c, util::index_sequence <L...>)
-            noexcept
-        {
-            return boolean_simd_type <integral_type, lanes> {
-                std::forward <Comparison> (c) [L]...
-            };
-        }
-
-    public:
-#endif
-        constexpr boolean_simd_type <integral_type, lanes>
-            operator== (fp_simd_type const & sv) const noexcept
-        {
-#if defined (__clang__)
-            return unpack_comparison (
-                this->_vec == sv._vec, util::make_index_sequence <lanes> {}
-            );
-#elif defined (__GNUG__)
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec == sv._vec
-            };
-#endif
-        }
-
-        template <typename U>
-        constexpr boolean_simd_type <integral_type, lanes> operator== (U val)
-            const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return *this == fp_simd_type {val};
-        }
-
-        constexpr boolean_simd_type <integral_type, lanes>
-            operator!= (fp_simd_type const & sv) const noexcept
-        {
-#if defined (__clang__)
-            return unpack_comparison (
-                this->_vec != sv._vec, util::make_index_sequence <lanes> {}
-            );
-#elif defined (__GNUG__)
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec != sv._vec
-            };
-#endif
-        }
-
-        template <typename U>
-        constexpr boolean_simd_type <integral_type, lanes>
-            operator!= (U val) const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return *this != fp_simd_type {val};
-        }
-
-        constexpr boolean_simd_type <integral_type, lanes>
-            operator> (fp_simd_type const & sv) const noexcept
-        {
-#if defined (__clang__)
-            return unpack_comparison (
-                this->_vec > sv._vec, util::make_index_sequence <lanes> {}
-            );
-#elif defined (__GNUG__)
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec > sv._vec
-            };
-#endif
-        }
-
-        template <typename U>
-        constexpr boolean_simd_type <integral_type, lanes>
-            operator> (U val) const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return *this > fp_simd_type {val};
-        }
-
-        constexpr boolean_simd_type <integral_type, lanes>
-            operator< (fp_simd_type const & sv) const noexcept
-        {
-#if defined (__clang__)
-            return unpack_comparison (
-                this->_vec < sv._vec, util::make_index_sequence <lanes> {}
-            );
-#elif defined (__GNUG__)
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec < sv._vec
-            };
-#endif
-        }
-
-        template <typename U>
-        constexpr boolean_simd_type <integral_type, lanes>
-            operator< (U val) const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return *this < fp_simd_type {val};
-        }
-
-        constexpr boolean_simd_type <integral_type, lanes>
-            operator>= (fp_simd_type const & sv) const noexcept
-        {
-#if defined (__clang__)
-            return unpack_comparison (
-                this->_vec >= sv._vec, util::make_index_sequence <lanes> {}
-            );
-#elif defined (__GNUG__)
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec >= sv._vec
-            };
-#endif
-        }
-
-        template <typename U>
-        constexpr boolean_simd_type <integral_type, lanes>
-            operator>= (U val) const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return *this >= fp_simd_type {val};
-        }
-
-        constexpr boolean_simd_type <integral_type, lanes>
-            operator<= (fp_simd_type const & sv) const noexcept
-        {
-#if defined (__clang__)
-            return unpack_comparison (
-                this->_vec <= sv._vec, util::make_index_sequence <lanes> {}
-            );
-#elif defined (__GNUG__)
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec <= sv._vec
-            };
-#endif
-        }
-
-        template <typename U>
-        constexpr boolean_simd_type <integral_type, lanes>
-            operator<= (U val) const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return *this <= fp_simd_type {val};
-        }
-    };
-#pragma GCC diagnostic pop
-*/
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wattributes"
     template <typename T, std::size_t l>
@@ -3748,160 +3268,298 @@ template <>
     private:
         using base = simd_type_base <std::complex <T>, l>;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wattributes"
-        union alignas (base::alignment)
-        {
-            typename base::vector_type_impl _realvec;
-            T _realarr [l];
-        };
-#pragma GCC diagnostic pop
+        typename base::vector_type_impl _realvec;
+        typename base::vector_type_impl _imagvec;
 
-        union alignas (base::alignment)
+        /*
+         * This is a proxy reference object to avoid undefined behavior and
+         * type-punning in derived SIMD type classes. It is the returned
+         * type from methds such as operator[] and at().
+         */
+        template <typename VecType, typename ValType>
+        class reference_proxy;
+
+        /*
+         * This is a proxy pointer object to avoid undefined behavior and
+         * type-punning in derived SIMD type classes. It is the returned
+         * type from methds such as {c}{r}begin and {c}{r}end.
+         */
+        template <typename VecType, typename ValType>
+        class pointer_proxy;
+
+        template <typename VecType, typename ValType>
+        class reference_proxy
         {
-            typename base::vector_type_impl _imagvec;
-            T _imagarr [l];
+        private:
+            using vector_type = VecType;
+            using value_type  = ValType;
+            using pointer     = pointer_proxy <vector_type, value_type>;
+            using vecpointer  = typename std::add_pointer <vector_type>::type;
+
+            vecpointer _realref;
+            vecpointer _imagref;
+            std::ptrdiff_t _index;
+
+        public:
+            reference_proxy (void) = delete;
+            ~reference_proxy (void) noexcept = default;
+
+            constexpr reference_proxy (vecpointer real,
+                                       vecpointer imag,
+                                       std::ptrdiff_t index = 0)
+                noexcept
+                : _realref {real}
+                , _imagref {imag}
+                , _index   {index}
+            {}
+
+            constexpr
+                reference_proxy (vector_type & real,
+                                 vector_type & imag,
+                                 std::ptrdiff_t index = 0)
+                noexcept
+                : _realref {&real}
+                , _imagref {&imag}
+                , _index   {index}
+            {}
+
+            constexpr reference_proxy (reference_proxy const &) noexcept
+                = default;
+
+            template <typename U>
+            reference_proxy & operator= (U && u) noexcept
+            {
+                static_assert (
+                    std::is_convertible <U, value_type>::value,
+                    "cannot assign to vector lane from non-convertible type"
+                );
+
+                (*this->_realref) [this->_index] = static_cast <value_type> (
+                    std::forward <U> (u)
+                ).real ();
+                (*this->_imagref) [this->_index] = static_cast <value_type> (
+                    std::forward <U> (u)
+                ).imag ();
+                return *this;
+            }
+
+            reference_proxy & operator= (reference_proxy const & r) noexcept
+            {
+                this->_realref = r._realref;
+                this->_imagref = r._imagref;
+                this->_index = r._index;
+                return *this;
+            }
+
+            void swap (reference_proxy & r) noexcept
+            {
+                std::swap (this->_realref, r._realref);
+                std::swap (this->_imagref, r._imagref);
+                std::swap (this->_index, r._index);
+            }
+
+            template <typename U>
+            constexpr operator U (void) const noexcept
+            {
+                static_assert (
+                    std::is_convertible <value_type, U>::value,
+                    "cannot perform cast"
+                );
+
+                return static_cast <U> (
+                    value_type {
+                        (*this->_realref) [this->_index],
+                        (*this->_imagref) [this->_index]
+                    }
+                );
+            }
+
+            pointer operator& (void) const & noexcept
+            {
+                return pointer {this->_realref, this->_imagref, this->_index};
+            }
+
+            constexpr bool operator== (reference_proxy const & r) const noexcept
+            {
+                return (*this->_realref) [this->_index] == (*r._realref) [r._index] &&
+                       (*this->_imagref) [this->_index] == (*r._imagref) [r._index];
+            }
+
+            constexpr bool operator!= (reference_proxy const & r) const noexcept
+            {
+                return (*this->_realref) [this->_index] != (*r._realref) [r._index] ||
+                       (*this->_imagref) [this->_index] != (*r._imagref) [r._index];
+            }
         };
 
-        template <typename U>
+        template <typename VecType, typename ValType>
         class pointer_proxy
         {
+        private:
+            using vector_type = VecType;
+            using value_type  = ValType;
+            using vecpointer  = typename std::add_pointer <vector_type>::type;
+            using reference   = reference_proxy <vector_type, value_type>;
+
+            vecpointer _realpointer;
+            vecpointer _imagpointer;
+            std::ptrdiff_t _index;
+
         public:
-            using element_type = U;
-            using void_pointer = typename std::conditional <
-                std::is_const <U>::value,
-                void const *,
-                void *
-            >::type;
-            using pointer   = typename std::add_pointer <U>::type;
-            using reference = typename std::add_lvalue_reference <U>::type;
-            using difference_type = std::ptrdiff_t;
             using iterator_category = std::random_access_iterator_tag;
 
-        private:
-            pointer _realpointer;
-            pointer _imagpointer;
-
-        public:
-            pointer_proxy (void) noexcept
+            constexpr pointer_proxy (void) noexcept
                 : _realpointer {nullptr}
                 , _imagpointer {nullptr}
+                , _index       {0}
             {}
 
             ~pointer_proxy (void) noexcept = default;
 
-            pointer_proxy (pointer real, pointer imag) noexcept
+            constexpr pointer_proxy (vecpointer real,
+                                     vecpointer imag,
+                                     std::ptrdiff_t index = 0)
+                noexcept
                 : _realpointer {real}
                 , _imagpointer {imag}
+                , _index       {index}
             {}
 
-            pointer_proxy (element_type & real, element_type & imag) noexcept
-                : _realpointer {
-                    static_cast <pointer> (static_cast <void_pointer> (&real))
-                }
-                , _imagpointer {
-                    static_cast <pointer> (static_cast <void_pointer> (&imag))
-                }
+            constexpr pointer_proxy (vector_type & real,
+                                     vector_type & imag,
+                                     std::ptrdiff_t index = 0)
+                noexcept
+                : _realpointer {&real}
+                , _imagpointer {&imag}
+                , _index       {index}
             {}
 
-            pointer_proxy (pointer_proxy const &) noexcept = default;
-            pointer_proxy & operator= (pointer_proxy const &) noexcept
-                = default;
+            constexpr pointer_proxy (pointer_proxy const &) noexcept = default;
+
+            advanced_constexpr pointer_proxy & operator= (pointer_proxy p)
+                noexcept
+            {
+                this->_realpointer = p._realpointer;
+                this->_imagpointer = p._imagpointer;
+                this->_index = p._index;
+                return *this;
+            }
+
+            operator bool (void) noexcept
+            {
+                return static_cast <bool> (this->_realpointer) &&
+                       static_cast <bool> (this->_imagpointer);
+            }
+
+            reference operator* (void) const noexcept
+            {
+                return reference {
+                    this->_realpointer, this->_imagpointer, this->_index
+                };
+            }
+
+            reference operator[] (std::ptrdiff_t n) const noexcept
+            {
+                return reference {
+                    this->_realpointer, this->_imagpointer, this->_index + n
+                };
+            }
 
             pointer_proxy & operator++ (void) noexcept
             {
-                this->_realpointer += 1;
-                this->_imagpointer += 1;
+                this->_index += 1;
                 return *this;
             }
 
             pointer_proxy & operator-- (void) noexcept
             {
-                this->_realpointer -= 1;
-                this->_imagpointer -= 1;
+                this->_index -= 1;
                 return *this;
             }
 
-            pointer_proxy & operator++ (int) noexcept
+            pointer_proxy operator++ (int) noexcept
             {
                 auto const tmp = *this;
-                this->_realpointer += 1;
-                this->_imagpointer += 1;
+                this->_index += 1;
                 return tmp;
             }
 
-            pointer_proxy & operator-- (int) noexcept
+            pointer_proxy operator-- (int) noexcept
             {
                 auto const tmp = *this;
-                this->_realpointer -= 1;
-                this->_imagpointer -= 1;
+                this->_index -= 1;
                 return tmp;
             }
 
-            pointer_proxy & operator+= (difference_type n) noexcept
+            pointer_proxy & operator+= (std::ptrdiff_t n) noexcept
             {
-                this->_realpointer += n;
-                this->_imagpointer += n;
+                this->_index += n;
                 return *this;
             }
 
-            pointer_proxy & operator-= (difference_type n) noexcept
+            pointer_proxy & operator-= (std::ptrdiff_t n) noexcept
             {
-                this->_realpointer -= n;
-                this->_imagpointer -= n;
+                this->_index -= n;
                 return *this;
             }
 
-            pointer_proxy operator+ (difference_type n) const noexcept
+            pointer_proxy operator+ (std::ptrdiff_t n) const noexcept
             {
                 auto tmp = *this;
                 return tmp += n;
             }
 
-            pointer_proxy operator- (difference_type n) const noexcept
+            pointer_proxy operator- (std::ptrdiff_t n) const noexcept
             {
                 auto tmp = *this;
                 return tmp -= n;
             }
 
-            bool operator== (pointer_proxy const & other) const noexcept
+            std::ptrdiff_t operator- (pointer_proxy p) const noexcept
             {
-                return (this->_realpointer == other._realpointer) &&
-                       (this->_imagpointer == other._imagpointer);
+                return this->_index - p._index;
             }
 
-            bool operator< (pointer_proxy const & other) const noexcept
+            bool operator== (pointer_proxy p) const noexcept
             {
-                return (this->_realpointer < other._realpointer) &&
-                       (this->_imagpointer < other._imagpointer);
+                return this->_realpointer == p._realpointer &&
+                       this->_imagpointer == p._imagpointer &&
+                       this->_index == p._index;
             }
 
-            bool operator> (pointer_proxy const & other) const noexcept
+            bool operator!= (pointer_proxy p) const noexcept
             {
-                return (this->_realpointer > other._realpointer) &&
-                       (this->_imagpointer > other._imagpointer);
+                return this->_realpointer != p._realpointer ||
+                       this->_imagpointer != p._imagpointer ||
+                       this->_index != p._index;
             }
 
-            bool operator<= (pointer_proxy const & other) const noexcept
+            bool operator< (pointer_proxy p) const noexcept
             {
-                return (this->_realpointer <= other._realpointer) &&
-                       (this->_imagpointer <= other._imagpointer);
+                return (this->_realpointer < p._realpointer &&
+                        this->_imagpointer < p._imagpointer)||
+                       (this->_realpointer == p._realpointer &&
+                        this->_imagpointer == p._imagpointer &&
+                        this->_index < p._index);
             }
 
-            bool operator>= (pointer_proxy const & other) const noexcept
+            bool operator> (pointer_proxy p) const noexcept
             {
-                return (this->_realpointer >= other._realpointer) &&
-                       (this->_imagpointer >= other._imagpointer);
+                return (this->_realpointer > p._realpointer &&
+                        this->_imagpointer > p._imagpointer)||
+                       (this->_realpointer == p._realpointer &&
+                        this->_imagpointer == p._imagpointer &&
+                        this->_index > p._index);
             }
 
-            U operator* (void) const noexcept
+            bool operator<= (pointer_proxy p) const noexcept
             {
-                return U {*this->_realpointer, *this->_imagpointer};
+                return *this == p || *this < p;
             }
 
-            U operator[] (difference_type n) const noexcept
+            bool operator>= (pointer_proxy p) const noexcept
             {
-                return *(*this + n);
+                return *this == p || *this > p;
             }
         };
 
@@ -3916,12 +3574,14 @@ template <>
         using integral_type   = typename base::integral_type;
         using unsigned_integral_type = typename base::unsigned_integral_type;
         using signed_integral_type = typename base::signed_integral_type;
-        using pointer         = pointer_proxy <value_type>;
-        using const_pointer   = pointer_proxy <value_type const>;
-        using iterator        = pointer;
-        using const_iterator  = const_pointer;
-        using reverse_iterator       = std::reverse_iterator <pointer>;
-        using const_reverse_iterator = std::reverse_iterator <const_pointer>;
+        using reference       = reference_proxy <vector_type, value_type>;
+        using const_reference =
+            reference_proxy <vector_type const, value_type const>;
+        using iterator        = pointer_proxy <vector_type, value_type>;
+        using const_iterator =
+            pointer_proxy <vector_type const, value_type const>;
+        using reverse_iterator       = std::reverse_iterator <iterator>;
+        using const_reverse_iterator = std::reverse_iterator <const_iterator>;
         using category_tag           = complex_tag;
         static constexpr std::size_t lanes = l;
         static constexpr std::size_t alignment = base::alignment;
@@ -4185,8 +3845,9 @@ template <>
 
     private:
         template <std::size_t ... L>
-        advanced_constexpr void fill_array (std::array <value_type, lanes> & arr,
-                                   util::index_sequence <L...>) const noexcept
+        advanced_constexpr void
+            fill_array (std::array <value_type, lanes> & arr,
+                        util::index_sequence <L...>) const noexcept
         {
             value_type _unused [] = {
                 (std::get <L> (arr) = this->template get <L> ())...
@@ -4195,8 +3856,8 @@ template <>
         }
 
     public:
-        explicit advanced_constexpr operator std::array <value_type, lanes> (void) const
-            noexcept
+        explicit advanced_constexpr
+            operator std::array <value_type, lanes> (void) const noexcept
         {
             std::array <value_type, lanes> result {};
             this->fill_array (result, util::make_index_sequence <lanes> {});
@@ -4245,12 +3906,6 @@ template <>
             return rebind_type {result};
         }
 
-        advanced_constexpr void fill (value_type const & val) noexcept
-        {
-            this->_realvec = extend_real (val);
-            this->_realvec = extend_imag (val);
-        }
-
         advanced_constexpr void swap (complex_simd_type & other) noexcept
         {
             auto tmp = *this;
@@ -4258,177 +3913,205 @@ template <>
             other = tmp;
         }
 
-        constexpr std::array <value_type, lanes> data (void) const & noexcept
+        advanced_constexpr void fill (value_type const & val) noexcept
         {
-            return static_cast <std::array <value_type, lanes>> (*this);
+            this->_realvec = extend_real (val);
+            this->_realvec = extend_imag (val);
         }
 
-        template <std::size_t lane>
-        advanced_constexpr std::pair <T &, T &> get (void) & noexcept
+        advanced_constexpr void
+            assign (std::size_t n, value_type const & val) & noexcept
+        {
+            this->_realvec [n] = val.real ();
+            this->_imagvec [n] = val.imag ();
+        }
+
+        advanced_constexpr void
+            assign (std::initializer_list <value_type> & vl) & noexcept
+        {
+            auto vals = vl.begin ();
+            std::size_t i = 0;
+            for (; i < std::min (lanes, vl.size ()); ++i) {
+                this->_realvec [i] = vals [i].real ();
+                this->_imagvec [i] = vals [i].imag ();
+            }
+            for (; i < lanes; ++i) {
+                this->_realvec [i] = value_type {0}.real ();
+                this->_imagvec [i] = value_type {0}.imag ();
+            }
+        }
+
+        constexpr std::pair <vector_type const &, vector_type const &>
+            data (void) const & noexcept
+        {
+            return std::pair <vector_type const &, vector_type const &> (
+                this->_realvec, this->_imagvec
+            );
+        }
+
+        advanced_constexpr std::pair <vector_type &, vector_type &>
+            data (void) & noexcept
+        {
+            return std::pair <vector_type &, vector_type &> (
+                this->_realvec, this->_imagvec
+            );
+        }
+
+        template <std::size_t n>
+        constexpr const_reference get (void) const & noexcept
         {
             static_assert (
-                lane < lanes,
+                n < lanes,
                 "cannot access out-of-bounds vector lane"
             );
 
-            return std::make_pair (this->_realarr [lane], this->_imagarr [lane]);
+            return const_reference {
+                this->_realvec, this->_imagvec, static_cast <std::ptrdiff_t> (n)
+            };
         }
 
-        template <std::size_t lane>
-        constexpr std::pair <T const &, T const &> get (void) const & noexcept
+        template <std::size_t n>
+        advanced_constexpr reference get (void) & noexcept
         {
             static_assert (
-                lane < lanes,
+                n < lanes,
                 "cannot access out-of-bounds vector lane"
             );
 
-            return std::make_pair (this->_realarr [lane], this->_imagarr [lane]);
+            return reference {
+                this->_realvec, this->_imagvec, static_cast <std::ptrdiff_t> (n)
+            };
         }
 
-        template <std::size_t lane>
-        advanced_constexpr T & get_real (void) & noexcept
+        template <std::size_t n>
+        advanced_constexpr complex_simd_type set (value_type const & val) &
+            noexcept
         {
             static_assert (
-                lane < lanes,
+                n < lanes,
                 "cannot access out-of-bounds vector lane"
             );
 
-            return this->_realarr [lane];
+            this->_realvec [n] = val.real ();
+            this->_imagvec [n] = val.imag ();
+            return *this;
         }
 
-        template <std::size_t lane>
-        constexpr T const & get_real (void) const & noexcept
+        constexpr const_reference
+            operator[] (std::size_t n) const & noexcept
         {
-            static_assert (
-                lane < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            return this->_realarr [lane];
+            return const_reference {
+                this->_realvec, this->_imagvec, static_cast <std::ptrdiff_t> (n)
+            };
         }
 
-        template <std::size_t lane>
-        advanced_constexpr T & get_imag (void) & noexcept
+        advanced_constexpr reference operator[] (std::size_t n) & noexcept
         {
-            static_assert (
-                lane < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            return this->_imagarr [lane];
+            return reference {
+                this->_realvec, this->_imagvec, static_cast <std::ptrdiff_t> (n)
+            };
         }
 
-        template <std::size_t lane>
-        constexpr T const & get_imag (void) const & noexcept
-        {
-            static_assert (
-                lane < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            return this->_imagarr [lane];
-        }
-
-        advanced_constexpr std::pair <T &, T &> operator[] (std::size_t n) & noexcept
-        {
-            return std::make_pair (this->_realarr [n], this->_imagarr [n]);
-        }
-
-        constexpr std::pair <T const &, T const &> operator[] (std::size_t n) const & noexcept
-        {
-            return std::make_pair (this->_realarr [n], this->_imagarr [n]);
-        }
-
-        advanced_constexpr std::pair <T &, T &> at (std::size_t n) &
+        constexpr const_reference at (std::size_t n) const &
         {
             return n < lanes ?
-                std::make_pair (this->_realarr [n], this->_imagarr [n]) :
-                throw std::out_of_range {"access attempt to out-of-bounds vector lane"};
+                const_reference {
+                    this->_realvec, this->_imagvec,
+                    static_cast <std::ptrdiff_t> (n)
+                } :
+                throw std::out_of_range {
+                    "access attempt to out-of-bounds vector lane"
+                };
         }
 
-        constexpr std::pair <T const &, T const &> at (std::size_t n) const &
+        advanced_constexpr reference at (std::size_t n) &
         {
             return n < lanes ?
-                std::make_pair (this->_realarr [n], this->_imagarr [n]) :
-                throw std::out_of_range {"access attempt to out-of-bounds vector lane"};
+                reference {
+                    this->_realvec, this->_imagvec,
+                    static_cast <std::ptrdiff_t> (n)
+                } :
+                throw std::out_of_range {
+                    "access attempt to out-of-bounds vector lane"
+                };
         }
 
         advanced_constexpr iterator begin (void) & noexcept
         {
-            return iterator {this->_realarr [0], this->_imagarr [0]};
+            return iterator {this->_realvec, this->_imagvec, 0};
         }
 
         advanced_constexpr iterator end (void) & noexcept
         {
             return iterator {
-                *(&this->_realarr [0] + lanes),
-                *(&this->_imagarr [0] + lanes)
+                this->_realvec, this->_imagvec,
+                static_cast <std::ptrdiff_t> (lanes)
             };
         }
 
-        advanced_constexpr const_iterator begin (void) const & noexcept
+        constexpr const_iterator begin (void) const & noexcept
         {
-            return const_iterator {this->_realarr [0], this->_imagarr [0]};
+            return const_iterator {this->_realvec, this->_imagvec, 0};
         }
 
-        advanced_constexpr const_iterator end (void) const & noexcept
+        constexpr const_iterator end (void) const & noexcept
         {
             return const_iterator {
-                *(&this->_realarr [0] + lanes),
-                *(&this->_imagarr [0] + lanes)
+                this->_realvec, this->_imagvec,
+                static_cast <std::ptrdiff_t> (lanes)
             };
         }
 
-        advanced_constexpr const_iterator cbegin (void) const & noexcept
+        constexpr const_iterator cbegin (void) const & noexcept
         {
-            return const_iterator {this->_realarr [0], this->_imagarr [0]};
+            return const_iterator {this->_realvec, this->_imagvec, 0};
         }
 
-        advanced_constexpr const_iterator cend (void) const & noexcept
+        constexpr const_iterator cend (void) const & noexcept
         {
             return const_iterator {
-                *(&this->_realarr [0] + lanes),
-                *(&this->_imagarr [0] + lanes)
+                this->_realvec, this->_imagvec,
+                static_cast <std::ptrdiff_t> (lanes)
             };
         }
 
         advanced_constexpr reverse_iterator rbegin (void) & noexcept
         {
             return reverse_iterator {
-                *(&this->_realarr [0] + lanes),
-                *(&this->_imagarr [0] + lanes)
+                this->_realvec, this->_imagvec,
+                static_cast <std::ptrdiff_t> (lanes)
             };
         }
 
         advanced_constexpr reverse_iterator rend (void) & noexcept
         {
-            return reverse_iterator {this->_realarr [0], this->_imagarr [0]};
+            return reverse_iterator {this->_realvec, this->_imagvec, 0};
         }
 
-        advanced_constexpr const_reverse_iterator rbegin (void) const & noexcept
+        constexpr const_reverse_iterator rbegin (void) const & noexcept
         {
             return const_reverse_iterator {
-                *(&this->_realarr [0] + lanes),
-                *(&this->_imagarr [0] + lanes)
+                this->_realvec, this->_imagvec,
+                static_cast <std::ptrdiff_t> (lanes)
             };
         }
 
-        advanced_constexpr const_reverse_iterator rend (void) const & noexcept
+        constexpr const_reverse_iterator rend (void) const & noexcept
         {
-            return const_reverse_iterator {this->_realarr [0], this->_imagarr [0]};
+            return const_reverse_iterator {this->_realvec, this->_imagvec, 0};
         }
 
-        advanced_constexpr const_reverse_iterator crbegin (void) const & noexcept
+        constexpr const_reverse_iterator crbegin (void) const & noexcept
         {
             return const_reverse_iterator {
-                *(&this->_realarr [0] + lanes),
-                *(&this->_imagarr [0] + lanes)
+                this->_realvec, this->_imagvec,
+                static_cast <std::ptrdiff_t> (lanes)
             };
         }
 
-        advanced_constexpr const_reverse_iterator crend (void) const & noexcept
+        constexpr const_reverse_iterator crend (void) const & noexcept
         {
-            return const_reverse_iterator {this->_realarr [0], this->_imagarr [0]};
+            return const_reverse_iterator {this->_realvec, this->_imagvec, 0};
         }
 
         constexpr complex_simd_type operator+ (void) const noexcept
@@ -4713,29 +4396,20 @@ template <>
     private:
         using base = simd_type_base <T, l>;
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wattributes"
-        union alignas (base::alignment)
-        {
-            typename base::vector_type_impl _vec;
-            T _arr [l];
-        };
-#pragma GCC diagnostic pop
+        typename base::vector_type_impl _vec;
 
     public:
-        using vector_type     = typename base::vector_type_impl;
-        using value_type      = bool;
-        using integral_type   = typename base::integral_type;
+        using vector_type            = typename base::vector_type_impl;
+        using value_type             = bool;
+        using integral_type          = typename base::integral_type;
         using unsigned_integral_type = typename base::unsigned_integral_type;
-        using signed_integral_type = typename base::signed_integral_type;
-        using pointer         = typename base::template pointer_proxy <T>;
-        using const_pointer   = typename base::template pointer_proxy <T const>;
-        using reference       = T &;
-        using const_reference = T const &;
-        using iterator        = pointer;
-        using const_iterator  = const_pointer;
-        using reverse_iterator       = std::reverse_iterator <pointer>;
-        using const_reverse_iterator = std::reverse_iterator <const_pointer>;
+        using signed_integral_type   = typename base::signed_integral_type;
+        using reference              = typename base::reference;
+        using const_reference        = typename base::const_reference;
+        using iterator               = typename base::pointer;
+        using const_iterator         = typename base::const_pointer;
+        using reverse_iterator       = std::reverse_iterator <iterator>;
+        using const_reverse_iterator = std::reverse_iterator <const_iterator>;
         static constexpr std::size_t lanes = l;
 
         template <typename U, std::size_t L, typename tag>
@@ -4772,7 +4446,9 @@ template <>
             >::type
         >
         explicit constexpr boolean_simd_type (value_types && ... vals) noexcept
-            : _vec {base::extend (std::forward <value_types> (vals)...)}
+            : _vec {
+                static_cast <value_type> (std::forward <value_types> (vals))...
+            }
         {}
 
         constexpr boolean_simd_type (boolean_simd_type const & sv) noexcept
@@ -4790,8 +4466,8 @@ template <>
             : _vec {base::unpack (arr)}
         {}
 
-        advanced_constexpr boolean_simd_type & operator= (boolean_simd_type const & sv) &
-            noexcept
+        advanced_constexpr boolean_simd_type &
+            operator= (boolean_simd_type const & sv) & noexcept
         {
             this->_vec = sv._vec;
             return *this;
@@ -4812,8 +4488,9 @@ template <>
 
     private:
         template <std::size_t ... L>
-        advanced_constexpr void fill_array (std::array <value_type, lanes> & arr,
-                                            util::index_sequence <L...>) const noexcept
+        advanced_constexpr void
+            fill_array (std::array <value_type, lanes> & arr,
+                        util::index_sequence <L...>) const noexcept
         {
             value_type _unused [] = {
                 (std::get <L> (arr) = this->template get <L> ())...
@@ -4822,8 +4499,8 @@ template <>
         }
 
     public:
-        explicit advanced_constexpr operator std::array <value_type, lanes> (void) const
-            noexcept
+        explicit advanced_constexpr
+            operator std::array <value_type, lanes> (void) const noexcept
         {
             std::array <value_type, lanes> result {};
             this->fill_array (result, util::make_index_sequence <lanes> {});
@@ -4858,11 +4535,6 @@ template <>
             };
         }
 
-        advanced_constexpr void fill (value_type const & val) noexcept
-        {
-            this->_vec = base::extend (val);
-        }
-
         advanced_constexpr void swap (boolean_simd_type & other) noexcept
         {
             auto tmp = *this;
@@ -4880,15 +4552,28 @@ template <>
             return this->_vec;
         }
 
-        template <std::size_t n>
-        advanced_constexpr reference get (void) & noexcept
+        advanced_constexpr void fill (value_type const & val) & noexcept
         {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
+            this->_vec = base::extend (val);
+        }
 
-            return this->_arr [n];
+        advanced_constexpr void
+            assign (std::size_t n, value_type const & val) & noexcept
+        {
+            this->_vec [n] = val;
+        }
+
+        advanced_constexpr void
+            assign (std::initializer_list <value_type> & vl) & noexcept
+        {
+            auto vals = vl.begin ();
+            std::size_t i = 0;
+            for (; i < std::min (lanes, vl.size ()); ++i) {
+                this->_vec [i] = vals [i];
+            }
+            for (; i < lanes; ++i) {
+                this->_vec [i] = value_type {0};
+            }
         }
 
         template <std::size_t n>
@@ -4899,95 +4584,142 @@ template <>
                 "cannot access out-of-bounds vector lane"
             );
 
-            return this->_arr [n];
+            return const_reference {
+                &this->_vec, static_cast <std::ptrdiff_t> (n)
+            };
         }
 
-        advanced_constexpr reference operator[] (std::size_t n) & noexcept
+        template <std::size_t n>
+        advanced_constexpr reference get (void) & noexcept
         {
-            return this->_arr [n];
+            static_assert (
+                n < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            return reference {&this->_vec, static_cast <std::ptrdiff_t> (n)};
+        }
+
+        template <std::size_t n>
+        advanced_constexpr boolean_simd_type & set (value_type const & val) &
+            noexcept
+        {
+            static_assert (
+                n < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            this->_vec [n] = val;
+            return *this;
         }
 
         constexpr const_reference operator[] (std::size_t n) const & noexcept
         {
-            return this->_arr [n];
+            return const_reference {
+                &this->_vec, static_cast <std::ptrdiff_t> (n)
+            };
         }
 
-        advanced_constexpr reference at (std::size_t n) &
+        advanced_constexpr reference operator[] (std::size_t n) & noexcept
         {
-            return n < lanes ?
-                this->_arr [n] :
-                throw std::out_of_range {"access attempt to out-of-bounds vector lane"};
+            return reference {
+                &this->_vec, static_cast <std::ptrdiff_t> (n)
+            };
         }
 
         constexpr const_reference at (std::size_t n) const &
         {
             return n < lanes ?
-                this->_arr [n] :
-                throw std::out_of_range {"access attempt to out-of-bounds vector lane"};
+                const_reference {this->_vec, n} :
+                throw std::out_of_range {
+                    "access attempt to out-of-bounds vector lane"
+                };
+        }
+
+        advanced_constexpr reference at (std::size_t n) &
+        {
+            return n < lanes ?
+                reference {this->_vec, n} :
+                throw std::out_of_range {
+                    "access attempt to out-of-bounds vector lane"
+                };
         }
 
         advanced_constexpr iterator begin (void) & noexcept
         {
-            return iterator {this->_arr [0]};
+            return iterator {this->data (), 0};
         }
 
         advanced_constexpr iterator end (void) & noexcept
         {
-            return iterator {*(&this->_arr [0] + lanes)};
+            return iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         constexpr const_iterator begin (void) const & noexcept
         {
-            return const_iterator {this->_arr [0]};
+            return const_iterator {this->data (), 0};
         }
 
         constexpr const_iterator end (void) const & noexcept
         {
-            return const_iterator {*(&this->_arr [0] + lanes)};
+            return const_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         constexpr const_iterator cbegin (void) const & noexcept
         {
-            return const_iterator {this->_arr [0]};
+            return const_iterator {this->data (), 0};
         }
 
         constexpr const_iterator cend (void) const & noexcept
         {
-            return const_iterator {*(&this->_arr [0] + lanes)};
+            return const_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         advanced_constexpr reverse_iterator rbegin (void) & noexcept
         {
-            return reverse_iterator {*(&this->_arr [0] + lanes)};
+            return reverse_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         advanced_constexpr reverse_iterator rend (void) & noexcept
         {
-            return reverse_iterator {this->_arr [0]};
+            return reverse_iterator {this->data (), 0};
         }
 
         constexpr const_reverse_iterator rbegin (void) const & noexcept
         {
-            return const_reverse_iterator {*(&this->_arr [0] + lanes)};
+            return const_reverse_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         constexpr const_reverse_iterator rend (void) const & noexcept
         {
-            return const_reverse_iterator {this->_arr [0]};
+            return const_reverse_iterator {this->data (), 0};
         }
 
         constexpr const_reverse_iterator crbegin (void) const & noexcept
         {
-            return const_reverse_iterator {*(&this->_arr [0] + lanes)};
+            return const_reverse_iterator {
+                this->data (), static_cast <std::ptrdiff_t> (lanes)
+            };
         }
 
         constexpr const_reverse_iterator crend (void) const & noexcept
         {
-            return const_reverse_iterator {this->_arr [0]};
+            return const_reverse_iterator {this->data (), 0};
         }
 
     private:
-        advanced_constexpr bool any_of_impl (bool (&&array) [lanes]) const noexcept
+        advanced_constexpr bool any_of_impl (bool (&&array) [lanes]) const
+            noexcept
         {
             for (auto b : array) {
                 if (b) {
@@ -4998,7 +4730,8 @@ template <>
             return false;
         }
 
-        advanced_constexpr bool all_of_impl (bool (&&array) [lanes]) const noexcept
+        advanced_constexpr bool all_of_impl (bool (&&array) [lanes]) const
+            noexcept
         {
             for (auto b : array) {
                 if (!b) {
@@ -5009,7 +4742,8 @@ template <>
             return true;
         }
 
-        advanced_constexpr bool none_of_impl (bool (&&array) [lanes]) const noexcept
+        advanced_constexpr bool none_of_impl (bool (&&array) [lanes]) const
+            noexcept
         {
             for (auto b : array) {
                 if (b) {
@@ -5021,7 +4755,8 @@ template <>
         }
 
         template <std::size_t ... L>
-        advanced_constexpr bool any_of_impl (util::index_sequence <L...>) const noexcept
+        advanced_constexpr bool any_of_impl (util::index_sequence <L...>) const
+            noexcept
         {
             return any_of_impl (
                 {static_cast <bool> (this->template get <L> ())...}
@@ -5029,7 +4764,8 @@ template <>
         }
 
         template <std::size_t ... L>
-        advanced_constexpr bool all_of_impl (util::index_sequence <L...>) const noexcept
+        advanced_constexpr bool all_of_impl (util::index_sequence <L...>) const
+            noexcept
         {
             return all_of_impl (
                 {static_cast <bool> (this->template get <L> ())...}
@@ -5037,7 +4773,8 @@ template <>
         }
 
         template <std::size_t ... L>
-        advanced_constexpr bool none_of_impl (util::index_sequence <L...>) const noexcept
+        advanced_constexpr bool none_of_impl (util::index_sequence <L...>) const
+            noexcept
         {
             return none_of_impl (
                 {static_cast <bool> (this->template get <L> ())...}
@@ -5066,7 +4803,7 @@ template <>
             const noexcept
         {
             return boolean_simd_type {
-                (this->_arr [L] ? integral_type {1} : integral_type {0})...
+                (this->_vec [L] ? integral_type {1} : integral_type {0})...
             };
         }
 
@@ -5355,40 +5092,16 @@ template <>
         return SimdT::load (addr);
     }
 
-    template <std::size_t lane, typename T, std::size_t lanes, typename tag>
-    constexpr typename simd_type <T, lanes, tag>::value_type
+    template <std::size_t n, typename T, std::size_t lanes, typename tag>
+    constexpr typename simd_type <T, lanes, tag>::reference
         get (simd_type <T, lanes, tag> const & sv) noexcept
     {
         static_assert (
-            lane < lanes,
+            n < lanes,
             "cannot access out-of-bounds vector lane"
         );
 
-        return sv.template get <lane> ();
-    }
-
-    template <std::size_t lane, typename T, std::size_t lanes>
-    constexpr typename simd_type <T, lanes, complex_tag>::value_type
-        get_real (simd_type <T, lanes, complex_tag> const & sv) noexcept
-    {
-        static_assert (
-            lane < lanes,
-            "cannot access out-of-bounds vector lane"
-        );
-
-        return sv.template get_real <lane> ();
-    }
-
-    template <std::size_t lane, typename T, std::size_t lanes>
-    constexpr typename simd_type <T, lanes, complex_tag>::value_type
-        get_imag (simd_type <T, lanes, complex_tag> const & sv) noexcept
-    {
-        static_assert (
-            lane < lanes,
-            "cannot access out-of-bounds vector lane"
-        );
-
-        return sv.template get_imag <lane> ();
+        return sv.template get <n> ();
     }
 
     template <typename T, std::size_t lanes, typename tag>
