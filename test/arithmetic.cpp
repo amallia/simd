@@ -407,10 +407,10 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
     std::uint64_t test_fail_count = 0;
 
     {
-        std::cerr << name << " (+)" << std::endl;
+        std::cout << name << " (+)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::plus <ScalarType>, std::plus <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -431,10 +431,10 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
     }
 
     {
-        std::cerr << name << " (-)" << std::endl;
+        std::cout << name << " (-)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::minus <ScalarType>, std::minus <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -455,10 +455,10 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
     }
 
     {
-        std::cerr << name << " (*)" << std::endl;
+        std::cout << name << " (*)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::multiplies <ScalarType>, std::multiplies <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -479,10 +479,10 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
     }
 
     {
-        std::cerr << name << " (/)" << std::endl;
+        std::cout << name << " (/)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::divides <ScalarType>, std::divides <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -503,10 +503,10 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
     }
 
     {
-        std::cerr << name << " (%)" << std::endl;
+        std::cout << name << " (%)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::modulus <ScalarType>, std::modulus <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -527,10 +527,10 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
     }
 
     {
-        std::cerr << name << " (<<)" << std::endl;
+        std::cout << name << " (<<)" << std::endl;
         auto fail_count = generate_and_test_cases <
             shiftl <ScalarType>, shiftl <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -551,10 +551,10 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
     }
 
     {
-        std::cerr << name << " (>>)" << std::endl;
+        std::cout << name << " (>>)" << std::endl;
         auto fail_count = generate_and_test_cases <
             shiftr <ScalarType>, shiftr <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -575,10 +575,10 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
     }
 
     {
-        std::cerr << name << " (&)" << std::endl;
+        std::cout << name << " (&)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::bit_and <ScalarType>, std::bit_and <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -599,10 +599,10 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
     }
 
     {
-        std::cerr << name << " (|)" << std::endl;
+        std::cout << name << " (|)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::bit_or <ScalarType>, std::bit_or <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -623,10 +623,10 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
     }
 
     {
-        std::cerr << name << " (^)" << std::endl;
+        std::cout << name << " (^)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::bit_xor <ScalarType>, std::bit_xor <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -656,10 +656,10 @@ std::uint64_t run_float_tests (std::string name, std::size_t test_length)
     std::uint64_t test_fail_count = 0;
 
     {
-        std::cerr << name << " (+)" << std::endl;
+        std::cout << name << " (+)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::plus <ScalarType>, std::plus <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -680,10 +680,10 @@ std::uint64_t run_float_tests (std::string name, std::size_t test_length)
     }
 
     {
-        std::cerr << name << " (-)" << std::endl;
+        std::cout << name << " (-)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::minus <ScalarType>, std::minus <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -704,10 +704,10 @@ std::uint64_t run_float_tests (std::string name, std::size_t test_length)
     }
 
     {
-        std::cerr << name << " (*)" << std::endl;
+        std::cout << name << " (*)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::multiplies <ScalarType>, std::multiplies <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -728,10 +728,10 @@ std::uint64_t run_float_tests (std::string name, std::size_t test_length)
     }
 
     {
-        std::cerr << name << " (/)" << std::endl;
+        std::cout << name << " (/)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::divides <ScalarType>, std::divides <SimdType>, SimdType
-        > (test_length, std::cerr, errors);
+        > (test_length, std::cout, errors);
 
         if (fail_count != 0) {
             std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
@@ -994,7 +994,7 @@ int main (int argc, char ** argv)
     }
 
     if (failures != 0) {
-        std::cout << "failed: " << failures << " cases" << std::endl;
+        std::cerr << "failed: " << failures << " cases" << std::endl;
         return EXIT_FAILURE;
     } else {
         return EXIT_SUCCESS;
