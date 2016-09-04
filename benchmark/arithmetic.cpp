@@ -29,8 +29,7 @@
 #include <vector>       // std::vector
 
 #include "chrono_io.hpp"
-#include "docopt/docopt.h"
-#include <simd>
+#include "simd.hpp"
 
 
 using clock_type = std::chrono::high_resolution_clock;
