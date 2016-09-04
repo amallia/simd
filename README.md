@@ -1,6 +1,10 @@
 simd
 ====
 
+### status
+[![Build Status](https://travis-ci.org/daltonwoodard/simd.svg?branch=master)]
+(https://travis-ci.org/daltonwoodard/simd)
+
 ## description
 
 A single-header C++11 (and onwards) library of SIMD vector types and operations
@@ -9,7 +13,40 @@ using GCC and Clang vector extensions.
 
 ## dependencies
 
-Clang or GCC compiler support for C++11 or later.
+Clang or GCC compiler support for C++11 or later. Clang or GCC support for
+SIMD vector extensions.
+
+## possible future extensions
+
+* Implement support for Intel C++ Compiler using direct x86 intrinsics.
+* Implement support for ARM C++ Compiler using direct NEON intrinsics.
+
+## known successful configurations
+
+### Ubuntu Linux (travis-ci: 12.04 precise)
+
+| -Olvl/Compiler | GCC 5.4 | LLVM Clang 3.6 | LLVM Clang 3.7 | LLVM Clang 3.8 |
+|:--------------:|:-------:|:--------------:|:--------------:|:--------------:|
+| -O0            | passing | passing        | passing        | passing        |
+| -O1            | passing | passing        | passing        | passing        |
+| -O2            | passing | passing        | passing        | passing        |
+| -O3            | passing | passing        | passing        | passing        |
+
+### macOS
+
+| -Olvl/Compiler | GCC 5.4 | GCC 6.2 | Apple LLVM 7.3 |
+|:--------------:|:-------:|:-------:|:--------------:|
+| -O0            | passing | passing | passing        |
+| -O1            | passing | passing | passing        |
+| -O2            | passing | passing | passing        |
+| -O3            | passing | passing | passing        |
+
+## known failing configurations
+
+### macOS
+
+Test builds fail on GCC 6.1, LLVM Clang 3.7, and LLVM Clang 3.8 due to internal
+compiler errors.
 
 ## info
 
@@ -33,10 +70,6 @@ The simd header is distributed under a dual MIT License and Apache-2.0 License.
 You, the licensee, may choose either at your option. The MIT License is GPL
 compatible, while the Apache-2.0 License is not, so please take this into
 consideration.
-
-Also note that by choosing *either* the MIT license *or* Apache-2.0 license
-you are required to provide attribution in the form of copyright reproduction
-(the details of which are subject to the license you choose).
 
 The terms of each can be found in the files [LICENSE-MIT](LICENSE-MIT) and
 [LICENSE-APACHE-2.0](LICENSE-APACHE-2.0), respectively. The notices of each are
