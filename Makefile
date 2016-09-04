@@ -1,8 +1,14 @@
 base := .
 
-include_dir  := $(base)/include
-test_dir     := $(base)/test
-test_bin_dir := $(test_dir)/bin
+include_dir   := $(base)/include
+benchmark_dir := $(base)/benchmark
+test_dir      := $(base)/test
+example_dir   := $(base)/example
+build_dir     := $(base)/build
+
+benchmark_bin_dir := $(build_dir)/benchmark/bin
+test_bin_dir      := $(build_dir)/test/bin
+example_bin_dir   := $(build_dir)/example/bin
 
 cxx      := $(CXX)
 cxx_std  := c++11
@@ -44,14 +50,16 @@ endif
 cxx_flgs := $(cxx_vflg) -std=$(cxx_std) $(cxx_slflg) $(cxx_gflg) $(cxx_oflg) \
 	$(cxx_fflg) $(cxx_dflg) $(cxx_iflg) $(cxx_wflg) $(OPTFLAG)
 
-executables := $(test_bin_dir)/alignment $(test_bin_dir)/arithmetic
+benchmark_executables := $(benchmark_bin_dir)/arithmetic
+test_executables := $(test_bin_dir)/alignment $(test_bin_dir)/arithmetic
 
-.PHONY: test clean
 
-test: $(executables)
+.PHONY: benchmark test example clean
+
+test: $(test_executables)
 
 clean:
-	@rm -rf $(test_bin_dir)
+	@rm -rf $(build_dir)
 
 $(test_bin_dir)/%: $(test_dir)/%.cpp
 	@mkdir -p $(dir $@)
