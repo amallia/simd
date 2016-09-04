@@ -34,15 +34,15 @@ cxx_wflg := -Wall -Wextra -Wcast-qual -Wctor-dtor-privacy -Wold-style-cast \
 			-Wshadow -Wmissing-braces -Wparentheses -Wuninitialized \
 			-Wstrict-aliasing
 ifeq ($(findstring clang++, $(cxx)),)
-cxx_fflg += -fpermissive
+cxx_fflg +=
 cxx_wflg += -Wno-psabi
-cxx_lflg += -lstdc++
+cxx_slflg += libstdc++
 else
-cxx_fflg += -fsanitize=address
-cxx_lflg += -lc++
+cxx_fflg +=
+cxx_slflg += libc++
 endif
-cxx_flgs := -std=$(cxx_std) $(cxx_gflg) $(cxx_oflg) $(cxx_fflg) $(cxx_dflg)\
-	$(cxx_iflg) $(cxx_wflg) $(OPTFLAG)
+cxx_flgs := -std=$(cxx_std) -stdlib=$(cxx_slflg) $(cxx_gflg) $(cxx_oflg) \
+	$(cxx_fflg) $(cxx_dflg) $(cxx_iflg) $(cxx_wflg) $(OPTFLAG)
 
 executables := $(test_bin_dir)/alignment $(test_bin_dir)/arithmetic
 
