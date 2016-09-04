@@ -3,10 +3,6 @@ You, the licensee, may choose either at your option. The MIT License is GPL
 compatible, while the Apache-2.0 License is not, so please take this into
 consideration.
 
-Also note that by choosing *either* the MIT License *or* Apache-2.0 License
-you are required to provide attribution in the form of copyright reproduction,
-the details of which are subject to the license you choose.
-
 The terms of each can be found in the files LICENSE-MIT and LICENSE-APACHE-2.0,
 respectively. The notices of each are reproduced here for convenience:
 
