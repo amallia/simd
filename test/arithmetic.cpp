@@ -277,7 +277,8 @@ enum status compute_and_verify (SimdT const & lhs,
 template <typename ScalarOp, typename SimdOp, typename SimdT>
 std::uint64_t generate_and_test_cases (std::size_t len,
                                        std::ostream & logos,
-                                       std::vector <std::string> & errors)
+                                       std::vector <std::string> & errors,
+                                       bool verbose_output)
 {
     using operand_type = SimdT;
     using traits_type  = simd::simd_traits <operand_type>;
@@ -394,14 +395,18 @@ std::uint64_t generate_and_test_cases (std::size_t len,
                 break;
         }
 
-        logos << "\r\t" << "[" << i + 1 << "/" << len << "]" << std::flush;
+        if (verbose_output) {
+            logos << "\r\t" << "[" << i + 1 << "/" << len << "]" << std::flush;
+        }
     }
 
     return fail_count;
 }
 
 template <typename ScalarType, typename SimdType>
-std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
+std::uint64_t run_integral_tests (std::string name,
+                                  std::size_t test_length,
+                                  bool verbose_output)
 {
     std::vector <std::string> errors;
     std::uint64_t test_fail_count = 0;
@@ -410,23 +415,35 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
         std::cout << name << " (+)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::plus <ScalarType>, std::plus <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -434,23 +451,35 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
         std::cout << name << " (-)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::minus <ScalarType>, std::minus <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -458,23 +487,35 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
         std::cout << name << " (*)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::multiplies <ScalarType>, std::multiplies <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -482,23 +523,35 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
         std::cout << name << " (/)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::divides <ScalarType>, std::divides <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -506,23 +559,35 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
         std::cout << name << " (%)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::modulus <ScalarType>, std::modulus <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -530,23 +595,35 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
         std::cout << name << " (<<)" << std::endl;
         auto fail_count = generate_and_test_cases <
             shiftl <ScalarType>, shiftl <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -554,23 +631,35 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
         std::cout << name << " (>>)" << std::endl;
         auto fail_count = generate_and_test_cases <
             shiftr <ScalarType>, shiftr <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -578,23 +667,35 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
         std::cout << name << " (&)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::bit_and <ScalarType>, std::bit_and <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -602,23 +703,35 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
         std::cout << name << " (|)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::bit_or <ScalarType>, std::bit_or <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -626,23 +739,35 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
         std::cout << name << " (^)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::bit_xor <ScalarType>, std::bit_xor <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -650,7 +775,9 @@ std::uint64_t run_integral_tests (std::string name, std::size_t test_length)
 }
 
 template <typename ScalarType, typename SimdType>
-std::uint64_t run_float_tests (std::string name, std::size_t test_length)
+std::uint64_t run_float_tests (std::string name,
+                               std::size_t test_length,
+                               bool verbose_output)
 {
     std::vector <std::string> errors;
     std::uint64_t test_fail_count = 0;
@@ -659,23 +786,35 @@ std::uint64_t run_float_tests (std::string name, std::size_t test_length)
         std::cout << name << " (+)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::plus <ScalarType>, std::plus <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -683,23 +822,35 @@ std::uint64_t run_float_tests (std::string name, std::size_t test_length)
         std::cout << name << " (-)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::minus <ScalarType>, std::minus <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -707,23 +858,35 @@ std::uint64_t run_float_tests (std::string name, std::size_t test_length)
         std::cout << name << " (*)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::multiplies <ScalarType>, std::multiplies <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -731,23 +894,35 @@ std::uint64_t run_float_tests (std::string name, std::size_t test_length)
         std::cout << name << " (/)" << std::endl;
         auto fail_count = generate_and_test_cases <
             std::divides <ScalarType>, std::divides <SimdType>, SimdType
-        > (test_length, std::cout, errors);
+        > (test_length, std::cout, errors, verbose_output);
 
         if (fail_count != 0) {
-            std::cerr << "\t... failed: " << errors.size () << " ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... failed: " << errors.size () << " ..."
+                          << std::endl;
+            }
 
-            if (errors.size () > 5) {
+            if (!verbose_output && errors.size () > 5) {
                 std::cerr << "truncating output to 5 error logs...\n";
             }
 
-            for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i) {
-                std::cerr << errors [i];
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::cerr << e;
+                }
+            } else {
+                for (std::size_t i = 0; i < std::min (5ul, errors.size ()); ++i)
+                {
+                    std::cerr << errors [i];
+                }
             }
 
             errors.clear ();
             test_fail_count += fail_count;
         } else {
-            std::cerr << "\t... ok ..." << std::endl;
+            if (verbose_output) {
+                std::cerr << "\t... ok ..." << std::endl;
+            }
         }
     }
 
@@ -780,127 +955,140 @@ int main (int argc, char ** argv)
             }
         }();
 
+    auto const verbose_output =
+        [argc, argv] (void) -> bool
+        {
+            auto const vpos = std::find_if (
+                argv + 1, argv + argc,
+                [] (char const * s) {
+                    return std::strcmp (s, "--verbose") == 0;
+                }
+            );
+
+            return vpos != argv + argc;
+        }();
+
     std::uint64_t failures = 0;
 
     // 8-bit integer 
     {
         failures += run_integral_tests <std::int8_t, simd::int8x8_t> (
-			"simd::int8x8_t", test_length
+			"simd::int8x8_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::int8_t, simd::int8x16_t> (
-			"simd::int8x16_t", test_length
+			"simd::int8x16_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::int8_t, simd::int8x32_t> (
-			"simd::int8x32_t", test_length
+			"simd::int8x32_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::int8_t, simd::int8x64_t> (
-			"simd::int8x64_t", test_length
+			"simd::int8x64_t", test_length, verbose_output
         );
     }
 
     // 8-bit unsigned integer 
     {
         failures += run_integral_tests <std::uint8_t, simd::uint8x8_t> (
-			"simd::uint8x8_t", test_length
+			"simd::uint8x8_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::uint8_t, simd::uint8x16_t> (
-			"simd::uint8x16_t", test_length
+			"simd::uint8x16_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::uint8_t, simd::uint8x32_t> (
-			"simd::uint8x32_t", test_length
+			"simd::uint8x32_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::uint8_t, simd::uint8x64_t> (
-			"simd::uint8x64_t", test_length
+			"simd::uint8x64_t", test_length, verbose_output
         );
     }
 
     // 16-bit integer 
     {
         failures += run_integral_tests <std::int16_t, simd::int16x8_t> (
-			"simd::int16x8_t", test_length
+			"simd::int16x8_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::int16_t, simd::int16x16_t> (
-			"simd::int16x16_t", test_length
+			"simd::int16x16_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::int16_t, simd::int16x16_t> (
-			"simd::int16x16_t", test_length
+			"simd::int16x16_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::int16_t, simd::int16x32_t> (
-			"simd::int16x32_t", test_length
+			"simd::int16x32_t", test_length, verbose_output
         );
     }
 
     // 16-bit unsigned integer 
     {
         failures += run_integral_tests <std::uint16_t, simd::uint16x8_t> (
-			"simd::uint16x8_t", test_length
+			"simd::uint16x8_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::uint16_t, simd::uint16x16_t> (
-			"simd::uint16x16_t", test_length
+			"simd::uint16x16_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::uint16_t, simd::uint16x16_t> (
-			"simd::uint16x16_t", test_length
+			"simd::uint16x16_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::uint16_t, simd::uint16x32_t> (
-			"simd::uint16x32_t", test_length
+			"simd::uint16x32_t", test_length, verbose_output
         );
     }
 
     // 32-bit integer 
     {
         failures += run_integral_tests <std::int32_t, simd::int32x2_t> (
-			"simd::int32x2_t", test_length
+			"simd::int32x2_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::int32_t, simd::int32x4_t> (
-			"simd::int32x4_t", test_length
+			"simd::int32x4_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::int32_t, simd::int32x8_t> (
-			"simd::int32x8_t", test_length
+			"simd::int32x8_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::int32_t, simd::int32x16_t> (
-			"simd::int32x16_t", test_length
+			"simd::int32x16_t", test_length, verbose_output
         );
     }
 
     // 32-bit unsigned integer 
     {
         failures += run_integral_tests <std::uint32_t, simd::uint32x2_t> (
-			"simd::uint32x2_t", test_length
+			"simd::uint32x2_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::uint32_t, simd::uint32x4_t> (
-			"simd::uint32x4_t", test_length
+			"simd::uint32x4_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::uint32_t, simd::uint32x8_t> (
-			"simd::uint32x8_t", test_length
+			"simd::uint32x8_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::uint32_t, simd::uint32x16_t> (
-			"simd::uint32x16_t", test_length
+			"simd::uint32x16_t", test_length, verbose_output
         );
     }
 
     // 64-bit integer 
     {
         failures += run_integral_tests <std::int64_t, simd::int64x2_t> (
-			"simd::int64x2_t", test_length
+			"simd::int64x2_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::int64_t, simd::int64x4_t> (
-			"simd::int64x4_t", test_length
+			"simd::int64x4_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::int64_t, simd::int64x8_t> (
-			"simd::int64x8_t", test_length
+			"simd::int64x8_t", test_length, verbose_output
         );
     }
 
     // 64-bit unsigned integer 
     {
         failures += run_integral_tests <std::uint64_t, simd::uint64x2_t> (
-			"simd::uint64x2_t", test_length
+			"simd::uint64x2_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::uint64_t, simd::uint64x4_t> (
-			"simd::uint64x4_t", test_length
+			"simd::uint64x4_t", test_length, verbose_output
         );
         failures += run_integral_tests <std::uint64_t, simd::uint64x8_t> (
-			"simd::uint64x8_t", test_length
+			"simd::uint64x8_t", test_length, verbose_output
         );
     }
 
@@ -908,23 +1096,23 @@ int main (int argc, char ** argv)
     {
 #if defined (__clang__)
         failures += run_integral_tests <__int128_t, simd::int128x1_t> (
-            "simd::int128x1_t", test_length
+            "simd::int128x1_t", test_length, verbose_output
         );
         failures += run_integral_tests <__int128_t, simd::int128x2_t> (
-            "simd::int128x2_t", test_length
+            "simd::int128x2_t", test_length, verbose_output
         );
         failures += run_integral_tests <__int128_t, simd::int128x4_t> (
-            "simd::int128x4_t", test_length
+            "simd::int128x4_t", test_length, verbose_output
         );
 #elif defined (__GNUG__)
         failures += run_integral_tests <__int128, simd::int128x1_t> (
-            "simd::int128x1_t", test_length
+            "simd::int128x1_t", test_length, verbose_output
         );
         failures += run_integral_tests <__int128, simd::int128x2_t> (
-            "simd::int128x2_t", test_length
+            "simd::int128x2_t", test_length, verbose_output
         );
         failures += run_integral_tests <__int128, simd::int128x4_t> (
-            "simd::int128x4_t", test_length
+            "simd::int128x4_t", test_length, verbose_output
         );
 #endif
     }
@@ -933,26 +1121,26 @@ int main (int argc, char ** argv)
     {
 #if defined (__clang__)
         failures += run_integral_tests <__uint128_t, simd::uint128x1_t> (
-            "simd::uint128x1_t", test_length
+            "simd::uint128x1_t", test_length, verbose_output
         );
         failures += run_integral_tests <__uint128_t, simd::uint128x2_t> (
-            "simd::uint128x2_t", test_length
+            "simd::uint128x2_t", test_length, verbose_output
         );
         failures += run_integral_tests <__uint128_t, simd::uint128x4_t> (
-            "simd::uint128x4_t", test_length
+            "simd::uint128x4_t", test_length, verbose_output
         );
 #elif defined (__GNUG__)
         failures +=
             run_integral_tests <unsigned __int128, simd::uint128x1_t> (
-                "simd::uint128x1_t", test_length
+                "simd::uint128x1_t", test_length, verbose_output
             );
         failures +=
             run_integral_tests <unsigned __int128, simd::uint128x2_t> (
-                "simd::uint128x2_t", test_length
+                "simd::uint128x2_t", test_length, verbose_output
             );
         failures +=
             run_integral_tests <unsigned __int128, simd::uint128x4_t> (
-                "simd::uint128x4_t", test_length
+                "simd::uint128x4_t", test_length, verbose_output
             );
 #endif
     }
@@ -960,36 +1148,36 @@ int main (int argc, char ** argv)
     // 32-bit float 
     {
         failures += run_float_tests <float, simd::float32x4_t> (
-            "simd::float32x4_t", test_length
+            "simd::float32x4_t", test_length, verbose_output
         );
         failures += run_float_tests <float, simd::float32x8_t> (
-            "simd::float32x8_t", test_length
+            "simd::float32x8_t", test_length, verbose_output
         );
         failures += run_float_tests <float, simd::float32x16_t> (
-            "simd::float32x16_t", test_length
+            "simd::float32x16_t", test_length, verbose_output
         );
     }
 
     // 64-bit float 
     {
         failures += run_float_tests <double, simd::float64x2_t> (
-            "simd::float64x2_t", test_length
+            "simd::float64x2_t", test_length, verbose_output
         );
         failures += run_float_tests <double, simd::float64x4_t> (
-            "simd::float64x4_t", test_length
+            "simd::float64x4_t", test_length, verbose_output
         );
         failures += run_float_tests <double, simd::float64x8_t> (
-            "simd::float64x8_t", test_length
+            "simd::float64x8_t", test_length, verbose_output
         );
     }
 
     // long double 
     {
         failures += run_float_tests <long double, simd::long_doublex2_t> (
-            "simd::long_doublex2_t", test_length
+            "simd::long_doublex2_t", test_length, verbose_output
         );
         failures += run_float_tests <long double, simd::long_doublex4_t> (
-            "simd::long_doublex4_t", test_length
+            "simd::long_doublex4_t", test_length, verbose_output
         );
     }
 

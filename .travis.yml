@@ -54,7 +54,7 @@ install:
   - if [ "$COMPILER_NAME" == "clang++" ]; then sudo ln -sf libc++abi.so.1.0 libc++abi.so.1 && popd && popd && popd; fi
 
 script:
-  - make clean && make test CXX=$COMPILER build=debug && ./test/bin/alignment > /dev/null && ./test/bin/arithmetic > /dev/null
-  - make clean && make test CXX=$COMPILER build=opt1 && ./test/bin/alignment > /dev/null && ./test/bin/arithmetic > /dev/null
-  - make clean && make test CXX=$COMPILER build=opt2 && ./test/bin/alignment > /dev/null && ./test/bin/arithmetic > /dev/null
-  - make clean && make test CXX=$COMPILER build=opt3 && ./test/bin/alignment > /dev/null && ./test/bin/arithmetic > /dev/null
+  - make clean && make test CXX=$COMPILER build=debug && ./test/bin/alignment && ./test/bin/arithmetic
+  - make clean && make test CXX=$COMPILER build=opt1 && ./test/bin/alignment && ./test/bin/arithmetic
+  - make clean && make test CXX=$COMPILER build=opt2 && ./test/bin/alignment && ./test/bin/arithmetic
+  - make clean && make test CXX=$COMPILER build=opt3 && ./test/bin/alignment && ./test/bin/arithmetic
