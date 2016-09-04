@@ -7746,8 +7746,8 @@ std::istream & operator>> (std::istream & is, SimdT & v)
     auto nonnum = [](std::istream & _is) -> std::istream &
     {
         while (!_is.eof () && !_is.bad ()) {
-            auto const flags {_is.flags ()};
-            auto const peek {_is.peek ()};
+            auto const flags = _is.flags ();
+            auto const peek = _is.peek ();
             if (flags & std::ios_base::dec) {
                 if (!std::isdigit (peek)) {
                     _is.ignore ();
@@ -7810,8 +7810,8 @@ std::wistream & operator>> (std::wistream & wis, SimdT & v)
     auto nonnum = [](std::wistream & _wis) -> std::wistream &
     {
         while (!_wis.eof () && !_wis.bad ()) {
-            auto const flags {_wis.flags ()};
-            auto const peek {_wis.peek ()};
+            auto const flags = _wis.flags ();
+            auto const peek = _wis.peek ();
             if (flags & std::ios_base::dec) {
                 if (!std::iswdigit (peek)) {
                     _wis.ignore ();
