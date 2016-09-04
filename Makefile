@@ -26,7 +26,7 @@ cxx_oflg := -O3
 cxx_dflg := -DNDEBUG
 endif
 cxx_iflg := -I$(include_dir)
-cxx_fflg := -fsanitize=address -fpermissive
+cxx_fflg :=
 cxx_wflg := -Wall -Wextra -Wcast-qual -Wctor-dtor-privacy -Wold-style-cast \
 			-Wdisabled-optimization -Wformat=2 -Winit-self -Wreturn-type \
 			-Wmissing-include-dirs -Wold-style-cast -Woverloaded-virtual \
@@ -35,7 +35,10 @@ cxx_wflg := -Wall -Wextra -Wcast-qual -Wctor-dtor-privacy -Wold-style-cast \
 			-Wshadow -Wmissing-braces -Wparentheses -Wuninitialized \
 			-Wstrict-aliasing
 ifeq ($(findstring clang++, $(cxx)),)
+cxx_fflg += -fpermissive
 cxx_wflg += -Wno-psabi
+else
+cxx_fflg += -fsanitize=address
 endif
 cxx_flgs := -std=$(cxx_std) $(cxx_gflg) $(cxx_oflg) $(cxx_fflg) $(cxx_dflg)\
 	$(cxx_iflg) $(cxx_wflg) $(OPTFLAG)
