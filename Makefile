@@ -10,6 +10,7 @@ ifeq ($(build), debug)
 cxx_gflg := -g
 cxx_oflg := -O0
 cxx_dflg := -DDEBUG
+cxx_vflg := --verbose
 else ifeq ($(build), opt1)
 cxx_gflg := -g0
 cxx_oflg := -O1
@@ -40,7 +41,7 @@ cxx_lflg += -lstdc++
 else
 cxx_slflg += -stdlib=libc++
 endif
-cxx_flgs := -std=$(cxx_std) $(cxx_slflg) $(cxx_gflg) $(cxx_oflg) \
+cxx_flgs := $(cxx_vflg) -std=$(cxx_std) $(cxx_slflg) $(cxx_gflg) $(cxx_oflg) \
 	$(cxx_fflg) $(cxx_dflg) $(cxx_iflg) $(cxx_wflg) $(OPTFLAG)
 
 executables := $(test_bin_dir)/alignment $(test_bin_dir)/arithmetic
