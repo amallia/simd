@@ -755,7 +755,7 @@ std::uint64_t run_float_tests (std::string name, std::size_t test_length)
 
 int main (void)
 {
-    constexpr std::size_t test_length = 50000;
+    constexpr std::size_t test_length = 5000;
     std::uint64_t failures = 0;
 
     // 8-bit integer 
