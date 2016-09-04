@@ -4,8 +4,6 @@ include_dir  := $(base)/include
 test_dir     := $(base)/test
 test_bin_dir := $(test_dir)/bin
 
-build ?= debug
-
 cxx      := $(CXX)
 cxx_std  := c++11
 ifeq ($(build), debug)
