@@ -212,9 +212,7 @@ std::vector <duration> bench_non_vectorized (std::size_t rep, std::size_t len)
     >::type;
 
     std::random_device rd;
-    auto const gen {
-        std::bind (distribution {}, std::mt19937 {rd ()})
-    };
+    auto const gen = std::bind (distribution {}, std::mt19937 {rd ()});
 
     std::vector <duration> runtimes;
     runtimes.reserve (rep);
@@ -338,11 +336,19 @@ void benchmark (std::string const & name,
                 std::ostream & status_log,
                 std::ostream & result_log)
 {
+    using results_type = std::tuple <
+        std::vector <std::vector <duration>>,
+        std::vector <std::vector <duration>>,
+        std::vector <std::vector <duration>>,
+        std::vector <std::vector <duration>>
+    >;
+
     status_log << "running benchmarks for: " << name << std::endl;
     result_log << "[[type:" << name << "]]" << std::endl;
     auto add_results = std::async (
         std::launch::async|std::launch::deferred,
-        [reps, lengths](void) {
+        [reps, lengths] (void) -> results_type
+        {
             auto results = std::make_tuple (
                 std::vector <std::vector <duration>> {},
                 std::vector <std::vector <duration>> {},
@@ -377,22 +383,21 @@ void benchmark (std::string const & name,
 
     auto sub_results = std::async (
         std::launch::async|std::launch::deferred,
-        [reps, lengths](void) {
-            auto results {
-                std::make_tuple (
-                    std::vector <std::vector <duration>> {},
-                    std::vector <std::vector <duration>> {},
-                    std::vector <std::vector <duration>> {},
-                    std::vector <std::vector <duration>> {}
-                )
-            };
+        [reps, lengths] (void) -> results_type
+        {
+            auto results = std::make_tuple (
+                std::vector <std::vector <duration>> {},
+                std::vector <std::vector <duration>> {},
+                std::vector <std::vector <duration>> {},
+                std::vector <std::vector <duration>> {}
+            );
 
             std::get <0> (results).reserve (lengths.size ());
             std::get <1> (results).reserve (lengths.size ());
             std::get <2> (results).reserve (lengths.size ());
             std::get <3> (results).reserve (lengths.size ());
 
-            auto const r {reps};
+            auto const r = reps;
             for (auto l : lengths) {
                 std::get <0> (results).emplace_back (
                     bench_non_vectorized <std::minus <ScalarT>, ScalarT> (r, l)
@@ -414,22 +419,21 @@ void benchmark (std::string const & name,
 
     auto mul_results = std::async (
         std::launch::async|std::launch::deferred,
-        [reps, lengths](void) {
-            auto results {
-                std::make_tuple (
-                    std::vector <std::vector <duration>> {},
-                    std::vector <std::vector <duration>> {},
-                    std::vector <std::vector <duration>> {},
-                    std::vector <std::vector <duration>> {}
-                )
-            };
+        [reps, lengths] (void) -> results_type
+        {
+            auto results = std::make_tuple (
+                std::vector <std::vector <duration>> {},
+                std::vector <std::vector <duration>> {},
+                std::vector <std::vector <duration>> {},
+                std::vector <std::vector <duration>> {}
+            );
 
             std::get <0> (results).reserve (lengths.size ());
             std::get <1> (results).reserve (lengths.size ());
             std::get <2> (results).reserve (lengths.size ());
             std::get <3> (results).reserve (lengths.size ());
 
-            auto const r {reps};
+            auto const r = reps;
             for (auto l : lengths) {
                 std::get <0> (results).emplace_back (
                     bench_non_vectorized <std::multiplies <ScalarT>, ScalarT> (
@@ -453,22 +457,21 @@ void benchmark (std::string const & name,
 
     auto div_results = std::async (
         std::launch::async|std::launch::deferred,
-        [reps, lengths](void) {
-            auto results {
-                std::make_tuple (
-                    std::vector <std::vector <duration>> {},
-                    std::vector <std::vector <duration>> {},
-                    std::vector <std::vector <duration>> {},
-                    std::vector <std::vector <duration>> {}
-                )
-            };
+        [reps, lengths] (void) -> results_type
+        {
+            auto results = std::make_tuple (
+                std::vector <std::vector <duration>> {},
+                std::vector <std::vector <duration>> {},
+                std::vector <std::vector <duration>> {},
+                std::vector <std::vector <duration>> {}
+            );
 
             std::get <0> (results).reserve (lengths.size ());
             std::get <1> (results).reserve (lengths.size ());
             std::get <2> (results).reserve (lengths.size ());
             std::get <3> (results).reserve (lengths.size ());
 
-            auto const r {reps};
+            auto const r = reps;
             for (auto l : lengths) {
                 std::get <0> (results).emplace_back (
                     bench_non_vectorized <std::divides <ScalarT>, ScalarT> (
@@ -490,20 +493,17 @@ void benchmark (std::string const & name,
         }
     );
 
-    auto print_results = [&result_log, &lengths] (auto const & results)
+    auto print_results = [&result_log, &lengths] (results_type const & results)
     {
-        auto print_stats = [&result_log] (auto const & result, auto block_size)
+        auto print_stats =
+        [&result_log] (std::vector <duration> const & result,
+                       std::size_t block_size)
         {
             auto const stats = prepare_statistics (result, block_size);
 
             /* result logging */
             {
                 using namespace date;
-
-                using rep = typename fpduration::rep;
-                static constexpr auto prec {
-                    std::numeric_limits <rep>::digits10 + 1
-                };
 
                 result_log << "[[section:timing]]\n";
                 result_log << "avg=" << stats.time_average << '\n';
@@ -515,22 +515,29 @@ void benchmark (std::string const & name,
                 result_log << "max=" << stats.time_maximum << std::endl;
 
                 result_log << "[[section:throughput]]\n";
-                result_log << "avg=" << stats.bytes_per_second_average << '\n';
-                result_log << "cavg=" << stats.bytes_per_second_corrected_average << '\n';
-                result_log << "min=" << stats.bytes_per_second_minimum << '\n';
-                result_log << "q1=" << stats.bytes_per_second_quartile_1 << '\n';
-                result_log << "q2=" << stats.bytes_per_second_quartile_2 << '\n';
-                result_log << "q3=" << stats.bytes_per_second_quartile_3 << '\n';
-                result_log << "max=" << stats.bytes_per_second_maximum << std::endl;
+                result_log << "avg=" << stats.bytes_per_second_average
+                           << '\n';
+                result_log << "cavg="
+                           << stats.bytes_per_second_corrected_average << '\n';
+                result_log << "min=" << stats.bytes_per_second_minimum
+                           << '\n';
+                result_log << "q1=" << stats.bytes_per_second_quartile_1
+                           << '\n';
+                result_log << "q2=" << stats.bytes_per_second_quartile_2
+                           << '\n';
+                result_log << "q3=" << stats.bytes_per_second_quartile_3
+                           << '\n';
+                result_log << "max=" << stats.bytes_per_second_maximum
+                           << std::endl;
             }
         };
 
         for (std::size_t i = 0; i < lengths.size (); ++i) {
-            auto const len {lengths [i]};
+            auto const len = lengths [i];
             result_log << "[[len:" << len << "]]\n";
 
             /* vec types: */
-            auto const block_size {len * sizeof (ScalarT)};
+            auto const block_size = len * sizeof (ScalarT);
             /* non-vectorized code */
             result_log << "[[vec-type:non-vec]]\n";
             print_stats (std::get <0> (results) [i], block_size);
@@ -571,21 +578,7 @@ void benchmark (std::string const & name,
     print_results (div_results.get ());
 }
 
-static const char * command_line_usage =
-R"(
-usage:
-    benchmark [--reps=<reps>] [--status_log=<slog>] [--results_log=<rlog>]
-    benchmark (-h | --help)
-
-options:
-    -h --help             display this information
-    --reps=<reps>         the number of repetitions for each benchmark length, minimum is 5 [default: 25]
-    --status_log=<slog>   output location for benchmark status updates [default: stderr]
-    --results_log=<rlog>  output location for benchmark results [default: stdout]
-)";
-
-
-int main (int argc, char ** argv)
+int main (void)
 {
     /*
      * Computes benchmark time statistics for regular and vectorized code over:
@@ -607,82 +600,32 @@ int main (int argc, char ** argv)
      *      65536, 131072, 262144, 524288, 1048576
      */
 
-    auto args = docopt::docopt (
-        command_line_usage, {argv + 1, argv + argc}, true
-    );
-
-    auto const reps {
-        [&args] (void) -> std::size_t
-        {
-            static auto is_number_string = [](std::string const & s) {
-                for (auto const & c : s) {
-                    if (!std::isdigit (c)) {
-                        return false;
-                    }
-                }
-                return true;
-            };
-
-            auto const str {args ["--reps"].asString ()};
-            if (!is_number_string (str)) {
-                std::cerr << "benchmark: illegal option: --reps="
-                          << str
-                          << " -- value must be a number.\n";
-                std::cerr << command_line_usage << std::endl;
-                std::exit (1);
-            } else {
-                return static_cast <std::size_t> (std::atol (str.c_str ()));
-            }
-        } ()
-    };
-
-    if (reps < 5) {
-        std::cerr << "benchmark: illegal option: --reps="
-                  << reps
-                  << " -- value must be at least 5.\n";
-        std::cerr << command_line_usage << std::endl;
-        std::exit (1);
-    }
-
-    auto const status_log_name  = args ["--status_log"].asString ();
-    auto const results_log_name = args ["--results_log"].asString ();
-
-    std::ofstream status_file;
-    if (status_log_name != "stderr") {
-        status_file.open (status_log_name);
-    }
-
-    std::ofstream results_file;
-    if (results_log_name != "stdout") {
-        results_file.open (results_log_name);
-    }
-
-    std::ostream & status  = status_file.is_open () ? status_file : std::cerr;
-    std::ostream & results = results_file.is_open () ? results_file : std::cout;
+    static constexpr std::size_t reps = 25;
+    std::ofstream results {"arithmetic_benchmark_results.txt"};
 
     benchmark <
         std::int8_t, simd::int8x16_t, simd::int8x32_t, simd::int8x64_t
-    > ("int8_t", reps, block_sizes, status, results);
+    > ("int8_t", reps, block_sizes, std::cerr, results);
 
     benchmark <
         std::int16_t, simd::int16x8_t, simd::int16x16_t, simd::int16x32_t
-    > ("int16_t", reps, block_sizes, status, results);
+    > ("int16_t", reps, block_sizes, std::cerr, results);
 
     benchmark <
         std::int32_t, simd::int32x4_t, simd::int32x8_t, simd::int32x16_t
-    > ("int32_t", reps, block_sizes, status, results);
+    > ("int32_t", reps, block_sizes, std::cerr, results);
 
     benchmark <
         std::int64_t, simd::int64x2_t, simd::int64x4_t, simd::int64x8_t
-    > ("int64_t", reps, block_sizes, status, results);
+    > ("int64_t", reps, block_sizes, std::cerr, results);
 
     benchmark <
         float, simd::float32x4_t, simd::float32x8_t, simd::float32x16_t
-    > ("float32", reps, block_sizes, status, results);
+    > ("float32", reps, block_sizes, std::cerr, results);
 
     benchmark <
         double, simd::float64x2_t, simd::float64x4_t, simd::float64x8_t
-    > ("float64", reps, block_sizes, status, results);
+    > ("float64", reps, block_sizes, std::cerr, results);
 
     return 0;
 }
