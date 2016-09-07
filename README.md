@@ -16,6 +16,45 @@ using GCC and Clang vector extensions.
 Clang or GCC compiler support for C++11 or later. Clang or GCC support for
 SIMD vector extensions.
 
+## example
+
+Here is a demonstration of a vectorized Mandelbrot computation kernel; it is
+taken from the `example/mandelbrot.cpp` program. On my laptop (Core i5 Ivy
+Bridge I5-3210M processor) this kernel obtains a perfect 3x speedup over the
+non-vectorized version when compiled with Clang or GCC on both `-O2` and `-O3`.
+
+```c++
+simd::uint32x4_t mandelbrot_vec (simd::float32x4_t re,
+                                 simd::float32x4_t im,
+                                 std::uint32_t max_iter) noexcept
+{
+    static constexpr simd::float32x4_t bound {4.0};
+    auto const re_start = re;
+    auto const im_start = im;
+
+    simd::uint32x4_t count {0};
+
+    while (max_iter--) {
+        auto const ri  = re * im;
+        auto const rr  = re * re;
+        auto const ii  = im * im;
+        auto const msq = rr + ii;
+
+        auto const compare = msq < bound;
+        if (!compare.any_of ()) {
+            break;
+        } else {
+            count += compare.as <simd::uint32x4_t> ();
+        }
+
+        re = rr - ii + re_start;
+        im = ri + ri + im_start;
+    }
+
+    return count;
+}
+```
+
 ## possible future extensions
 
 * Implement support for Intel C++ Compiler using direct x86 intrinsics.
