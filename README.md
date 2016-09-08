@@ -16,6 +16,10 @@ using GCC and Clang vector extensions.
 Clang or GCC compiler support for C++11 or later. Clang or GCC support for
 SIMD vector extensions.
 
+## documentation
+
+You can find extensive documentation in the [doc](./doc) folder.
+
 ## example
 
 Here is a demonstration of a vectorized Mandelbrot computation kernel; it is
@@ -59,11 +63,6 @@ simd::uint32x4_t mandelbrot_vec (simd::float32x4_t re,
 }
 ```
 
-## possible future extensions
-
-* Implement support for Intel C++ Compiler using direct x86 intrinsics.
-* Implement support for ARM C++ Compiler using direct NEON intrinsics.
-
 ## known successful configurations
 
 ### Ubuntu Linux (travis-ci: 12.04 precise)
@@ -90,6 +89,11 @@ simd::uint32x4_t mandelbrot_vec (simd::float32x4_t re,
 
 Test builds fail using GCC 6.1, LLVM Clang 3.7, and LLVM Clang 3.8 due to
 internal compiler errors.
+
+## possible future extensions
+
+* Implement support for Intel C++ Compiler using direct x86 intrinsics.
+* Implement support for ARM C++ Compiler using direct NEON intrinsics.
 
 ## info
 
