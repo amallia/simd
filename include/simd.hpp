@@ -4453,7 +4453,6 @@ template <>
                 cast_traits::lanes,
                 typename cast_traits::category_tag
             >;
-            using rebind_vector_type = typename rebind_type::vector_type;
             using rebind_value_type = typename rebind_type::value_type;
 
             static_assert (
