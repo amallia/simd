@@ -20,8 +20,12 @@ SIMD vector extensions.
 
 Here is a demonstration of a vectorized Mandelbrot computation kernel; it is
 taken from the `example/mandelbrot.cpp` program. On my laptop (Core i5 Ivy
-Bridge I5-3210M processor) this kernel obtains a perfect 3x speedup over the
-non-vectorized version when compiled with Clang or GCC on both `-O2` and `-O3`.
+Bridge I5-3210M processor), when compiled with `g++ -O2` (GCC 6.1) this
+kernel obtains a 3-3.5x speedup over the non-vectorized version, and when
+compiled with `clang++ -O2` (LLVM Clang 3.7) this kernel obtains a 3.4-3.6x
+speedup over the non-vectorized version. After replacing the 128-bit vectors
+with 256-bit vectors and recompiling with `-mavx` the kernel obtains,
+respectively, a 5-5.5x speedup and a 6-6.4x speedup.
 
 ```c++
 simd::uint32x4_t mandelbrot_vec (simd::float32x4_t re,
