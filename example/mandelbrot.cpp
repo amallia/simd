@@ -9,7 +9,7 @@
 // Two integral command line arguments define the xdim and ydim of the resulting
 // image, respectively, and therefore also define the x-step and y-setp of the
 // computation. The provided values are always rounded up to an even multiple of
-// four for convenience in vectorization. Values of 0 are interpreted as
+// eight for convenience in vectorization. Values of 0 are interpreted as
 // default.
 //
 // A third command line argument can also be provided to determine the maximum
@@ -18,13 +18,14 @@
 //
 
 #include <algorithm>    // std::generate, std::transform
+#include <cassert>
 #include <chrono>       // std::chrono::*
 #include <complex>      // std::complex
 #include <cstddef>      // std::size_t
 #include <cstdint>      // std::uint8_t
 #include <fstream>      // std::ofstream
 #include <iomanip>      // std::setprecision
-#include <limits>       // ULONG_MAX
+#include <climits>      // ULONG_MAX
 #include <string>       // std::string, std::to_string
 #include <tuple>        // std::tuple
 #include <utility>      // std::make_pair, std::pair
@@ -65,33 +66,82 @@ std::uint32_t mandelbrot_nonvec (float re, float im, std::uint32_t max_iter)
     return count;
 }
 
-simd::uint32x4_t mandelbrot_vec (simd::float32x4_t re,
-                                 simd::float32x4_t im,
-                                 std::uint32_t max_iter) noexcept
+simd::uint32x4_t mandelbrot_vec128 (simd::float32x4_t re,
+                                    simd::float32x4_t im,
+                                    std::uint32_t max_iter) noexcept
 {
     static constexpr simd::float32x4_t four {4.0};
     auto const re_start = re;
     auto const im_start = im;
 
     simd::uint32x4_t count {0};
-    for (std::size_t i = 0; i < max_iter; ++i) {
+
+    while (max_iter--) {
         auto const ri  = re * im;
         auto const rr  = re * re;
         auto const ii  = im * im;
-        auto const sum = rr + ii;
+        auto const msq = rr + ii;
 
-        auto const comp = sum < four;
-        if (!comp.any_of ()) {
+        auto const compare = msq < four;
+        if (!compare.any_of ()) {
             break;
         } else {
-            count += comp.as <simd::uint32x4_t> ();
+            count += compare.as <simd::uint32x4_t> ();
         }
 
         re = rr - ii + re_start;
         im = ri + ri + im_start;
     }
+
     return count;
 }
+
+simd::uint32x8_t mandelbrot_vec256 (simd::float32x8_t re,
+                                    simd::float32x8_t im,
+                                    std::uint32_t max_iter) noexcept
+{
+    static constexpr simd::float32x8_t four {4.0};
+    auto const re_start = re;
+    auto const im_start = im;
+
+    simd::uint32x8_t count {0};
+
+    while (max_iter--) {
+        auto const ri  = re * im;
+        auto const rr  = re * re;
+        auto const ii  = im * im;
+        auto const msq = rr + ii;
+
+        auto const compare = msq < four;
+        if (!compare.any_of ()) {
+            break;
+        } else {
+            count += compare.as <simd::uint32x8_t> ();
+        }
+
+        re = rr - ii + re_start;
+        im = ri + ri + im_start;
+    }
+
+    return count;
+}
+
+template <typename T>
+struct simd_allocator
+{
+    using value_type = T;
+
+    T * allocate (std::size_t n)
+    {
+        return new T [n];
+    }
+
+    void deallocate (T * ptr, std::size_t n)
+    {
+        (void) n;
+        delete [] ptr;
+    }
+};
 
 int main (int argc, char ** argv)
 {
@@ -111,9 +161,9 @@ int main (int argc, char ** argv)
 
                 return std::make_pair (
                     xarg == 0 || xarg == ULONG_MAX ? default_xdim
-                                                   : xarg + xarg % 4,
+                                                   : xarg + xarg % 8,
                     yarg == 0 || yarg == ULONG_MAX ? default_ydim
-                                                   : yarg + yarg % 4
+                                                   : yarg + yarg % 8
                 );
             }
         }();
@@ -136,7 +186,8 @@ int main (int argc, char ** argv)
     auto const data_count = dims.first * dims.second;
 
     clock::duration nonvec_time;
-    clock::duration vec_time;
+    clock::duration vec128_time;
+    clock::duration vec256_time;
 
     // non-vectorized
     {
@@ -182,9 +233,10 @@ int main (int argc, char ** argv)
         }
     }
 
-    // vectorized
+    // 128-bit vectorized
     {
-        std::vector <simd::uint32x4_t> step_counts;
+        std::vector <simd::uint32x4_t, simd_allocator <simd::uint32x4_t>>
+            step_counts;
         step_counts.reserve (data_count / 4);
 
         {
@@ -199,14 +251,16 @@ int main (int argc, char ** argv)
                         float(-2.0) + (x + 3) * re_step
                     };
                     step_counts.emplace_back (
-                        mandelbrot_vec (re, im, max_iter)
+                        mandelbrot_vec128 (re, im, max_iter)
                     );
                 }
             }
-            vec_time = clock::now () - start;
+            vec128_time = clock::now () - start;
 
             using namespace date;
-            std::cout << "vectorized time: " << vec_time << std::endl;
+            std::cout << "128-bit vectorized time: "
+                      << vec128_time
+                      << std::endl;
         }
 
         {
@@ -214,7 +268,7 @@ int main (int argc, char ** argv)
                                     + std::to_string (dims.first)
                                     + std::string ("x")
                                     + std::to_string (dims.second)
-                                    + std::string ("-vec.pgm");
+                                    + std::string ("-vec128.pgm");
 
             std::ofstream out (ofile, std::ios_base::out|std::ios_base::binary);
             out << "P5\n" << dims.first << " " << dims.second << "\n255\n";
@@ -233,10 +287,74 @@ int main (int argc, char ** argv)
         }
     }
 
-    std::cout << "speed-up: "
+    // 256-bit vectorized
+    {
+        std::vector <simd::uint32x8_t, simd_allocator <simd::uint32x8_t>>
+            step_counts;
+        step_counts.reserve (data_count / 8);
+
+        {
+            auto const start = clock::now ();
+            for (std::size_t y = 0; y < dims.second; ++y) {
+                simd::float32x8_t const im {float(1.0) - y * im_step};
+                for (std::size_t x = 0; x < dims.first; x += 8) {
+                    simd::float32x8_t const re {
+                        float(-2.0) + (x + 0) * re_step,
+                        float(-2.0) + (x + 1) * re_step,
+                        float(-2.0) + (x + 2) * re_step,
+                        float(-2.0) + (x + 3) * re_step,
+                        float(-2.0) + (x + 4) * re_step,
+                        float(-2.0) + (x + 5) * re_step,
+                        float(-2.0) + (x + 6) * re_step,
+                        float(-2.0) + (x + 7) * re_step
+                    };
+                    step_counts.emplace_back (
+                        mandelbrot_vec256 (re, im, max_iter)
+                    );
+                }
+            }
+            vec256_time = clock::now () - start;
+
+            using namespace date;
+            std::cout << "256-bit vectorized time: "
+                      << vec256_time
+                      << std::endl;
+        }
+
+        {
+            std::string const ofile = std::string ("mandelbrot-")
+                                    + std::to_string (dims.first)
+                                    + std::string ("x")
+                                    + std::to_string (dims.second)
+                                    + std::string ("-vec256.pgm");
+
+            std::ofstream out (ofile, std::ios_base::out|std::ios_base::binary);
+            out << "P5\n" << dims.first << " " << dims.second << "\n255\n";
+
+            for (auto const v : step_counts) {
+                // interpolate between 0 (black) and 255 (white) from the
+                // step count which may range from 0 to max_iter.
+                for (auto const c : v) {
+                    auto const lerp = static_cast <std::uint8_t> (
+                        255 - 255 * (static_cast <float> (c) /
+                                     static_cast <float> (max_iter))
+                    );
+                    out << lerp;
+                }
+            }
+        }
+    }
+
+    std::cout << "128-bit speed-up: "
               << std::setprecision (2)
               << static_cast <float> (nonvec_time.count ()) /
-                 static_cast <float> (vec_time.count ())
+                 static_cast <float> (vec128_time.count ())
+              << "x"
+              << std::endl;
+    std::cout << "256-bit speed-up: "
+              << std::setprecision (2)
+              << static_cast <float> (nonvec_time.count ()) /
+                 static_cast <float> (vec256_time.count ())
               << "x"
               << std::endl;
 }
