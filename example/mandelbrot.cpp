@@ -126,23 +126,6 @@ simd::uint32x8_t mandelbrot_vec256 (simd::float32x8_t re,
     return count;
 }
 
-template <typename T>
-struct simd_allocator
-{
-    using value_type = T;
-
-    T * allocate (std::size_t n)
-    {
-        return new T [n];
-    }
-
-    void deallocate (T * ptr, std::size_t n)
-    {
-        (void) n;
-        delete [] ptr;
-    }
-};
-
 int main (int argc, char ** argv)
 {
     using clock = std::chrono::high_resolution_clock;
@@ -235,7 +218,7 @@ int main (int argc, char ** argv)
 
     // 128-bit vectorized
     {
-        std::vector <simd::uint32x4_t, simd_allocator <simd::uint32x4_t>>
+        std::vector <simd::uint32x4_t, simd::allocator <simd::uint32x4_t>>
             step_counts;
         step_counts.reserve (data_count / 4);
 
@@ -289,7 +272,7 @@ int main (int argc, char ** argv)
 
     // 256-bit vectorized
     {
-        std::vector <simd::uint32x8_t, simd_allocator <simd::uint32x8_t>>
+        std::vector <simd::uint32x8_t, simd::allocator <simd::uint32x8_t>>
             step_counts;
         step_counts.reserve (data_count / 8);
 

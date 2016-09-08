@@ -246,37 +246,6 @@ std::vector <duration> bench_vectorized (std::size_t rep, std::size_t len)
     using value_type = typename traits_type::value_type;
     static constexpr auto lanes = traits_type::lanes;
 
-    struct simd_allocator
-    {
-        using value_type = Operand;
-
-        simd_allocator (void) noexcept = default;
-        ~simd_allocator (void) noexcept = default;
-        simd_allocator (simd_allocator const &) noexcept = default;
-        simd_allocator & operator= (simd_allocator const &) noexcept = default;
-
-        value_type * allocate (std::size_t n)
-        {
-            return new value_type [n];
-        }
-
-        void deallocate (value_type * ptr, std::size_t n) noexcept
-        {
-            (void) n;
-            delete [] ptr;
-        }
-
-        bool operator== (simd_allocator const &) const noexcept
-        {
-            return true;
-        }
-
-        bool operator!= (simd_allocator const &) const noexcept
-        {
-            return false;
-        }
-    };
-
     static auto gen = [] (void) -> operand_type
     {
         using distribution = typename std::conditional <
@@ -300,8 +269,8 @@ std::vector <duration> bench_vectorized (std::size_t rep, std::size_t len)
     auto const use_length = len / lanes;
 
     for (std::size_t i = 0; i < rep; ++i) {
-        std::vector <operand_type, simd_allocator> lhs (use_length);
-        std::vector <operand_type, simd_allocator> rhs (use_length);
+        std::vector <operand_type, simd::allocator <operand_type>> lhs (use_length);
+        std::vector <operand_type, simd::allocator <operand_type>> rhs (use_length);
 
         std::generate (lhs.begin (), lhs.end (), gen);
         std::generate (rhs.begin (), rhs.end (), gen);

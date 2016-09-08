@@ -37,24 +37,6 @@ void verify_dynamically_allocated_array (void);
 template <std::size_t>
 void verify_vector_allocated_vars (void);
 
-
-template <typename T>
-struct simd_allocator
-{
-    using value_type = T;
-
-    T * allocate (std::size_t n)
-    {
-        return new T [n];
-    }
-
-    void deallocate (T * ptr, std::size_t n)
-    {
-        (void) n;
-        delete [] ptr;
-    }
-};
-
 template <typename T>
 bool alignment_test (T const * ptr, std::size_t expected_alignment)
     noexcept
@@ -2043,9 +2025,9 @@ void verify_vector_allocated_vars (void)
 
     /* 8 x 8 */
     {
-        auto bool8x8 = std::vector <bool8x8_t, simd_allocator <bool8x8_t>> (array_size);
-        auto int8x8 = std::vector <int8x8_t, simd_allocator <int8x8_t>> (array_size);
-        auto uint8x8 = std::vector <uint8x8_t, simd_allocator <uint8x8_t>> (array_size);
+        auto bool8x8 = std::vector <bool8x8_t, simd::allocator <bool8x8_t>> (array_size);
+        auto int8x8 = std::vector <int8x8_t, simd::allocator <int8x8_t>> (array_size);
+        auto uint8x8 = std::vector <uint8x8_t, simd::allocator <uint8x8_t>> (array_size);
 
         assert (alignment_test (bool8x8.data (), bool8x8_t::alignment));
         assert (alignment_test (int8x8.data (), int8x8_t::alignment));
@@ -2054,9 +2036,9 @@ void verify_vector_allocated_vars (void)
 
     /* 8 x 16 */
     {
-        auto bool8x16 = std::vector <bool8x16_t, simd_allocator <bool8x16_t>> (array_size);
-        auto int8x16 = std::vector <int8x16_t, simd_allocator <int8x16_t>> (array_size);
-        auto uint8x16 = std::vector <uint8x16_t, simd_allocator <uint8x16_t>> (array_size);
+        auto bool8x16 = std::vector <bool8x16_t, simd::allocator <bool8x16_t>> (array_size);
+        auto int8x16 = std::vector <int8x16_t, simd::allocator <int8x16_t>> (array_size);
+        auto uint8x16 = std::vector <uint8x16_t, simd::allocator <uint8x16_t>> (array_size);
 
         assert (alignment_test (bool8x16.data (), bool8x16_t::alignment));
         assert (alignment_test (int8x16.data (), int8x16_t::alignment));
@@ -2065,9 +2047,9 @@ void verify_vector_allocated_vars (void)
 
     /* 8 x 32 */
     {
-        auto bool8x32 = std::vector <bool8x32_t, simd_allocator <bool8x32_t>> (array_size);
-        auto int8x32 = std::vector <int8x32_t, simd_allocator <int8x32_t>> (array_size);
-        auto uint8x32 = std::vector <uint8x32_t, simd_allocator <uint8x32_t>> (array_size);
+        auto bool8x32 = std::vector <bool8x32_t, simd::allocator <bool8x32_t>> (array_size);
+        auto int8x32 = std::vector <int8x32_t, simd::allocator <int8x32_t>> (array_size);
+        auto uint8x32 = std::vector <uint8x32_t, simd::allocator <uint8x32_t>> (array_size);
 
         assert (alignment_test (bool8x32.data (), bool8x32_t::alignment));
         assert (alignment_test (int8x32.data (), int8x32_t::alignment));
@@ -2076,9 +2058,9 @@ void verify_vector_allocated_vars (void)
 
     /* 8 x 64 */
     {
-        auto bool8x64 = std::vector <bool8x64_t, simd_allocator <bool8x64_t>> (array_size);
-        auto int8x64 = std::vector <int8x64_t, simd_allocator <int8x64_t>> (array_size);
-        auto uint8x64 = std::vector <uint8x64_t, simd_allocator <uint8x64_t>> (array_size);
+        auto bool8x64 = std::vector <bool8x64_t, simd::allocator <bool8x64_t>> (array_size);
+        auto int8x64 = std::vector <int8x64_t, simd::allocator <int8x64_t>> (array_size);
+        auto uint8x64 = std::vector <uint8x64_t, simd::allocator <uint8x64_t>> (array_size);
 
         assert (alignment_test (bool8x64.data (), bool8x64_t::alignment));
         assert (alignment_test (int8x64.data (), int8x64_t::alignment));
@@ -2087,9 +2069,9 @@ void verify_vector_allocated_vars (void)
 
     /* 16 x 4 */
     {
-        auto bool16x4 = std::vector <bool16x4_t, simd_allocator <bool16x4_t>> (array_size);
-        auto int16x4 = std::vector <int16x4_t, simd_allocator <int16x4_t>> (array_size);
-        auto uint16x4 = std::vector <uint16x4_t, simd_allocator <uint16x4_t>> (array_size);
+        auto bool16x4 = std::vector <bool16x4_t, simd::allocator <bool16x4_t>> (array_size);
+        auto int16x4 = std::vector <int16x4_t, simd::allocator <int16x4_t>> (array_size);
+        auto uint16x4 = std::vector <uint16x4_t, simd::allocator <uint16x4_t>> (array_size);
 
         assert (alignment_test (bool16x4.data (), bool16x4_t::alignment));
         assert (alignment_test (int16x4.data (), int16x4_t::alignment));
@@ -2098,9 +2080,9 @@ void verify_vector_allocated_vars (void)
 
     /* 16 x 8 */
     {
-        auto bool16x8 = std::vector <bool16x8_t, simd_allocator <bool16x8_t>> (array_size);
-        auto int16x8 = std::vector <int16x8_t, simd_allocator <int16x8_t>> (array_size);
-        auto uint16x8 = std::vector <uint16x8_t, simd_allocator <uint16x8_t>> (array_size);
+        auto bool16x8 = std::vector <bool16x8_t, simd::allocator <bool16x8_t>> (array_size);
+        auto int16x8 = std::vector <int16x8_t, simd::allocator <int16x8_t>> (array_size);
+        auto uint16x8 = std::vector <uint16x8_t, simd::allocator <uint16x8_t>> (array_size);
 
         assert (alignment_test (bool16x8.data (), bool16x8_t::alignment));
         assert (alignment_test (int16x8.data (), int16x8_t::alignment));
@@ -2109,9 +2091,9 @@ void verify_vector_allocated_vars (void)
 
     /* 16 x 16 */
     {
-        auto bool16x16 = std::vector <bool16x16_t, simd_allocator <bool16x16_t>> (array_size);
-        auto int16x16 = std::vector <int16x16_t, simd_allocator <int16x16_t>> (array_size);
-        auto uint16x16 = std::vector <uint16x16_t, simd_allocator <uint16x16_t>> (array_size);
+        auto bool16x16 = std::vector <bool16x16_t, simd::allocator <bool16x16_t>> (array_size);
+        auto int16x16 = std::vector <int16x16_t, simd::allocator <int16x16_t>> (array_size);
+        auto uint16x16 = std::vector <uint16x16_t, simd::allocator <uint16x16_t>> (array_size);
 
         assert (alignment_test (bool16x16.data (), bool16x16_t::alignment));
         assert (alignment_test (int16x16.data (), int16x16_t::alignment));
@@ -2120,9 +2102,9 @@ void verify_vector_allocated_vars (void)
 
     /* 16 x 32 */
     {
-        auto bool16x32 = std::vector <bool16x32_t, simd_allocator <bool16x32_t>> (array_size);
-        auto int16x32 = std::vector <int16x32_t, simd_allocator <int16x32_t>> (array_size);
-        auto uint16x32 = std::vector <uint16x32_t, simd_allocator <uint16x32_t>> (array_size);
+        auto bool16x32 = std::vector <bool16x32_t, simd::allocator <bool16x32_t>> (array_size);
+        auto int16x32 = std::vector <int16x32_t, simd::allocator <int16x32_t>> (array_size);
+        auto uint16x32 = std::vector <uint16x32_t, simd::allocator <uint16x32_t>> (array_size);
 
         assert (alignment_test (bool16x32.data (), bool16x32_t::alignment));
         assert (alignment_test (int16x32.data (), int16x32_t::alignment));
@@ -2131,11 +2113,11 @@ void verify_vector_allocated_vars (void)
 
     /* 32 x 2 */
     {
-        auto bool32x2 = std::vector <bool32x2_t, simd_allocator <bool32x2_t>> (array_size);
-        auto int32x2 = std::vector <int32x2_t, simd_allocator <int32x2_t>> (array_size);
-        auto uint32x2 = std::vector <uint32x2_t, simd_allocator <uint32x2_t>> (array_size);
-        auto float32x2 = std::vector <float32x2_t, simd_allocator <float32x2_t>> (array_size);
-        auto complex_float32x2 = std::vector <complex_float32x2_t, simd_allocator <complex_float32x2_t>> (array_size);
+        auto bool32x2 = std::vector <bool32x2_t, simd::allocator <bool32x2_t>> (array_size);
+        auto int32x2 = std::vector <int32x2_t, simd::allocator <int32x2_t>> (array_size);
+        auto uint32x2 = std::vector <uint32x2_t, simd::allocator <uint32x2_t>> (array_size);
+        auto float32x2 = std::vector <float32x2_t, simd::allocator <float32x2_t>> (array_size);
+        auto complex_float32x2 = std::vector <complex_float32x2_t, simd::allocator <complex_float32x2_t>> (array_size);
 
         assert (alignment_test (bool32x2.data (), bool32x2_t::alignment));
         assert (alignment_test (int32x2.data (), int32x2_t::alignment));
@@ -2148,11 +2130,11 @@ void verify_vector_allocated_vars (void)
 
     /* 32 x 4 */
     {
-        auto bool32x4 = std::vector <bool32x4_t, simd_allocator <bool32x4_t>> (array_size);
-        auto int32x4 = std::vector <int32x4_t, simd_allocator <int32x4_t>> (array_size);
-        auto uint32x4 = std::vector <uint32x4_t, simd_allocator <uint32x4_t>> (array_size);
-        auto float32x4 = std::vector <float32x4_t, simd_allocator <float32x4_t>> (array_size);
-        auto complex_float32x4 = std::vector <complex_float32x4_t, simd_allocator <complex_float32x4_t>> (array_size);
+        auto bool32x4 = std::vector <bool32x4_t, simd::allocator <bool32x4_t>> (array_size);
+        auto int32x4 = std::vector <int32x4_t, simd::allocator <int32x4_t>> (array_size);
+        auto uint32x4 = std::vector <uint32x4_t, simd::allocator <uint32x4_t>> (array_size);
+        auto float32x4 = std::vector <float32x4_t, simd::allocator <float32x4_t>> (array_size);
+        auto complex_float32x4 = std::vector <complex_float32x4_t, simd::allocator <complex_float32x4_t>> (array_size);
 
         assert (alignment_test (bool32x4.data (), bool32x4_t::alignment));
         assert (alignment_test (int32x4.data (), int32x4_t::alignment));
@@ -2165,11 +2147,11 @@ void verify_vector_allocated_vars (void)
 
     /* 32 x 8 */
     {
-        auto bool32x8 = std::vector <bool32x8_t, simd_allocator <bool32x8_t>> (array_size);
-        auto int32x8 = std::vector <int32x8_t, simd_allocator <int32x8_t>> (array_size);
-        auto uint32x8 = std::vector <uint32x8_t, simd_allocator <uint32x8_t>> (array_size);
-        auto float32x8 = std::vector <float32x8_t, simd_allocator <float32x8_t>> (array_size);
-        auto complex_float32x8 = std::vector <complex_float32x8_t, simd_allocator <complex_float32x8_t>> (array_size);
+        auto bool32x8 = std::vector <bool32x8_t, simd::allocator <bool32x8_t>> (array_size);
+        auto int32x8 = std::vector <int32x8_t, simd::allocator <int32x8_t>> (array_size);
+        auto uint32x8 = std::vector <uint32x8_t, simd::allocator <uint32x8_t>> (array_size);
+        auto float32x8 = std::vector <float32x8_t, simd::allocator <float32x8_t>> (array_size);
+        auto complex_float32x8 = std::vector <complex_float32x8_t, simd::allocator <complex_float32x8_t>> (array_size);
 
         assert (alignment_test (bool32x8.data (), bool32x8_t::alignment));
         assert (alignment_test (int32x8.data (), int32x8_t::alignment));
@@ -2182,11 +2164,11 @@ void verify_vector_allocated_vars (void)
 
     /* 32 x 16 */
     {
-        auto bool32x16 = std::vector <bool32x16_t, simd_allocator <bool32x16_t>> (array_size);
-        auto int32x16 = std::vector <int32x16_t, simd_allocator <int32x16_t>> (array_size);
-        auto uint32x16 = std::vector <uint32x16_t, simd_allocator <uint32x16_t>> (array_size);
-        auto float32x16 = std::vector <float32x16_t, simd_allocator <float32x16_t>> (array_size);
-        auto complex_float32x16 = std::vector <complex_float32x16_t, simd_allocator <complex_float32x16_t>> (array_size);
+        auto bool32x16 = std::vector <bool32x16_t, simd::allocator <bool32x16_t>> (array_size);
+        auto int32x16 = std::vector <int32x16_t, simd::allocator <int32x16_t>> (array_size);
+        auto uint32x16 = std::vector <uint32x16_t, simd::allocator <uint32x16_t>> (array_size);
+        auto float32x16 = std::vector <float32x16_t, simd::allocator <float32x16_t>> (array_size);
+        auto complex_float32x16 = std::vector <complex_float32x16_t, simd::allocator <complex_float32x16_t>> (array_size);
 
         assert (alignment_test (bool32x16.data (), bool32x16_t::alignment));
         assert (alignment_test (int32x16.data (), int32x16_t::alignment));
@@ -2201,11 +2183,11 @@ void verify_vector_allocated_vars (void)
 
     /* 64 x 1 */
     {
-        auto bool64x1 = std::vector <bool64x1_t, simd_allocator <bool64x1_t>> (array_size);
-        auto int64x1 = std::vector <int64x1_t, simd_allocator <int64x1_t>> (array_size);
-        auto uint64x1 = std::vector <uint64x1_t, simd_allocator <uint64x1_t>> (array_size);
-        auto float64x1 = std::vector <float64x1_t, simd_allocator <float64x1_t>> (array_size);
-        auto complex_float64x1 = std::vector <complex_float64x1_t, simd_allocator <complex_float64x1_t>> (array_size);
+        auto bool64x1 = std::vector <bool64x1_t, simd::allocator <bool64x1_t>> (array_size);
+        auto int64x1 = std::vector <int64x1_t, simd::allocator <int64x1_t>> (array_size);
+        auto uint64x1 = std::vector <uint64x1_t, simd::allocator <uint64x1_t>> (array_size);
+        auto float64x1 = std::vector <float64x1_t, simd::allocator <float64x1_t>> (array_size);
+        auto complex_float64x1 = std::vector <complex_float64x1_t, simd::allocator <complex_float64x1_t>> (array_size);
 
         assert (alignment_test (bool64x1.data (), bool64x1_t::alignment));
         assert (alignment_test (int64x1.data (), int64x1_t::alignment));
@@ -2218,11 +2200,11 @@ void verify_vector_allocated_vars (void)
 
     /* 64 x 2 */
     {
-        auto bool64x2 = std::vector <bool64x2_t, simd_allocator <bool64x2_t>> (array_size);
-        auto int64x2 = std::vector <int64x2_t, simd_allocator <int64x2_t>> (array_size);
-        auto uint64x2 = std::vector <uint64x2_t, simd_allocator <uint64x2_t>> (array_size);
-        auto float64x2 = std::vector <float64x2_t, simd_allocator <float64x2_t>> (array_size);
-        auto complex_float64x2 = std::vector <complex_float64x2_t, simd_allocator <complex_float64x2_t>> (array_size);
+        auto bool64x2 = std::vector <bool64x2_t, simd::allocator <bool64x2_t>> (array_size);
+        auto int64x2 = std::vector <int64x2_t, simd::allocator <int64x2_t>> (array_size);
+        auto uint64x2 = std::vector <uint64x2_t, simd::allocator <uint64x2_t>> (array_size);
+        auto float64x2 = std::vector <float64x2_t, simd::allocator <float64x2_t>> (array_size);
+        auto complex_float64x2 = std::vector <complex_float64x2_t, simd::allocator <complex_float64x2_t>> (array_size);
 
         assert (alignment_test (bool64x2.data (), bool64x2_t::alignment));
         assert (alignment_test (int64x2.data (), int64x2_t::alignment));
@@ -2235,11 +2217,11 @@ void verify_vector_allocated_vars (void)
 
     /* 64 x 4 */
     {
-        auto bool64x4 = std::vector <bool64x4_t, simd_allocator <bool64x4_t>> (array_size);
-        auto int64x4 = std::vector <int64x4_t, simd_allocator <int64x4_t>> (array_size);
-        auto uint64x4 = std::vector <uint64x4_t, simd_allocator <uint64x4_t>> (array_size);
-        auto float64x4 = std::vector <float64x4_t, simd_allocator <float64x4_t>> (array_size);
-        auto complex_float64x4 = std::vector <complex_float64x4_t, simd_allocator <complex_float64x4_t>> (array_size);
+        auto bool64x4 = std::vector <bool64x4_t, simd::allocator <bool64x4_t>> (array_size);
+        auto int64x4 = std::vector <int64x4_t, simd::allocator <int64x4_t>> (array_size);
+        auto uint64x4 = std::vector <uint64x4_t, simd::allocator <uint64x4_t>> (array_size);
+        auto float64x4 = std::vector <float64x4_t, simd::allocator <float64x4_t>> (array_size);
+        auto complex_float64x4 = std::vector <complex_float64x4_t, simd::allocator <complex_float64x4_t>> (array_size);
 
         assert (alignment_test (bool64x4.data (), bool64x4_t::alignment));
         assert (alignment_test (int64x4.data (), int64x4_t::alignment));
@@ -2252,11 +2234,11 @@ void verify_vector_allocated_vars (void)
 
     /* 64 x 8 */
     {
-        auto bool64x8 = std::vector <bool64x8_t, simd_allocator <bool64x8_t>> (array_size);
-        auto int64x8 = std::vector <int64x8_t, simd_allocator <int64x8_t>> (array_size);
-        auto uint64x8 = std::vector <uint64x8_t, simd_allocator <uint64x8_t>> (array_size);
-        auto float64x8 = std::vector <float64x8_t, simd_allocator <float64x8_t>> (array_size);
-        auto complex_float64x8 = std::vector <complex_float64x8_t, simd_allocator <complex_float64x8_t>> (array_size);
+        auto bool64x8 = std::vector <bool64x8_t, simd::allocator <bool64x8_t>> (array_size);
+        auto int64x8 = std::vector <int64x8_t, simd::allocator <int64x8_t>> (array_size);
+        auto uint64x8 = std::vector <uint64x8_t, simd::allocator <uint64x8_t>> (array_size);
+        auto float64x8 = std::vector <float64x8_t, simd::allocator <float64x8_t>> (array_size);
+        auto complex_float64x8 = std::vector <complex_float64x8_t, simd::allocator <complex_float64x8_t>> (array_size);
 
         assert (alignment_test (bool64x8.data (), bool64x8_t::alignment));
         assert (alignment_test (int64x8.data (), int64x8_t::alignment));
@@ -2269,8 +2251,8 @@ void verify_vector_allocated_vars (void)
 
     /* long double x 2 */
     {
-        auto long_doublex2 = std::vector <long_doublex2_t, simd_allocator <long_doublex2_t>> (array_size);
-        auto complex_long_doublex2 = std::vector <complex_long_doublex2_t, simd_allocator <complex_long_doublex2_t>> (array_size);
+        auto long_doublex2 = std::vector <long_doublex2_t, simd::allocator <long_doublex2_t>> (array_size);
+        auto complex_long_doublex2 = std::vector <complex_long_doublex2_t, simd::allocator <complex_long_doublex2_t>> (array_size);
 
         assert (alignment_test (long_doublex2.data (), long_doublex2_t::alignment));
         assert (
@@ -2282,8 +2264,8 @@ void verify_vector_allocated_vars (void)
 
     /* long double x 4 */
     {
-        auto long_doublex4 = std::vector <long_doublex4_t, simd_allocator <long_doublex4_t>> (array_size);
-        auto complex_long_doublex4 = std::vector <complex_long_doublex4_t, simd_allocator <complex_long_doublex4_t>> (array_size);
+        auto long_doublex4 = std::vector <long_doublex4_t, simd::allocator <long_doublex4_t>> (array_size);
+        auto complex_long_doublex4 = std::vector <complex_long_doublex4_t, simd::allocator <complex_long_doublex4_t>> (array_size);
 
         assert (alignment_test (long_doublex4.data (), long_doublex4_t::alignment));
         assert (
@@ -2295,9 +2277,9 @@ void verify_vector_allocated_vars (void)
 
     /* 128 x 1 */
     {
-        auto bool128x1 = std::vector <bool128x1_t, simd_allocator <bool128x1_t>> (array_size);
-        auto int128x1 = std::vector <int128x1_t, simd_allocator <int128x1_t>> (array_size);
-        auto uint128x1 = std::vector <uint128x1_t, simd_allocator <uint128x1_t>> (array_size);
+        auto bool128x1 = std::vector <bool128x1_t, simd::allocator <bool128x1_t>> (array_size);
+        auto int128x1 = std::vector <int128x1_t, simd::allocator <int128x1_t>> (array_size);
+        auto uint128x1 = std::vector <uint128x1_t, simd::allocator <uint128x1_t>> (array_size);
 
         assert (alignment_test (bool128x1.data (), bool128x1_t::alignment));
         assert (alignment_test (int128x1.data (), int128x1_t::alignment));
@@ -2306,9 +2288,9 @@ void verify_vector_allocated_vars (void)
 
     /* 128 x 2 */
     {
-        auto bool128x2 = std::vector <bool128x2_t, simd_allocator <bool128x2_t>> (array_size);
-        auto int128x2 = std::vector <int128x2_t, simd_allocator <int128x2_t>> (array_size);
-        auto uint128x2 = std::vector <uint128x2_t, simd_allocator <uint128x2_t>> (array_size);
+        auto bool128x2 = std::vector <bool128x2_t, simd::allocator <bool128x2_t>> (array_size);
+        auto int128x2 = std::vector <int128x2_t, simd::allocator <int128x2_t>> (array_size);
+        auto uint128x2 = std::vector <uint128x2_t, simd::allocator <uint128x2_t>> (array_size);
 
         assert (alignment_test (bool128x2.data (), bool128x2_t::alignment));
         assert (alignment_test (int128x2.data (), int128x2_t::alignment));
@@ -2317,9 +2299,9 @@ void verify_vector_allocated_vars (void)
 
     /* 128 x 4 */
     {
-        auto bool128x4 = std::vector <bool128x4_t, simd_allocator <bool128x4_t>> (array_size);
-        auto int128x4 = std::vector <int128x4_t, simd_allocator <int128x4_t>> (array_size);
-        auto uint128x4 = std::vector <uint128x4_t, simd_allocator <uint128x4_t>> (array_size);
+        auto bool128x4 = std::vector <bool128x4_t, simd::allocator <bool128x4_t>> (array_size);
+        auto int128x4 = std::vector <int128x4_t, simd::allocator <int128x4_t>> (array_size);
+        auto uint128x4 = std::vector <uint128x4_t, simd::allocator <uint128x4_t>> (array_size);
 
         assert (alignment_test (bool128x4.data (), bool128x4_t::alignment));
         assert (alignment_test (int128x4.data (), int128x4_t::alignment));
