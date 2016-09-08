@@ -6392,6 +6392,145 @@ namespace detail
 }   // namespace detail
 
     /*
+     * General allocator for SIMD vector types; this should be used with
+     * containers to ensure correct data alignment.
+     */
+    template <typename SimdT>
+    class allocator
+    {
+    public:
+        static_assert (
+            detail::is_simd_type <SimdT>::value,
+            "template typename parameter SimdT must be a SIMD vector type"
+        );
+
+        using value_type      = typename std::decay <SimdT>::type;
+        using is_always_equal = std::true_type;
+        using propogate_on_container_move_assignment = std::true_type;
+
+#if __cplusplus > 201402L
+        [[deprecated("member type pointer is deprecated in C++17")]]
+#endif
+        using pointer = value_type *;
+
+#if __cplusplus > 201402L
+        [[deprecated("member type const_pointer is deprecated in C++17")]]
+#endif
+        using const_pointer = value_type const *;
+
+#if __cplusplus > 201402L
+        [[deprecated("member type reference is deprecated in C++17")]]
+#endif
+        using reference = value_type &;
+
+#if __cplusplus > 201402L
+        [[deprecated("member type const_reference is deprecated in C++17")]]
+#endif
+        using const_reference = value_type const &;
+
+#if __cplusplus > 201402L
+        [[deprecated("member type size_type is deprecated in C++17")]]
+#endif
+        using size_type = std::size_t;
+
+#if __cplusplus > 201402L
+        [[deprecated("member type difference_type is deprecated in C++17")]]
+#endif
+        using difference_type = std::ptrdiff_t;
+
+        template <class U>
+#if __cplusplus > 201402L
+        [[deprecated("member template type rebind is deprecated in C++17")]]
+#endif
+        struct rebind
+        {
+            using other = allocator <U>;
+        };
+
+        allocator (void) noexcept = default;
+        ~allocator (void) noexcept = default;
+
+#if __cplusplus > 201402L
+        [[deprecated(
+            "member function allocate (with hint) is deprecated in C++17"
+        )]]
+#endif
+        pointer allocate (size_type n, void const *)
+        {
+            return new value_type [n];
+        }
+
+        value_type * allocate (size_type n) const
+        {
+            return new value_type [n];
+        }
+
+        void deallocate (value_type * p, std::size_t) const noexcept
+        {
+            value_type::operator delete [] (p);
+        }
+
+#if __cplusplus > 201402L
+        [[deprecated("member function address is deprecated in C++17")]]
+#endif
+        pointer allocate (reference r) const noexcept
+        {
+            return &r;
+        }
+
+#if __cplusplus > 201402L
+        [[deprecated("member function address is deprecated in C++17")]]
+#endif
+        const_pointer allocate (const_reference r) const noexcept
+        {
+            return &r;
+        }
+
+#if __cplusplus > 201402L
+        [[deprecated("member function max_size is deprecated in C++17")]]
+#endif
+        size_type max_size (void) const noexcept
+        {
+            return std::numeric_limits <size_type>::max () /
+                sizeof (value_type);
+        }
+
+        template <class U, class ... Args>
+#if __cplusplus > 201402L
+        [[deprecated("member function construct is deprecated in C++17")]]
+#endif
+        void construct (U * p, Args && ... args) const
+        {
+            ::new (static_cast <void *> (p)) U (std::forward <Args> (args)...);
+        }
+
+        template <class U>
+#if __cplusplus > 201402L
+        [[deprecated("member function construct is deprecated in C++17")]]
+#endif
+        void destroy (U * p) const noexcept (noexcept (p->~U ()))
+        {
+            p->~U ();
+        }
+
+        template <class U>
+        bool operator== (allocator <U> const &) const noexcept
+        {
+            return std::is_same <
+                typename allocator <U>::value_type, value_type
+            >::value;
+        }
+
+        template <class U>
+        bool operator!= (allocator <U> const &) const noexcept
+        {
+            return !std::is_same <
+                typename allocator <U>::value_type, value_type
+            >::value;
+        }
+    };
+
+    /*
      * Compute a new SIMD vector containing the function results of each lane of
      * the original SIMD vector.
      */
