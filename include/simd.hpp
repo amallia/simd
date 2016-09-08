@@ -4245,7 +4245,7 @@ template <>
         static complex_simd_type load (vector_type const * real_addr,
                                        vector_type const * imag_addr,
                                        std::ptrdiff_t real_off,
-                                       std::ptrdiff_t imag_off = real_off)
+                                       std::ptrdiff_t imag_off)
             noexcept
         {
             return complex_simd_type {
@@ -4297,11 +4297,10 @@ template <>
             return complex_simd_type {*aligned_real_ptr, *aligned_imag_ptr};
         }
 
-        static complex_simd_type
-            load_aligned (vector_type const * real_addr,
-                          vector_type const * imag_addr,
-                          std::ptrdiff_t real_off,
-                          std::ptrdiff_t imag_off = real_off)
+        static complex_simd_type load_aligned (vector_type const * real_addr,
+                                               vector_type const * imag_addr,
+                                               std::ptrdiff_t real_off,
+                                               std::ptrdiff_t imag_off)
             noexcept
         {
             auto real_use_addr = real_addr + real_off;
