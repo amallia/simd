@@ -42,6 +42,18 @@
     #error "simd implemention requires clang or gcc vector extensions"
 #endif
 
+#if defined (__clang__)
+    #define SIMD_HEADER_CLANG true
+#else
+    #define SIMD_HEADER_CLANG false
+#endif
+
+#if defined (__GNUG__) && !defined (__clang__)
+    #define SIMD_HEADER_GNUG true
+#else
+    #define SIMD_HEADER_GNUG false
+#endif
+
 #if __cplusplus < 201103L
     #error "simd implementation requires C++11 support"
 #endif
@@ -327,9 +339,9 @@ namespace util
      * Hash combine for specialization of std::hash for SIMD vector types.
      */
     template <>
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     void hash_combine (std::size_t & seed, __int128_t const & t) noexcept
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     void hash_combine (std::size_t & seed, __int128 const & t) noexcept
 #endif
     {
@@ -350,10 +362,10 @@ namespace util
      * vector types.
      */
     template <>
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     std::size_t hash_combine (std::size_t const & seed, __int128_t const & t)
         noexcept
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     std::size_t hash_combine (std::size_t const & seed, __int128 const & t)
         noexcept
 #endif
@@ -376,9 +388,9 @@ namespace util
      * Hash combine for specialization of std::hash for SIMD vector types.
      */
     template <>
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     void hash_combine (std::size_t & seed, __uint128_t const & t) noexcept
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     void hash_combine (std::size_t & seed, unsigned __int128 const & t) noexcept
 #endif
     {
@@ -399,10 +411,10 @@ namespace util
      * vector types.
      */
     template <>
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     std::size_t hash_combine (std::size_t const & seed, __uint128_t const & t)
         noexcept
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     std::size_t hash_combine (std::size_t const & seed,
                               unsigned __int128 const & t) noexcept
 #endif
@@ -550,20 +562,20 @@ struct vector_type_specialization <ty, lanes>\
 
     template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         __int128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         __int128,
 #endif
         1
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __int128_t type
             __attribute__ ((vsize (1, sizeof (__int128_t))));
         static constexpr std::size_t alignment = 1 * alignof (__int128_t);
         static constexpr std::size_t size      = 1 * sizeof (__int128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef __int128 type __attribute__ ((vsize (1, sizeof (__int128))));
         static constexpr std::size_t alignment = 1 * alignof (__int128);
         static constexpr std::size_t size      = 1 * sizeof (__int128);
@@ -572,20 +584,20 @@ struct vector_type_specialization <ty, lanes>\
 
     template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         __int128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         __int128,
 #endif
         2
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __int128_t type
             __attribute__ ((vsize (2, sizeof (__int128_t))));
         static constexpr std::size_t alignment = 2 * alignof (__int128_t);
         static constexpr std::size_t size      = 2 * sizeof (__int128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef __int128 type __attribute__ ((vsize (2, sizeof (__int128))));
         static constexpr std::size_t alignment = 2 * alignof (__int128);
         static constexpr std::size_t size      = 2 * sizeof (__int128);
@@ -594,20 +606,20 @@ struct vector_type_specialization <ty, lanes>\
 
 template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         __int128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         __int128,
 #endif
         4
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __int128_t type
             __attribute__ ((vsize (4, sizeof (__int128_t))));
         static constexpr std::size_t alignment = 4 * alignof (__int128_t);
         static constexpr std::size_t size      = 4 * sizeof (__int128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef __int128 type __attribute__ ((vsize (4, sizeof (__int128))));
         static constexpr std::size_t alignment = 4 * alignof (__int128);
         static constexpr std::size_t size      = 4 * sizeof (__int128);
@@ -616,20 +628,20 @@ template <>
 
     template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         __int128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         __int128,
 #endif
         8
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __int128_t type
             __attribute__ ((vsize (8, sizeof (__int128_t))));
         static constexpr std::size_t alignment = 8 * alignof (__int128_t);
         static constexpr std::size_t size      = 8 * sizeof (__int128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef __int128 type __attribute__ ((vsize (8, sizeof (__int128))));
         static constexpr std::size_t alignment = 8 * alignof (__int128);
         static constexpr std::size_t size      = 8 * sizeof (__int128);
@@ -638,20 +650,20 @@ template <>
 
     template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         __int128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         __int128,
 #endif
         16
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __int128_t type
             __attribute__ ((vsize (16, sizeof (__int128_t))));
         static constexpr std::size_t alignment = 16 * alignof (__int128_t);
         static constexpr std::size_t size      = 16 * sizeof (__int128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef __int128 type __attribute__ ((vsize (16, sizeof (__int128))));
         static constexpr std::size_t alignment = 16 * alignof (__int128);
         static constexpr std::size_t size      = 16 * sizeof (__int128);
@@ -660,20 +672,20 @@ template <>
 
 template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         __int128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         __int128,
 #endif
         32
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __int128_t type
             __attribute__ ((vsize (32, sizeof (__int128_t))));
         static constexpr std::size_t alignment = 32 * alignof (__int128_t);
         static constexpr std::size_t size      = 32 * sizeof (__int128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef __int128 type __attribute__ ((vsize (32, sizeof (__int128))));
         static constexpr std::size_t alignment = 32 * alignof (__int128);
         static constexpr std::size_t size      = 32 * sizeof (__int128);
@@ -682,20 +694,20 @@ template <>
 
     template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         __int128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         __int128,
 #endif
         64
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __int128_t type
             __attribute__ ((vsize (64, sizeof (__int128_t))));
         static constexpr std::size_t alignment = 64 * alignof (__int128_t);
         static constexpr std::size_t size      = 64 * sizeof (__int128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef __int128 type __attribute__ ((vsize (64, sizeof (__int128))));
         static constexpr std::size_t alignment = 64 * alignof (__int128);
         static constexpr std::size_t size      = 64 * sizeof (__int128);
@@ -704,20 +716,20 @@ template <>
 
     template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         __uint128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         unsigned __int128,
 #endif
         1
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __uint128_t type
             __attribute__ ((vsize (1, sizeof (__uint128_t))));
         static constexpr std::size_t alignment = 1 * alignof (__uint128_t);
         static constexpr std::size_t size      = 1 * sizeof (__uint128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef unsigned __int128 type
             __attribute__ ((vsize (1, sizeof (unsigned __int128))));
         static constexpr std::size_t alignment
@@ -728,20 +740,20 @@ template <>
 
     template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         __uint128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         unsigned __int128,
 #endif
         2
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __uint128_t type
             __attribute__ ((vsize (2, sizeof (__uint128_t))));
         static constexpr std::size_t alignment = 2 * alignof (__uint128_t);
         static constexpr std::size_t size      = 2 * sizeof (__uint128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef unsigned __int128 type
             __attribute__ ((vsize (2, sizeof (unsigned __int128))));
         static constexpr std::size_t alignment
@@ -752,20 +764,20 @@ template <>
 
 template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         __uint128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         unsigned __int128,
 #endif
         4
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __uint128_t type
             __attribute__ ((vsize (4, sizeof (__uint128_t))));
         static constexpr std::size_t alignment = 4 * alignof (__uint128_t);
         static constexpr std::size_t size      = 4 * sizeof (__uint128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef unsigned __int128 type
             __attribute__ ((vsize (4, sizeof (unsigned __int128))));
         static constexpr std::size_t alignment
@@ -776,20 +788,20 @@ template <>
 
     template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         __uint128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         unsigned __int128,
 #endif
         8
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __uint128_t type
             __attribute__ ((vsize (8, sizeof (__uint128_t))));
         static constexpr std::size_t alignment = 8 * alignof (__uint128_t);
         static constexpr std::size_t size      = 8 * sizeof (__uint128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef unsigned __int128 type
             __attribute__ ((vsize (8, sizeof (unsigned __int128))));
         static constexpr std::size_t alignment
@@ -800,20 +812,20 @@ template <>
 
     template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         __uint128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         unsigned __int128,
 #endif
         16
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __uint128_t type
             __attribute__ ((vsize (16, sizeof (__uint128_t))));
         static constexpr std::size_t alignment = 16 * alignof (__uint128_t);
         static constexpr std::size_t size      = 16 * sizeof (__uint128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef unsigned __int128 type
             __attribute__ ((vsize (16, sizeof (unsigned __int128))));
         static constexpr std::size_t alignment
@@ -824,21 +836,21 @@ template <>
 
 template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         __uint128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         unsigned __int128,
 #endif
         32
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __uint128_t type
             __attribute__ ((vsize (32, sizeof (__uint128_t))));
         static constexpr std::size_t alignment
             = 32 * alignof (__uint128_t);
         static constexpr std::size_t size = 32 * sizeof (__uint128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef unsigned __int128 type
             __attribute__ ((vsize (32, sizeof (unsigned __int128))));
         static constexpr std::size_t alignment
@@ -849,20 +861,20 @@ template <>
 
     template <>
     struct vector_type_specialization <
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
          __uint128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         unsigned __int128,
 #endif
         64
     >
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         typedef __uint128_t type
             __attribute__ ((vsize (64, sizeof (__uint128_t))));
         static constexpr std::size_t alignment = 64 * alignof (__uint128_t);
         static constexpr std::size_t size      = 64 * sizeof (__uint128_t);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         typedef unsigned __int128 type
             __attribute__ ((vsize (64, sizeof (unsigned __int128))));
         static constexpr std::size_t alignment
@@ -902,9 +914,9 @@ template <>
                         sizeof (T) == 16 ||
                         sizeof (T) == 12 ||
                         sizeof (T) == 10,
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
                         __int128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
                         __int128,
 #endif
                         void
@@ -931,9 +943,9 @@ template <>
                         sizeof (T) == 16 ||
                         sizeof (T) == 12 ||
                         sizeof (T) == 10,
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
                         __uint128_t,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
                         unsigned __int128,
 #endif
                         void
@@ -946,14 +958,14 @@ template <>
     template <typename T, std::size_t lanes>
     class simd_type_base
     {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         static_assert (
             std::is_arithmetic <T>::value ||
                 std::is_same <T, __int128_t>::value ||
                 std::is_same <T, __uint128_t>::value,
             "template parameter typename T must be an arithmetic type"
         );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         static_assert (
             std::is_arithmetic <T>::value ||
                 std::is_same <T, __int128>::value ||
@@ -1724,12 +1736,12 @@ template <>
     using simd_type = typename std::conditional <
         (std::is_integral <T>::value &&
             std::is_same <tag, arithmetic_tag>::value) ||
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
         (std::is_same <T, __int128_t>::value &&
             std::is_same <tag, arithmetic_tag>::value)||
         (std::is_same <T, __uint128_t>::value &&
             std::is_same <tag, arithmetic_tag>::value),
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         (std::is_same <T, __int128>::value &&
             std::is_same <tag, arithmetic_tag>::value)||
         (std::is_same <T, unsigned __int128>::value &&
@@ -1739,12 +1751,12 @@ template <>
         typename std::conditional <
             (std::is_integral <T>::value &&
                 std::is_same <tag, boolean_tag>::value) ||
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             (std::is_same <T, __int128_t>::value &&
                 std::is_same <tag, boolean_tag>::value) ||
             (std::is_same <T, __uint128_t>::value &&
                 std::is_same <tag, boolean_tag>::value),
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             (std::is_same <T, __int128>::value &&
                 std::is_same <tag, boolean_tag>::value) ||
             (std::is_same <T, unsigned __int128>::value &&
@@ -1866,10 +1878,10 @@ template <>
     public:
         static_assert (
             std::is_integral <T>::value ||
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             std::is_same <T, __int128_t>::value ||
             std::is_same <T, __uint128_t>::value,
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             std::is_same <T, __int128>::value ||
             std::is_same <T, unsigned __int128>::value,
 #endif
@@ -2093,9 +2105,9 @@ template <>
         template <typename vec_to, typename valtype, typename vec_from>
         static vec_to vector_convert (vec_from const & v) noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return static_cast <vec_to> (v);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return base::template vector_convert <vec_to, valtype> (
                 v, util::lane_tag <lanes> {}
             );
@@ -2548,7 +2560,7 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator! (void) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return boolean_simd_type <integral_type, lanes> {
                 base::apply_op (
                     this->_vec,
@@ -2559,7 +2571,7 @@ template <>
                     util::lane_tag <lanes> {}
                 )
             };
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {!this->_vec};
 #endif
         }
@@ -2567,7 +2579,7 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator&& (integral_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return boolean_simd_type <integral_type, lanes> {
                 base::apply_op (
                     this->_vec,
@@ -2580,7 +2592,7 @@ template <>
                     util::lane_tag <lanes> {}
                 )
             };
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec && sv._vec
             };
@@ -2605,7 +2617,7 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator|| (integral_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return boolean_simd_type <integral_type, lanes> {
                 base::apply_op (
                     this->_vec,
@@ -2618,7 +2630,7 @@ template <>
                     util::lane_tag <lanes> {}
                 )
             };
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec || sv._vec
             };
@@ -2874,7 +2886,7 @@ template <>
             return *this;
         }
 
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     private:
         template <typename Comparison, std::size_t ... L>
         static constexpr boolean_simd_type <integral_type, lanes>
@@ -2891,11 +2903,11 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator== (integral_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec == sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec == sv._vec
             };
@@ -2918,11 +2930,11 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator!= (integral_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec != sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec != sv._vec
             };
@@ -2945,11 +2957,11 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator> (integral_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec > sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec > sv._vec
             };
@@ -2972,11 +2984,11 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator< (integral_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec < sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec < sv._vec
             };
@@ -2999,11 +3011,11 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator>= (integral_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec >= sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec >= sv._vec
             };
@@ -3026,11 +3038,11 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator<= (integral_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec <= sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec <= sv._vec
             };
@@ -3261,9 +3273,9 @@ template <>
         template <typename vec_to, typename valtype, typename vec_from>
         static vec_to vector_convert (vec_from const & v) noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return static_cast <vec_to> (v);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return base::template vector_convert <vec_to, valtype> (
                 v, util::lane_tag <lanes> {}
             );
@@ -3739,7 +3751,7 @@ template <>
             return *this;
         }
 
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     private:
         template <typename Comparison, std::size_t ... L>
         static constexpr boolean_simd_type <integral_type, lanes>
@@ -3756,11 +3768,11 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator== (fp_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec == sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec == sv._vec
             };
@@ -3783,11 +3795,11 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator!= (fp_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec != sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec != sv._vec
             };
@@ -3810,11 +3822,11 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator> (fp_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec > sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec > sv._vec
             };
@@ -3837,11 +3849,11 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator< (fp_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec < sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec < sv._vec
             };
@@ -3864,11 +3876,11 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator>= (fp_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec >= sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec >= sv._vec
             };
@@ -3891,11 +3903,11 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator<= (fp_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec <= sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_vec <= sv._vec
             };
@@ -4637,9 +4649,9 @@ template <>
         template <typename vec_to, typename valtype, typename vec_from>
         static vec_to vector_convert (vec_from const & v) noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return static_cast <vec_to> (v);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return base::template vector_convert <vec_to, valtype> (
                 v, util::lane_tag <lanes> {}
             );
@@ -5105,7 +5117,7 @@ template <>
             return *this;
         }
 
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     private:
         template <typename Comparison, std::size_t ... L>
         static constexpr boolean_simd_type <integral_type, lanes>
@@ -5122,13 +5134,13 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator== (complex_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_realvec == sv._realvec &&
                 this->_imagvec == sv._imagvec,
                 util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_realvec == sv._realvec &&
                 this->_imagvec == sv._imagvec
@@ -5152,13 +5164,13 @@ template <>
         constexpr boolean_simd_type <integral_type, lanes>
             operator!= (complex_simd_type const & sv) const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_realvec != sv._realvec ||
                 this->_imagvec != sv._imagvec,
                 util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type <integral_type, lanes> {
                 this->_realvec != sv._realvec ||
                 this->_imagvec != sv._imagvec
@@ -5294,13 +5306,13 @@ template <>
         static constexpr vector_type make_gcc_compatible (vector_type const & v)
             noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             using uvector_type = vext::vector <unsigned_integral_type, lanes>;
 
             return __builtin_convertvector (
                 __builtin_convertvector (v * -1, uvector_type), vector_type
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return v ? ~integral_type {0} : integral_type {0};
 #endif
         }
@@ -5310,9 +5322,9 @@ template <>
         {}
 
         explicit constexpr boolean_simd_type (vector_type const & vec) noexcept
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             : _vec {vec}
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             : _vec {vec & integral_type {1}}
 #endif
         {}
@@ -5399,9 +5411,9 @@ template <>
         template <typename vec_to, typename valtype, typename vec_from>
         static vec_to vector_convert (vec_from const & v) noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return static_cast <vec_to> (v);
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return base::template vector_convert <vec_to, valtype> (
                 v, util::lane_tag <lanes> {}
             );
@@ -6108,7 +6120,7 @@ template <>
             return *this;
         }
 
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     private:
         template <typename Comparison, std::size_t ... L>
         static constexpr boolean_simd_type
@@ -6125,11 +6137,11 @@ template <>
         constexpr boolean_simd_type operator== (boolean_simd_type const & sv)
             const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec == sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type {this->_vec == sv._vec};
 #endif
         }
@@ -6149,11 +6161,11 @@ template <>
         constexpr boolean_simd_type operator!= (boolean_simd_type const & sv)
             const noexcept
         {
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
             return unpack_comparison (
                 this->_vec != sv._vec, util::make_index_sequence <lanes> {}
             );
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
             return boolean_simd_type {this->_vec != sv._vec};
 #endif
         }
@@ -6512,7 +6524,7 @@ template <>
             "template parameter T of mask simd type must be an integral type"
         );
 
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     /*
      * clang's __builtin_shufflevector requires constant integer indices,
      * and hence we must implement the function by hand for the general
@@ -6527,7 +6539,7 @@ template <>
         }
 
         return shuffle_result;
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         return simd_type <U, lanes, tag> {
             __builtin_shuffle (sv.data (), mask.data ())
         };
@@ -6545,7 +6557,7 @@ template <>
             "template parameter T of mask simd type must be an integral type"
         );
 
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     /*
      * clang's __builtin_shufflevector requires constant integer indices,
      * and hence we must implement the function by hand for the general
@@ -6564,7 +6576,7 @@ template <>
         }
 
         return shuffle_result;
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
         return simd_type <U, lanes, tag> {
             __builtin_shuffle (sv1.data (), sv2.data (), mask.data ())
         };
@@ -8236,33 +8248,33 @@ inline namespace common
 
     /* Guaranteed 128-bit integer SIMD vectors */
     /* 1 128-bit lane */
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
 #endif
 
     /* 2 128-bit lanes */
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     using bool128x2_t = simd_type <__int128_t, 2, simd::boolean_tag>;
     using int128x2_t  = simd_type <__int128_t, 2>;
     using uint128x2_t = simd_type <__uint128_t, 2>;
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     using bool128x2_t = simd_type <__int128, 2, simd::boolean_tag>;
     using int128x2_t  = simd_type <__int128, 2>;
     using uint128x2_t = simd_type <unsigned __int128, 2>;
 #endif
 
     /* 4 128-bit lanes */
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     using bool128x4_t = simd_type <__int128_t, 4, simd::boolean_tag>;
     using int128x4_t  = simd_type <__int128_t, 4>;
     using uint128x4_t = simd_type <__uint128_t, 4>;
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     using bool128x4_t = simd_type <__int128, 4, simd::boolean_tag>;
     using int128x4_t  = simd_type <__int128, 4>;
     using uint128x4_t = simd_type <unsigned __int128, 4>;
@@ -8381,11 +8393,11 @@ namespace sse2
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -8447,11 +8459,11 @@ namespace sse3
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -8507,11 +8519,11 @@ namespace ssse3
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -8567,11 +8579,11 @@ namespace sse4
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -8630,11 +8642,11 @@ namespace sse4a
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -8690,11 +8702,11 @@ namespace avx
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -8759,11 +8771,11 @@ namespace avx2
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -8834,11 +8846,11 @@ namespace avx512
     using complex_float64x2_t = simd_type <double, 2, simd::complex_tag>;
 
     /* 1 128-bit lane (x86 doublequadword) */
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     using bool128x1_t = simd_type <__int128_t, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128_t, 1>;
     using uint128x1_t = simd_type <__uint128_t, 1>;
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     using bool128x1_t = simd_type <__int128, 1, simd::boolean_tag>;
     using int128x1_t  = simd_type <__int128, 1>;
     using uint128x1_t = simd_type <unsigned __int128, 1>;
@@ -9233,7 +9245,7 @@ namespace std
         }\
     };
 
-#if defined (__clang__)
+#if SIMD_HEADER_CLANG
     std_hash_impl_int128(__int128_t, 1, simd::boolean_tag)
     std_hash_impl_int128(__int128_t, 2, simd::boolean_tag)
     std_hash_impl_int128(__int128_t, 4, simd::boolean_tag)
@@ -9255,7 +9267,7 @@ namespace std
     std_hash_impl_int128(__uint128_t, 16, simd::arithmetic_tag)
     std_hash_impl_int128(__uint128_t, 32, simd::arithmetic_tag)
     std_hash_impl_int128(__uint128_t, 64, simd::arithmetic_tag)
-#elif defined (__GNUG__)
+#elif SIMD_HEADER_GNUG
     std_hash_impl_int128(__int128, 1, simd::boolean_tag)
     std_hash_impl_int128(__int128, 2, simd::boolean_tag)
     std_hash_impl_int128(__int128, 4, simd::boolean_tag)
@@ -9281,5 +9293,8 @@ namespace std
 
 #undef std_hash_impl_int128
 }   // namespace std
+
+#undef SIMD_HEADER_CLANG
+#undef SIMD_HEADER_GNUG
 
 #endif  // #ifndef SIMD_IMPLEMENTATION_HEADER
