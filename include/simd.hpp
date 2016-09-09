@@ -1144,115 +1144,253 @@ template <>
             return vector_type_impl {static_cast <base_value_type> (ts)...};
         }
 
-        template <typename vec_to, typename valtype, typename vec_from>
-        static vec_to vector_convert (vec_from const & v, util::lane_tag <1>)
+        template <typename Op>
+        static constexpr vector_type_impl
+            apply_op (vector_type_impl const & v, Op op, util::lane_tag <1>)
+            noexcept
         {
-            return vec_to {static_cast <valtype> (v [0])};
+            return vector_type_impl {op (v [0])};
         }
 
-        template <typename vec_to, typename valtype, typename vec_from>
-        static vec_to vector_convert (vec_from const & v, util::lane_tag <2>)
+        template <typename Op>
+        static constexpr vector_type_impl
+            apply_op (vector_type_impl const & v, Op op, util::lane_tag <2>)
+            noexcept
         {
-            return vec_to {
-                static_cast <valtype> (v [0]), static_cast <valtype> (v [1])
+            return vector_type_impl {op (v [0]), op (v [1])};
+        }
+
+        template <typename Op>
+        static constexpr vector_type_impl
+            apply_op (vector_type_impl const & v, Op op, util::lane_tag <4>)
+            noexcept
+        {
+            return vector_type_impl {
+                op (v [0]), op (v [1]), op (v [2]), op (v [3])
             };
         }
 
-        template <typename vec_to, typename valtype, typename vec_from>
-        static vec_to vector_convert (vec_from const & v, util::lane_tag <4>)
+        template <typename Op>
+        static constexpr vector_type_impl
+            apply_op (vector_type_impl const & v, Op op, util::lane_tag <8>)
+            noexcept
         {
-            return vec_to {
-                static_cast <valtype> (v [0]), static_cast <valtype> (v [1]),
-                static_cast <valtype> (v [2]), static_cast <valtype> (v [3])
+            return vector_type_impl {
+                op (v [0]), op (v [1]), op (v [2]), op (v [3]),
+                op (v [4]), op (v [5]), op (v [6]), op (v [7])
             };
         }
 
-        template <typename vec_to, typename valtype, typename vec_from>
-        static vec_to vector_convert (vec_from const & v, util::lane_tag <8>)
+        template <typename Op>
+        static constexpr vector_type_impl
+            apply_op (vector_type_impl const & v, Op op, util::lane_tag <16>)
+            noexcept
         {
-            return vec_to {
-                static_cast <valtype> (v [0]), static_cast <valtype> (v [1]),
-                static_cast <valtype> (v [2]), static_cast <valtype> (v [3]),
-                static_cast <valtype> (v [4]), static_cast <valtype> (v [5]),
-                static_cast <valtype> (v [6]), static_cast <valtype> (v [7])
+            return vector_type_impl {
+                op (v [0]),  op (v [1]),  op (v [2]),  op (v [3]),
+                op (v [4]),  op (v [5]),  op (v [6]),  op (v [7]),
+                op (v [8]),  op (v [9]),  op (v [10]), op (v [11]),
+                op (v [12]), op (v [13]), op (v [14]), op (v [15])
             };
         }
 
-        template <typename vec_to, typename valtype, typename vec_from>
-        static vec_to vector_convert (vec_from const & v, util::lane_tag <16>)
+        template <typename Op>
+        static constexpr vector_type_impl
+            apply_op (vector_type_impl const & v, Op op, util::lane_tag <32>)
+            noexcept
         {
-            return vec_to {
-                static_cast <valtype> (v [0]),  static_cast <valtype> (v [1]),
-                static_cast <valtype> (v [2]),  static_cast <valtype> (v [3]),
-                static_cast <valtype> (v [4]),  static_cast <valtype> (v [5]),
-                static_cast <valtype> (v [6]),  static_cast <valtype> (v [7]),
-                static_cast <valtype> (v [8]),  static_cast <valtype> (v [9]),
-                static_cast <valtype> (v [10]), static_cast <valtype> (v [11]),
-                static_cast <valtype> (v [12]), static_cast <valtype> (v [13]),
-                static_cast <valtype> (v [14]), static_cast <valtype> (v [15])
+            return vector_type_impl {
+                op (v [0]),  op (v [1]),  op (v [2]),  op (v [3]),
+                op (v [4]),  op (v [5]),  op (v [6]),  op (v [7]),
+                op (v [8]),  op (v [9]),  op (v [10]), op (v [11]),
+                op (v [12]), op (v [13]), op (v [14]), op (v [15]),
+                op (v [16]), op (v [17]), op (v [18]), op (v [19]),
+                op (v [20]), op (v [21]), op (v [22]), op (v [23]),
+                op (v [24]), op (v [25]), op (v [26]), op (v [27]),
+                op (v [28]), op (v [29]), op (v [30]), op (v [31])
             };
         }
 
-        template <typename vec_to, typename valtype, typename vec_from>
-        static vec_to vector_convert (vec_from const & v, util::lane_tag <32>)
+        template <typename Op>
+        static constexpr vector_type_impl
+            apply_op (vector_type_impl const & v, Op op, util::lane_tag <64>)
+            noexcept
         {
-            return vec_to {
-                static_cast <valtype> (v [0]),  static_cast <valtype> (v [1]),
-                static_cast <valtype> (v [2]),  static_cast <valtype> (v [3]),
-                static_cast <valtype> (v [4]),  static_cast <valtype> (v [5]),
-                static_cast <valtype> (v [6]),  static_cast <valtype> (v [7]),
-                static_cast <valtype> (v [8]),  static_cast <valtype> (v [9]),
-                static_cast <valtype> (v [10]), static_cast <valtype> (v [11]),
-                static_cast <valtype> (v [12]), static_cast <valtype> (v [13]),
-                static_cast <valtype> (v [14]), static_cast <valtype> (v [15]),
-                static_cast <valtype> (v [16]), static_cast <valtype> (v [17]),
-                static_cast <valtype> (v [18]), static_cast <valtype> (v [19]),
-                static_cast <valtype> (v [20]), static_cast <valtype> (v [21]),
-                static_cast <valtype> (v [22]), static_cast <valtype> (v [23]),
-                static_cast <valtype> (v [24]), static_cast <valtype> (v [25]),
-                static_cast <valtype> (v [26]), static_cast <valtype> (v [27]),
-                static_cast <valtype> (v [28]), static_cast <valtype> (v [29]),
-                static_cast <valtype> (v [30]), static_cast <valtype> (v [31])
+            return vector_type_impl {
+                op (v [0]),  op (v [1]),  op (v [2]),  op (v [3]),
+                op (v [4]),  op (v [5]),  op (v [6]),  op (v [7]),
+                op (v [8]),  op (v [9]),  op (v [10]), op (v [11]),
+                op (v [12]), op (v [13]), op (v [14]), op (v [15]),
+                op (v [16]), op (v [17]), op (v [18]), op (v [19]),
+                op (v [20]), op (v [21]), op (v [22]), op (v [23]),
+                op (v [24]), op (v [25]), op (v [26]), op (v [27]),
+                op (v [28]), op (v [29]), op (v [30]), op (v [31]),
+                op (v [32]), op (v [33]), op (v [34]), op (v [35]),
+                op (v [36]), op (v [37]), op (v [38]), op (v [39]),
+                op (v [40]), op (v [41]), op (v [42]), op (v [43]),
+                op (v [44]), op (v [45]), op (v [46]), op (v [47]),
+                op (v [48]), op (v [49]), op (v [50]), op (v [51]),
+                op (v [52]), op (v [53]), op (v [54]), op (v [55]),
+                op (v [56]), op (v [57]), op (v [58]), op (v [59]),
+                op (v [60]), op (v [61]), op (v [62]), op (v [63])
             };
         }
 
-        template <typename vec_to, typename valtype, typename vec_from>
-        static vec_to vector_convert (vec_from const & v, util::lane_tag <64>)
+        template <typename Op>
+        static constexpr vector_type_impl apply_op (vector_type_impl const & u,
+                                                    vector_type_impl const & v,
+                                                    Op op,
+                                                    util::lane_tag <1>)
+            noexcept
         {
-            return vec_to {
-                static_cast <valtype> (v [0]),  static_cast <valtype> (v [1]),
-                static_cast <valtype> (v [2]),  static_cast <valtype> (v [3]),
-                static_cast <valtype> (v [4]),  static_cast <valtype> (v [5]),
-                static_cast <valtype> (v [6]),  static_cast <valtype> (v [7]),
-                static_cast <valtype> (v [8]),  static_cast <valtype> (v [9]),
-                static_cast <valtype> (v [10]), static_cast <valtype> (v [11]),
-                static_cast <valtype> (v [12]), static_cast <valtype> (v [13]),
-                static_cast <valtype> (v [14]), static_cast <valtype> (v [15]),
-                static_cast <valtype> (v [16]), static_cast <valtype> (v [17]),
-                static_cast <valtype> (v [18]), static_cast <valtype> (v [19]),
-                static_cast <valtype> (v [20]), static_cast <valtype> (v [21]),
-                static_cast <valtype> (v [22]), static_cast <valtype> (v [23]),
-                static_cast <valtype> (v [24]), static_cast <valtype> (v [25]),
-                static_cast <valtype> (v [26]), static_cast <valtype> (v [27]),
-                static_cast <valtype> (v [28]), static_cast <valtype> (v [29]),
-                static_cast <valtype> (v [30]), static_cast <valtype> (v [31]),
-                static_cast <valtype> (v [32]), static_cast <valtype> (v [33]),
-                static_cast <valtype> (v [34]), static_cast <valtype> (v [35]),
-                static_cast <valtype> (v [36]), static_cast <valtype> (v [37]),
-                static_cast <valtype> (v [38]), static_cast <valtype> (v [39]),
-                static_cast <valtype> (v [40]), static_cast <valtype> (v [41]),
-                static_cast <valtype> (v [42]), static_cast <valtype> (v [43]),
-                static_cast <valtype> (v [44]), static_cast <valtype> (v [45]),
-                static_cast <valtype> (v [46]), static_cast <valtype> (v [47]),
-                static_cast <valtype> (v [48]), static_cast <valtype> (v [49]),
-                static_cast <valtype> (v [50]), static_cast <valtype> (v [51]),
-                static_cast <valtype> (v [52]), static_cast <valtype> (v [53]),
-                static_cast <valtype> (v [54]), static_cast <valtype> (v [55]),
-                static_cast <valtype> (v [56]), static_cast <valtype> (v [57]),
-                static_cast <valtype> (v [58]), static_cast <valtype> (v [59]),
-                static_cast <valtype> (v [60]), static_cast <valtype> (v [61]),
-                static_cast <valtype> (v [62]), static_cast <valtype> (v [63]),
+            return vector_type_impl {op (u [0], v [0])};
+        }
+
+        template <typename Op>
+        static constexpr vector_type_impl apply_op (vector_type_impl const & u,
+                                                    vector_type_impl const & v,
+                                                    Op op,
+                                                    util::lane_tag <2>)
+            noexcept
+        {
+            return vector_type_impl {op (u [0], v [0]), op (u [1], v [1])};
+        }
+
+        template <typename Op>
+        static constexpr vector_type_impl apply_op (vector_type_impl const & u,
+                                                    vector_type_impl const & v,
+                                                    Op op,
+                                                    util::lane_tag <4>)
+            noexcept
+        {
+            return vector_type_impl {
+                op (u [0], v [0]), op (u [1], v [1]),
+                op (u [2], v [2]), op (u [3], v [3])
             };
+        }
+
+        template <typename Op>
+        static constexpr vector_type_impl apply_op (vector_type_impl const & u,
+                                                    vector_type_impl const & v,
+                                                    Op op,
+                                                    util::lane_tag <8>)
+            noexcept
+        {
+            return vector_type_impl {
+                op (u [0], v [0]), op (u [1], v [1]),
+                op (u [2], v [2]), op (u [3], v [3]),
+                op (u [4], v [4]), op (u [5], v [5]),
+                op (u [6], v [6]), op (u [7], v [7])
+            };
+        }
+
+        template <typename Op>
+        static constexpr vector_type_impl apply_op (vector_type_impl const & u,
+                                                    vector_type_impl const & v,
+                                                    Op op,
+                                                    util::lane_tag <16>)
+            noexcept
+        {
+            return vector_type_impl {
+                op (u [0],  v [0]),  op (u [1],  v [1]),
+                op (u [2],  v [2]),  op (u [3],  v [3]),
+                op (u [4],  v [4]),  op (u [5],  v [5]),
+                op (u [6],  v [6]),  op (u [7],  v [7]),
+                op (u [8],  v [8]),  op (u [9],  v [9]),
+                op (u [10], v [10]), op (u [11], v [11]),
+                op (u [12], v [12]), op (u [13], v [13]),
+                op (u [14], v [14]), op (u [15], v [15])
+            };
+        }
+
+        template <typename Op>
+        static constexpr vector_type_impl apply_op (vector_type_impl const & u,
+                                                    vector_type_impl const & v,
+                                                    Op op,
+                                                    util::lane_tag <32>)
+            noexcept
+        {
+            return vector_type_impl {
+                op (u [0],  v [0]),  op (u [1],  v [1]),
+                op (u [2],  v [2]),  op (u [3],  v [3]),
+                op (u [4],  v [4]),  op (u [5],  v [5]),
+                op (u [6],  v [6]),  op (u [7],  v [7]),
+                op (u [8],  v [8]),  op (u [9],  v [9]),
+                op (u [10], v [10]), op (u [11], v [11]),
+                op (u [12], v [12]), op (u [13], v [13]),
+                op (u [14], v [14]), op (u [15], v [15]),
+                op (u [16], v [16]), op (u [17], v [17]),
+                op (u [18], v [18]), op (u [19], v [19]),
+                op (u [20], v [20]), op (u [21], v [21]),
+                op (u [22], v [22]), op (u [23], v [23]),
+                op (u [24], v [24]), op (u [25], v [25]),
+                op (u [26], v [26]), op (u [27], v [27]),
+                op (u [28], v [28]), op (u [29], v [29]),
+                op (u [30], v [30]), op (u [31], v [31])
+            };
+        }
+
+        template <typename Op>
+        static constexpr vector_type_impl apply_op (vector_type_impl const & u,
+                                                    vector_type_impl const & v,
+                                                    Op op,
+                                                    util::lane_tag <64>)
+            noexcept
+        {
+            return vector_type_impl {
+                op (u [0],  v [0]),  op (u [1],  v [1]),
+                op (u [2],  v [2]),  op (u [3],  v [3]),
+                op (u [4],  v [4]),  op (u [5],  v [5]),
+                op (u [6],  v [6]),  op (u [7],  v [7]),
+                op (u [8],  v [8]),  op (u [9],  v [9]),
+                op (u [10], v [10]), op (u [11], v [11]),
+                op (u [12], v [12]), op (u [13], v [13]),
+                op (u [14], v [14]), op (u [15], v [15]),
+                op (u [16], v [16]), op (u [17], v [17]),
+                op (u [18], v [18]), op (u [19], v [19]),
+                op (u [20], v [20]), op (u [21], v [21]),
+                op (u [22], v [22]), op (u [23], v [23]),
+                op (u [24], v [24]), op (u [25], v [25]),
+                op (u [26], v [26]), op (u [27], v [27]),
+                op (u [28], v [28]), op (u [29], v [29]),
+                op (u [30], v [30]), op (u [31], v [31]),
+                op (u [32], v [32]), op (u [33], v [33]),
+                op (u [34], v [34]), op (u [35], v [35]),
+                op (u [36], v [36]), op (u [37], v [37]),
+                op (u [38], v [38]), op (u [39], v [39]),
+                op (u [40], v [40]), op (u [41], v [41]),
+                op (u [42], v [42]), op (u [43], v [43]),
+                op (u [44], v [44]), op (u [45], v [45]),
+                op (u [46], v [46]), op (u [47], v [47]),
+                op (u [48], v [48]), op (u [49], v [49]),
+                op (u [50], v [50]), op (u [51], v [51]),
+                op (u [52], v [52]), op (u [53], v [53]),
+                op (u [54], v [54]), op (u [55], v [55]),
+                op (u [56], v [56]), op (u [57], v [57]),
+                op (u [58], v [58]), op (u [59], v [59]),
+                op (u [60], v [60]), op (u [61], v [61]),
+                op (u [62], v [62]), op (u [63], v [63])
+            };
+        }
+
+        template <
+            typename vec_to, typename valtype, typename vec_from, std::size_t L
+        >
+        static constexpr vec_to
+            vector_convert (vec_from const & v, util::lane_tag <L>) noexcept
+        {
+            using from_valtype = typename std::remove_reference <
+                decltype (v [0])
+            >::type;
+
+            return apply_op (
+                v,
+                [] (from_valtype const & val) -> valtype
+                {
+                    return static_cast <valtype> (val);
+                },
+                util::lane_tag <L> {}
+            );
         }
 
         /*
@@ -1996,7 +2134,7 @@ template <>
         }
 
         template <typename SimdT>
-        constexpr operator SimdT (void) const noexcept
+        explicit constexpr operator SimdT (void) const noexcept
         {
             return this->template to <SimdT> ();
         }
@@ -2400,19 +2538,51 @@ template <>
             return integral_simd_type {this->_vec ^ base::extend (val)};
         }
 
-        constexpr integral_simd_type operator! (void) const noexcept
+        constexpr boolean_simd_type <integral_type, lanes>
+            operator! (void) const noexcept
         {
-            return integral_simd_type {!this->_vec};
+#if defined (__clang__)
+            return boolean_simd_type <integral_type, lanes> {
+                base::apply_op (
+                    this->_vec,
+                    [] (value_type const & v) -> value_type
+                    {
+                        return static_cast <value_type> (!v);
+                    },
+                    util::lane_tag <lanes> {}
+                )
+            };
+#elif defined (__GNUG__)
+            return boolean_simd_type <integral_type, lanes> {!this->_vec};
+#endif
         }
 
-        constexpr integral_simd_type operator&& (integral_simd_type const & sv)
-            const noexcept
+        constexpr boolean_simd_type <integral_type, lanes>
+            operator&& (integral_simd_type const & sv) const noexcept
         {
-            return integral_simd_type {this->_vec && sv._vec};
+#if defined (__clang__)
+            return boolean_simd_type <integral_type, lanes> {
+                base::apply_op (
+                    this->_vec,
+                    sv._vec,
+                    [] (value_type const & u, value_type const & v)
+                        -> value_type
+                    {
+                        return static_cast <value_type> (u && v);
+                    },
+                    util::lane_tag <lanes> {}
+                )
+            };
+#elif defined (__GNUG__)
+            return boolean_simd_type <integral_type, lanes> {
+                this->_vec && sv._vec
+            };
+#endif
         }
 
         template <typename U>
-        constexpr integral_simd_type operator&& (U val) const noexcept
+        constexpr boolean_simd_type <integral_type, lanes>
+            operator&& (U val) const noexcept
         {
             static_assert (
                 std::is_convertible <U, value_type>::value,
@@ -2420,17 +2590,37 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {this->_vec && base::extend (val)};
+            return boolean_simd_type <integral_type, lanes> {
+                this->_vec && base::extend (val)
+            };
         }
 
-        constexpr integral_simd_type operator|| (integral_simd_type const & sv)
-            const noexcept
+        constexpr boolean_simd_type <integral_type, lanes>
+            operator|| (integral_simd_type const & sv) const noexcept
         {
-            return integral_simd_type {this->_vec || sv._vec};
+#if defined (__clang__)
+            return boolean_simd_type <integral_type, lanes> {
+                base::apply_op (
+                    this->_vec,
+                    sv._vec,
+                    [] (value_type const & u, value_type const & v)
+                        -> value_type
+                    {
+                        return static_cast <value_type> (u || v);
+                    },
+                    util::lane_tag <lanes> {}
+                )
+            };
+#elif defined (__GNUG__)
+            return boolean_simd_type <integral_type, lanes> {
+                this->_vec || sv._vec
+            };
+#endif
         }
 
         template <typename U>
-        constexpr integral_simd_type operator|| (U val) const noexcept
+        constexpr boolean_simd_type <integral_type, lanes>
+            operator|| (U val) const noexcept
         {
             static_assert (
                 std::is_convertible <U, value_type>::value,
@@ -2438,7 +2628,9 @@ template <>
                 " without conversion"
             );
 
-            return integral_simd_type {this->_vec || base::extend (val)};
+            return boolean_simd_type <integral_type, lanes> {
+                this->_vec || base::extend (val)
+            };
         }
 
         constexpr integral_simd_type operator<< (integral_simd_type const & sv)
@@ -3103,7 +3295,7 @@ template <>
         }
 
         template <typename SimdT>
-        constexpr operator SimdT (void) const noexcept
+        explicit constexpr operator SimdT (void) const noexcept
         {
             return this->template to <SimdT> ();
         }
@@ -4476,7 +4668,7 @@ template <>
         }
 
         template <typename SimdT>
-        advanced_constexpr operator SimdT (void) const noexcept
+        explicit advanced_constexpr operator SimdT (void) const noexcept
         {
             return this->template to <SimdT> ();
         }
@@ -5226,7 +5418,7 @@ template <>
         }
 
         template <typename SimdT>
-        constexpr operator SimdT (void) const noexcept
+        explicit constexpr operator SimdT (void) const noexcept
         {
             return this->template to <SimdT> ();
         }
