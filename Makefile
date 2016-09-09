@@ -6,9 +6,9 @@ test_dir      := $(base)/test
 example_dir   := $(base)/example
 build_dir     := $(base)/build
 
-benchmark_bin_dir := $(build_dir)/benchmark/bin
-test_bin_dir      := $(build_dir)/test/bin
-example_bin_dir   := $(build_dir)/example/bin
+benchmark_bin_dir := $(build_dir)/bin/benchmark
+test_bin_dir      := $(build_dir)/bin/test
+example_bin_dir   := $(build_dir)/bin/example
 
 cxx      := $(CXX)
 cxx_std  := c++11
@@ -50,7 +50,8 @@ endif
 cxx_flgs := $(cxx_vflg) -std=$(cxx_std) $(cxx_slflg) $(cxx_gflg) $(cxx_oflg) \
 	$(cxx_fflg) $(cxx_dflg) $(cxx_iflg) $(cxx_wflg) $(OPTFLAG)
 
-benchmark_executables := $(benchmark_bin_dir)/arithmetic
+benchmark_executables := $(benchmark_bin_dir)/binary_operations \
+	$(benchmark_bin_dir)/unary_operations
 test_executables := $(test_bin_dir)/alignment $(test_bin_dir)/arithmetic
 example_executables := $(example_bin_dir)/mandelbrot
 

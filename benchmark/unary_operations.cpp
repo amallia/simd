@@ -1,5 +1,5 @@
 //
-// example useage of simd types
+// benchmarking usage of simd types and unary operations
 //
 
 #include <algorithm>    // std::generate, std::transform, std::minmax_element,
@@ -11,8 +11,7 @@
 #include <cstdint>      // std::uint64_t
 #include <cstdlib>      // std::atol
 #include <fstream>      // std::ofstream
-#include <functional>   // std::{plus,minus,multiplies,divides,negate}
-                        // std::bind
+#include <functional>   // std::negate, std::bind
 #include <future>       // std::async, std::launch::*
 #include <iostream>     // std::cout
 #include <iterator>     // std::begin, std::end, std::iterator_traits
@@ -42,6 +41,26 @@ static std::vector <std::size_t> block_sizes {{
     1024, 2048, 4096, 8192, 16384, 32768, 65536,
     131072, 262144, 524288, 1048576
 }};
+
+template <typename T>
+struct logical_not
+{
+    auto operator () (T const & a) const noexcept
+        -> decltype (!a)
+    {
+        return !a;
+    }
+};
+
+template <typename T>
+struct bit_not
+{
+    auto operator () (T const & a) const noexcept
+        -> decltype (~a)
+    {
+        return ~a;
+    }
+};
 
 struct benchmark_statistics
 {
@@ -158,45 +177,38 @@ benchmark_statistics prepare_statistics (std::vector <duration> const & data,
     };
 }
 
-template <typename T, typename BinaryOp>
+template <typename T, typename UnaryOp>
 #if defined (__GNUG__) && !defined(__clang__)
 __attribute__((optimize("no-tree-vectorize")))
 __attribute__((optimize("no-tree-loop-vectorize")))
 #endif
-duration run_benchmark_non_vectorized (std::vector <T> const & lhs,
-                                       std::vector <T> const & rhs,
-                                       BinaryOp op)
+duration run_benchmark_non_vectorized (std::vector <T> const & args, UnaryOp op)
 {
-    assert (lhs.size () == rhs.size ());
-
-    std::vector <T> result;
-    result.resize (lhs.capacity ());
+    std::vector <decltype (op (std::declval <T> ()))> result;
+    result.resize (args.capacity ());
 
     auto const start = clock_type::now ();
     {
 #if defined(__clang__)
     #pragma clang loop vectorize(disable) interleave(disable)
 #endif
-        for (std::size_t i = 0; i < lhs.size (); ++i)
-            result [i] = op (lhs [i], rhs [i]);
+        for (std::size_t i = 0; i < args.size (); ++i)
+            result [i] = op (args [i]);
     }
     return clock_type::now () - start;
 }
 
-template <typename T, typename Alloc, typename BinaryOp>
-duration run_benchmark_vectorized (std::vector <T, Alloc> const & lhs,
-                                   std::vector <T, Alloc> const & rhs,
-                                   BinaryOp op)
+template <typename T, typename Alloc, typename UnaryOp>
+duration
+    run_benchmark_vectorized (std::vector <T, Alloc> const & args, UnaryOp op)
 {
-    assert (lhs.size () == rhs.size ());
-
-    std::vector <T> result;
-    result.resize (lhs.capacity ());
+    std::vector <decltype (op (std::declval <T> ()))> result;
+    result.resize (args.capacity ());
 
     auto const start = clock_type::now ();
     {
-        for (std::size_t i = 0; i < lhs.size (); ++i)
-            result [i] = op (lhs [i], rhs [i]);
+        for (std::size_t i = 0; i < args.size (); ++i)
+            result [i] = op (args [i]);
     }
     return clock_type::now () - start;
 }
@@ -217,21 +229,15 @@ std::vector <duration> bench_non_vectorized (std::size_t rep, std::size_t len)
     std::vector <duration> runtimes;
     runtimes.reserve (rep);
 
+    std::cout << "processed bytes: " << len * sizeof (operand_type) << std::endl;
+
     for (std::size_t i = 0; i < rep; ++i) {
-        std::vector <operand_type> lhs (len);
-        std::vector <operand_type> rhs (len);
-
-        std::generate (lhs.begin (), lhs.end (), gen);
-        std::generate (rhs.begin (), rhs.end (), gen);
-
-        if (std::is_same <Op, std::divides <Operand>>::value)
-        {
-            std::replace (rhs.begin (), rhs.end (), Operand {0}, Operand {1});
-        }
+        std::vector <operand_type> args (len);
+        std::generate (args.begin (), args.end (), gen);
 
         {
             static Op op {};
-            runtimes.emplace_back (run_benchmark_non_vectorized (lhs, rhs, op));
+            runtimes.emplace_back (run_benchmark_non_vectorized (args, op));
         }
     }
 
@@ -265,31 +271,21 @@ std::vector <duration> bench_vectorized (std::size_t rep, std::size_t len)
     std::vector <duration> runtimes;
     runtimes.reserve (rep);
 
-    assert (len % lanes == 0 && "cannot evenly distribute operands across SIMD vector");
+    assert (
+        len % lanes == 0 &&
+        "cannot evenly distribute operands across SIMD vector"
+    );
     auto const use_length = len / lanes;
+    std::cout << "processed bytes: " << use_length * sizeof (operand_type) << std::endl;
 
     for (std::size_t i = 0; i < rep; ++i) {
-        std::vector <operand_type, simd::allocator <operand_type>> lhs (use_length);
-        std::vector <operand_type, simd::allocator <operand_type>> rhs (use_length);
-
-        std::generate (lhs.begin (), lhs.end (), gen);
-        std::generate (rhs.begin (), rhs.end (), gen);
-
-        if (std::is_same <Op, std::divides <Operand>>::value)
-        {
-            static operand_type const one_vec (value_type {1});
-            static auto any_zero = [](operand_type const & o) -> bool
-            {
-                static operand_type const zero_vec (value_type {0});
-                return (o == zero_vec).any_of ();
-            };
-
-            std::replace_if (rhs.begin (), rhs.end (), any_zero, one_vec);
-        }
+        std::vector <operand_type, simd::allocator <operand_type>>
+            args (use_length);
+        std::generate (args.begin (), args.end (), gen);
 
         {
             static Op op {};
-            runtimes.emplace_back (run_benchmark_vectorized (lhs, rhs, op));
+            runtimes.emplace_back (run_benchmark_vectorized (args, op));
         }
     }
 
@@ -314,7 +310,7 @@ void benchmark (std::string const & name,
 
     status_log << "running benchmarks for: " << name << std::endl;
     result_log << "[[type:" << name << "]]" << std::endl;
-    auto add_results = std::async (
+    auto negate_results = std::async (
         std::launch::async|std::launch::deferred,
         [reps, lengths] (void) -> results_type
         {
@@ -333,16 +329,16 @@ void benchmark (std::string const & name,
             auto const r = reps;
             for (auto const l : lengths) {
                 std::get <0> (results).emplace_back (
-                    bench_non_vectorized <std::plus <ScalarT>, ScalarT> (r, l)
+                    bench_non_vectorized <std::negate <ScalarT>, ScalarT> (r, l)
                 );
                 std::get <1> (results).emplace_back (
-                    bench_vectorized <std::plus <Vec128>, Vec128> (r, l)
+                    bench_vectorized <std::negate <Vec128>, Vec128> (r, l)
                 );
                 std::get <2> (results).emplace_back (
-                    bench_vectorized <std::plus <Vec256>, Vec256> (r, l)
+                    bench_vectorized <std::negate <Vec256>, Vec256> (r, l)
                 );
                 std::get <3> (results).emplace_back (
-                    bench_vectorized <std::plus <Vec512>, Vec512> (r, l)
+                    bench_vectorized <std::negate <Vec512>, Vec512> (r, l)
                 );
             }
 
@@ -350,7 +346,7 @@ void benchmark (std::string const & name,
         }
     );
 
-    auto sub_results = std::async (
+    auto lnot_results = std::async (
         std::launch::async|std::launch::deferred,
         [reps, lengths] (void) -> results_type
         {
@@ -369,54 +365,18 @@ void benchmark (std::string const & name,
             auto const r = reps;
             for (auto l : lengths) {
                 std::get <0> (results).emplace_back (
-                    bench_non_vectorized <std::minus <ScalarT>, ScalarT> (r, l)
-                );
-                std::get <1> (results).emplace_back (
-                    bench_vectorized <std::minus <Vec128>, Vec128> (r, l)
-                );
-                std::get <2> (results).emplace_back (
-                    bench_vectorized <std::minus <Vec256>, Vec256> (r, l)
-                );
-                std::get <3> (results).emplace_back (
-                    bench_vectorized <std::minus <Vec512>, Vec512> (r, l)
-                );
-            }
-
-            return results;
-        }
-    );
-
-    auto mul_results = std::async (
-        std::launch::async|std::launch::deferred,
-        [reps, lengths] (void) -> results_type
-        {
-            auto results = std::make_tuple (
-                std::vector <std::vector <duration>> {},
-                std::vector <std::vector <duration>> {},
-                std::vector <std::vector <duration>> {},
-                std::vector <std::vector <duration>> {}
-            );
-
-            std::get <0> (results).reserve (lengths.size ());
-            std::get <1> (results).reserve (lengths.size ());
-            std::get <2> (results).reserve (lengths.size ());
-            std::get <3> (results).reserve (lengths.size ());
-
-            auto const r = reps;
-            for (auto l : lengths) {
-                std::get <0> (results).emplace_back (
-                    bench_non_vectorized <std::multiplies <ScalarT>, ScalarT> (
+                    bench_non_vectorized <logical_not <ScalarT>, ScalarT> (
                         r, l
                     )
                 );
                 std::get <1> (results).emplace_back (
-                    bench_vectorized <std::multiplies <Vec128>, Vec128> (r, l)
+                    bench_vectorized <logical_not <Vec128>, Vec128> (r, l)
                 );
                 std::get <2> (results).emplace_back (
-                    bench_vectorized <std::multiplies <Vec256>, Vec256> (r, l)
+                    bench_vectorized <logical_not <Vec256>, Vec256> (r, l)
                 );
                 std::get <3> (results).emplace_back (
-                    bench_vectorized <std::multiplies <Vec512>, Vec512> (r, l)
+                    bench_vectorized <logical_not <Vec512>, Vec512> (r, l)
                 );
             }
 
@@ -424,7 +384,7 @@ void benchmark (std::string const & name,
         }
     );
 
-    auto div_results = std::async (
+    auto bnot_results = std::async (
         std::launch::async|std::launch::deferred,
         [reps, lengths] (void) -> results_type
         {
@@ -443,18 +403,18 @@ void benchmark (std::string const & name,
             auto const r = reps;
             for (auto l : lengths) {
                 std::get <0> (results).emplace_back (
-                    bench_non_vectorized <std::divides <ScalarT>, ScalarT> (
+                    bench_non_vectorized <bit_not <ScalarT>, ScalarT> (
                         r, l
                     )
                 );
                 std::get <1> (results).emplace_back (
-                    bench_vectorized <std::divides <Vec128>, Vec128> (r, l)
+                    bench_vectorized <bit_not <Vec128>, Vec128> (r, l)
                 );
                 std::get <2> (results).emplace_back (
-                    bench_vectorized <std::divides <Vec256>, Vec256> (r, l)
+                    bench_vectorized <bit_not <Vec256>, Vec256> (r, l)
                 );
                 std::get <3> (results).emplace_back (
-                    bench_vectorized <std::divides <Vec512>, Vec512> (r, l)
+                    bench_vectorized <bit_not <Vec512>, Vec512> (r, l)
                 );
             }
 
@@ -527,24 +487,20 @@ void benchmark (std::string const & name,
 
     status_log << "waiting on results..." << std::flush;
 
-    add_results.wait ();
-    sub_results.wait ();
-    mul_results.wait ();
-    div_results.wait ();
+    negate_results.wait ();
+    lnot_results.wait ();
+    bnot_results.wait ();
 
     status_log << " done" << std::endl;
 
-    result_log << "[[op:+]]\n";
-    print_results (add_results.get ());
-
     result_log << "[[op:-]]\n";
-    print_results (sub_results.get ());
+    print_results (negate_results.get ());
 
-    result_log << "[[op:*]]\n";
-    print_results (mul_results.get ());
+    result_log << "[[op:!]]\n";
+    print_results (lnot_results.get ());
 
-    result_log << "[[op:/]]\n";
-    print_results (div_results.get ());
+    result_log << "[[op:~]]\n";
+    print_results (bnot_results.get ());
 }
 
 int main (void)
@@ -559,10 +515,10 @@ int main (void)
      *
      * over data types:
      *      signed integers:   8 bit, 16 bit, 32 bit, 64 bit
-     *      floating point:    32 bit, 64 bit
+     *      unsigned integers: 8 bit, 16 bit, 32 bit, 64 bit
      *
      * with operations:
-     *      +, -, *, /
+     *      -, !, ~
      *
      * with # of elements:
      *      512, 1024, 2056, 4092, 8192, 16384, 32786,
@@ -570,31 +526,39 @@ int main (void)
      */
 
     static constexpr std::size_t reps = 25;
-    std::ofstream results {"arithmetic_benchmark_results.txt"};
+    std::ofstream results {"unary_operations_benchmark_results.txt"};
 
     benchmark <
         std::int8_t, simd::int8x16_t, simd::int8x32_t, simd::int8x64_t
     > ("int8_t", reps, block_sizes, std::cerr, results);
 
     benchmark <
+        std::uint8_t, simd::uint8x16_t, simd::uint8x32_t, simd::uint8x64_t
+    > ("uint8_t", reps, block_sizes, std::cerr, results);
+
+    benchmark <
         std::int16_t, simd::int16x8_t, simd::int16x16_t, simd::int16x32_t
     > ("int16_t", reps, block_sizes, std::cerr, results);
+
+    benchmark <
+        std::uint16_t, simd::uint16x8_t, simd::uint16x16_t, simd::uint16x32_t
+    > ("uint16_t", reps, block_sizes, std::cerr, results);
 
     benchmark <
         std::int32_t, simd::int32x4_t, simd::int32x8_t, simd::int32x16_t
     > ("int32_t", reps, block_sizes, std::cerr, results);
 
     benchmark <
+        std::uint32_t, simd::uint32x4_t, simd::uint32x8_t, simd::uint32x16_t
+    > ("uint32_t", reps, block_sizes, std::cerr, results);
+
+    benchmark <
         std::int64_t, simd::int64x2_t, simd::int64x4_t, simd::int64x8_t
     > ("int64_t", reps, block_sizes, std::cerr, results);
 
     benchmark <
-        float, simd::float32x4_t, simd::float32x8_t, simd::float32x16_t
-    > ("float32", reps, block_sizes, std::cerr, results);
-
-    benchmark <
-        double, simd::float64x2_t, simd::float64x4_t, simd::float64x8_t
-    > ("float64", reps, block_sizes, std::cerr, results);
+        std::uint64_t, simd::uint64x2_t, simd::uint64x4_t, simd::uint64x8_t
+    > ("uint64_t", reps, block_sizes, std::cerr, results);
 
     return 0;
 }
