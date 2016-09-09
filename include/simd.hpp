@@ -2248,6 +2248,13 @@ template <>
             return *this;
         }
 
+        advanced_constexpr integral_simd_type &
+            set (std::size_t n, value_type const & val) & noexcept
+        {
+            this->_vec [n] = val;
+            return *this;
+        }
+
         constexpr const_reference operator[] (std::size_t n) const & noexcept
         {
             return const_reference {
@@ -3405,6 +3412,13 @@ template <>
                 "cannot access out-of-bounds vector lane"
             );
 
+            this->_vec [n] = val;
+            return *this;
+        }
+
+        advanced_constexpr fp_simd_type &
+            set (std::size_t n, value_type const & val) & noexcept
+        {
             this->_vec [n] = val;
             return *this;
         }
@@ -4769,6 +4783,14 @@ template <>
             return *this;
         }
 
+        advanced_constexpr complex_simd_type &
+            set (std::size_t n, value_type const & val) & noexcept
+        {
+            this->_realvec [n] = val.real ();
+            this->_imagvec [n] = val.imag ();
+            return *this;
+        }
+
         constexpr const_reference
             operator[] (std::size_t n) const & noexcept
         {
@@ -5532,6 +5554,13 @@ template <>
             return *this;
         }
 
+        advanced_constexpr boolean_simd_type &
+            set (std::size_t n, value_type const & val) & noexcept
+        {
+            this->_vec [n] = val;
+            return *this;
+        }
+
         constexpr const_reference operator[] (std::size_t n) const & noexcept
         {
             return const_reference {
@@ -6262,6 +6291,14 @@ template <>
         return sv.template set <n> (val);
     }
 
+    template <typename T, std::size_t lanes, typename tag>
+    constexpr simd_type <T, lanes, tag> &
+        set (std::size_t n, simd_type <T, lanes, tag> & sv, T const & val)
+        noexcept
+    {
+        return sv.set (n, val);
+    }
+
     template <typename SimdT_To, typename SimdT_From>
     constexpr SimdT_To to (SimdT_From const & sv) noexcept
     {
@@ -6571,18 +6608,6 @@ template <>
         return shuffle (then_vec, else_vec, mask);
     }
 
-namespace detail
-{
-    template <typename F, typename SimdT>
-    using transform_result = simd_type <
-        typename std::result_of <
-            F (typename simd_traits <SimdT>::value_type)
-        >::type,
-        simd_traits <SimdT>::lanes,
-        typename simd_traits <SimdT>::category_tag
-    >;
-}   // namespace detail
-
     /*
      * General allocator for SIMD vector types; this should be used with
      * containers to ensure correct data alignment.
@@ -6722,6 +6747,18 @@ namespace detail
         }
     };
 
+namespace detail
+{
+    template <typename F, typename SimdT>
+    using transform_result = simd_type <
+        typename std::result_of <
+            F (typename simd_traits <SimdT>::value_type)
+        >::type,
+        simd_traits <SimdT>::lanes,
+        typename simd_traits <SimdT>::category_tag
+    >;
+}   // namespace detail
+
     /*
      * Compute a new SIMD vector containing the function results of each lane of
      * the original SIMD vector.
@@ -6739,7 +6776,7 @@ namespace detail
 
         detail::transform_result <F, SimdT> result {};
         for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::forward <F> (f) (v [i]);
+            result.set (i, std::forward <F> (f) (v [i]));
         }
         return result;
     }
