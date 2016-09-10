@@ -20,24 +20,6 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.3
-          packages:
-            - clang-3.3
-      env: COMPILER_NAME=clang++ COMPILER=clang++-3.3 LIBCXXURL=http://llvm.org/svn/llvm-project/libcxx/tags/RELEASE_33/final/ LIBCXXABIURL=http://llvm.org/svn/llvm-project/libcxxabi/tags/RELEASE_33/final/
-    - compiler: clang
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.4
-          packages:
-            - clang-3.4
-      env: COMPILER_NAME=clang++ COMPILER=clang++-3.4 LIBCXXURL=http://llvm.org/svn/llvm-project/libcxx/tags/RELEASE_342/final/ LIBCXXABIURL=http://llvm.org/svn/llvm-project/libcxxabi/tags/RELEASE_342/final/
-    - compiler: clang
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
             - llvm-toolchain-precise-3.5
           packages:
             - clang-3.5
