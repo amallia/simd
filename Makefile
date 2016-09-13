@@ -52,7 +52,8 @@ cxx_flgs := $(cxx_vflg) -std=$(cxx_std) $(cxx_slflg) $(cxx_gflg) $(cxx_oflg) \
 
 benchmark_executables := $(benchmark_bin_dir)/binary_operations \
 	$(benchmark_bin_dir)/unary_operations
-test_executables := $(test_bin_dir)/alignment $(test_bin_dir)/arithmetic
+test_executables := $(test_bin_dir)/alignment $(test_bin_dir)/arithmetic \
+	$(test_bin_dir)/io_equality
 example_executables := $(example_bin_dir)/mandelbrot
 
 .PHONY: benchmark test example clean
