@@ -4,7 +4,7 @@
 // performing output -> input and comparing values.
 //
 
-#include <algorithm>    // std::generate
+#include <algorithm>    // std::generate, std::min
 #include <climits>      // ULONG_MAX
 #include <iomanip>      // std::precision, std::dec, std::hex, std::oct
 #include <iostream>     // std::cout, std::cerr
@@ -592,7 +592,10 @@ std::uint64_t run_integral_tests (std::string name,
                     std::cerr << e;
                 }
             } else {
-                for (std::size_t i = 0; i < std::min (5ull, fail_count); ++i)
+                using fctype = decltype (fail_count);
+                for (std::size_t i = 0;
+                     i < std::min (fctype {5ull}, fail_count);
+                     ++i)
                 {
                     std::cerr << errors [i];
                 }
@@ -628,7 +631,10 @@ std::uint64_t run_integral_tests (std::string name,
                     std::cerr << e;
                 }
             } else {
-                for (std::size_t i = 0; i < std::min (5ull, fail_count); ++i)
+                using fctype = decltype (fail_count);
+                for (std::size_t i = 0;
+                     i < std::min (fctype {5ull}, fail_count);
+                     ++i)
                 {
                     std::cerr << errors [i];
                 }
