@@ -5,6 +5,7 @@
 //
 
 #include <algorithm>    // std::generate
+#include <climits>      // ULONG_MAX
 #include <iomanip>      // std::precision, std::dec, std::hex, std::oct
 #include <iostream>     // std::cout, std::cerr
 #include <random>       // std::random_device, std::mt19937
