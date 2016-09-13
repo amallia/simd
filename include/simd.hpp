@@ -8936,10 +8936,10 @@ namespace neon
 
 #undef cpp14_constexpr
 
-#include <cctype>    // std::is[x]digit
-#include <cwctype>   // std::isw[x]digit
-#include <istream>   // std::basic_istream
-#include <ostream>   // std::basic_ostream
+#include <cctype>    // std::ctype_base
+#include <istream>   // std::basic_istream, sentry
+#include <locale>    // std::num_get, std::use_facet
+#include <ostream>   // std::basic_ostream, sentry
 #include <sstream>   // std::baisc_ostringstream
 
 /*
@@ -8947,6 +8947,10 @@ namespace neon
  *      - operator<< (arbitrary character type streams)
  *      - operator>> (arbitrary character type streams)
  *      - std::hash
+ *
+ * I/O of 128 bit integers is not supported, and so to use operator<< and
+ * operator>> on vector types with 128 bit lane values requires a user
+ * defined implementation available for lookup in the calling scope.
  *
  * I/O operations are always of the format:
  *
@@ -8984,7 +8988,8 @@ namespace simd
         >::type
     >
     std::basic_ostream <CharT, CharTraits> &
-        operator<< (std::basic_ostream <CharT, CharTraits> & os, SIMDType const & v)
+        operator<< (std::basic_ostream <CharT, CharTraits> & os,
+                    SIMDType const & v)
     {
         static constexpr std::size_t lanes =
             simd::simd_traits <SIMDType>::lanes;
@@ -8993,14 +8998,14 @@ namespace simd
         if (sentry) {
             std::basic_ostringstream <CharT, CharTraits> ss;
             ss.flags (os.flags ());
-            ss.imbue (os.imbue ());
+            ss.imbue (os.getloc ());
             ss.precision (os.precision ());
 
             ss << '(';
-            for (std::size_t i = 0; i < lanes; ++i) {
-                ss << v.value (i) << ';';
+            for (std::size_t i = 0; i < lanes - 1; ++i) {
+                ss << +v.value (i) << ';';
             }
-            ss << ')';
+            ss << +v.value (lanes - 1) << ')';
             os << ss.str ();
         }
 
@@ -9019,6 +9024,35 @@ namespace simd
         using vec_traits = simd::simd_traits <SIMDType>;
         using value_type = typename vec_traits::value_type;
 
+        /* select type to read into from std::num_get::get */
+        using in_type = typename std::conditional <
+            /* boolean type */
+            std::is_same <value_type, bool>::value,
+            value_type,
+            /* non-boolean types */
+            typename std::conditional <
+                std::is_integral <value_type>::value,
+                /* integral values */
+                typename std::conditional <
+                    std::is_signed <value_type>::value,
+                    /* signed types */
+                    typename std::conditional <
+                        sizeof (value_type) < sizeof (long),
+                        long,
+                        value_type
+                    >::type,
+                    /* unsigned types */
+                    typename std::conditional <
+                        sizeof (value_type) == 1,
+                        unsigned short,
+                        value_type
+                    >::type
+                >::type,
+                /* floating point values */
+                value_type
+            >::type
+        >::type;
+
         using stream_type  = std::basic_istream <CharT, CharTraits>;
         using isb_iterator = std::istreambuf_iterator <CharT, CharTraits>;
 
@@ -9026,13 +9060,13 @@ namespace simd
         using char_type = typename CharTraits::char_type;
 
         auto const flags    = is.flags ();
-        auto const & locale = is.locale ();
+        auto const & locale = is.getloc ();
         auto const & ctype  = std::use_facet <std::ctype <char_type>> (locale);
         auto const & num_get =
             std::use_facet <std::num_get <char_type>> (locale);
 
-        auto const non_numeric =
-        [flags, locale, ctype] (stream_type & _is) -> stream_type &
+        auto discard_non_numeric =
+        [&flags, &locale, &ctype] (stream_type & _is) -> stream_type &
         {
             if (flags & std::ios_base::dec) {
                 while (!_is.eof () && !_is.bad ()) {
@@ -9068,6 +9102,16 @@ namespace simd
                         break;
                     }
                 }
+            } else {
+                /* assume decimal if no flags are set */
+                while (!_is.eof () && !_is.bad ()) {
+                    if (!ctype.is (std::ctype_base::digit, _is.peek ())) {
+                        _is.ignore ();
+                        continue;
+                    } else {
+                        break;
+                    }
+                }
             }
 
             return _is;
@@ -9080,18 +9124,18 @@ namespace simd
 
             if (sentry) {
                 isb_iterator end;
-                value_type in_val;
+                in_type in_val;
                 std::size_t count = 0;
 
                 do {
-                    is >> non_numeric;
+                    discard_non_numeric (is);
                     num_get.get (is, end, is, err_state, in_val);
 
                     if (std::ios_base::failbit & err_state) {
                         is.setstate (std::ios_base::failbit);
                         return is;
                     } else {
-                        v.assign (count, in_val);
+                        v.assign (count, static_cast <value_type> (in_val));
                         count += 1;
                     }
                 } while (count < vec_traits::lanes);
