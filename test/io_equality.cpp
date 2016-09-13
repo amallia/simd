@@ -6,12 +6,14 @@
 
 #include <algorithm>    // std::generate, std::min
 #include <climits>      // ULONG_MAX
+#include <codecvt>      // std::wstring_convert, std::codecvt_utf8_utf16
 #include <iomanip>      // std::precision, std::dec, std::hex, std::oct
+#include <ios>          // std::ios_base::fmtflags
 #include <iostream>     // std::cout, std::cerr
 #include <random>       // std::random_device, std::mt19937
                         // std::uniform_{int,real}_distribution
-#include <string>       // std::string
-#include <sstream>      // std::stringstream
+#include <string>       // std::wstring
+#include <sstream>      // std::basic_{i,o}stringstream
 #include <type_traits>  // std::is_same
 #include <vector>       // std::vector
 
@@ -33,13 +35,27 @@ std::random_device & random_device (void) noexcept
     return rd;
 }
 
+std::wstring wstring_convert (std::string const & str)
+{
+    std::wstring wstr (str.size (), L' ');
+    auto const len = std::mbstowcs (&wstr [0], str.data (), str.size ());
+    wstr.resize (len);
+    return wstr;
+}
+
+std::wstring wstring_convert (std::wstring const & wstr)
+{
+    return wstr;
+}
+
 /*
  * This method tests that deserializing a vector type (in various formats)
  * produces the correct vector value.
  */
-template <typename SIMDType, typename T, std::size_t N>
+template <typename SIMDType, typename CharType, typename T, std::size_t N>
 enum status compute_and_verify (std::array <T, N> const & arg,
-                                std::vector <std::string> & errors,
+                                std::ios_base::fmtflags flags,
+                                std::vector <std::wstring> & errors,
                                 input_tag)
 {
     using traits     = simd::simd_traits <SIMDType>;
@@ -57,7 +73,8 @@ enum status compute_and_verify (std::array <T, N> const & arg,
 
     // whitespace separated (if thousands sep is not whitespace)
     {
-        std::stringstream str_form;
+        std::basic_stringstream <CharType> str_form;
+        str_form.flags (flags);
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << " ";
         }
@@ -78,14 +95,15 @@ enum status compute_and_verify (std::array <T, N> const & arg,
                     << +result.value (i)
                     << "\n";
             }
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
 
     // bracketed, separated by whitespace (if thousands sep is not space)
     {
-        std::stringstream str_form;
+        std::basic_stringstream <CharType> str_form;
+        str_form.flags (flags);
         str_form << "[";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << " ";
@@ -107,14 +125,15 @@ enum status compute_and_verify (std::array <T, N> const & arg,
                     << +result.value (i)
                     << "\n";
             }
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
 
     // bracketed, separated by commas
     {
-        std::stringstream str_form;
+        std::basic_stringstream <CharType> str_form;
+        str_form.flags (flags);
         str_form << "[";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << ",";
@@ -136,14 +155,15 @@ enum status compute_and_verify (std::array <T, N> const & arg,
                     << +result.value (i)
                     << "\n";
             }
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
 
     // bracketed, separated by commas && trailing space
     {
-        std::stringstream str_form;
+        std::basic_stringstream <CharType> str_form;
+        str_form.flags (flags);
         str_form << "[";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << ", ";
@@ -166,14 +186,15 @@ enum status compute_and_verify (std::array <T, N> const & arg,
                     << +result.value (i)
                     << "\n";
             }
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
 
     // bracketed, separated by semicolons
     {
-        std::stringstream str_form;
+        std::basic_stringstream <CharType> str_form;
+        str_form.flags (flags);
         str_form << "[";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << ";";
@@ -195,14 +216,15 @@ enum status compute_and_verify (std::array <T, N> const & arg,
                     << +result.value (i)
                     << "\n";
             }
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
 
     // bracketed, separated by semicolons && trailing space
     {
-        std::stringstream str_form;
+        std::basic_stringstream <CharType> str_form;
+        str_form.flags (flags);
         str_form << "[";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << "; ";
@@ -225,14 +247,15 @@ enum status compute_and_verify (std::array <T, N> const & arg,
                     << +result.value (i)
                     << "\n";
             }
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
 
     // parentheses, separated by whitespace (if thousands sep is not space)
     {
-        std::stringstream str_form;
+        std::basic_stringstream <CharType> str_form;
+        str_form.flags (flags);
         str_form << "(";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << " ";
@@ -254,14 +277,15 @@ enum status compute_and_verify (std::array <T, N> const & arg,
                     << +result.value (i)
                     << "\n";
             }
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
 
     // parentheses, separated by commas
     {
-        std::stringstream str_form;
+        std::basic_stringstream <CharType> str_form;
+        str_form.flags (flags);
         str_form << "(";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << ",";
@@ -283,14 +307,15 @@ enum status compute_and_verify (std::array <T, N> const & arg,
                     << +result.value (i)
                     << "\n";
             }
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
 
     // parentheses, separated by commas && trailing space
     {
-        std::stringstream str_form;
+        std::basic_stringstream <CharType> str_form;
+        str_form.flags (flags);
         str_form << "(";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << ", ";
@@ -313,14 +338,15 @@ enum status compute_and_verify (std::array <T, N> const & arg,
                     << +result.value (i)
                     << "\n";
             }
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
 
     // parentheses, separated by semicolons
     {
-        std::stringstream str_form;
+        std::basic_stringstream <CharType> str_form;
+        str_form.flags (flags);
         str_form << "(";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << ";";
@@ -342,14 +368,15 @@ enum status compute_and_verify (std::array <T, N> const & arg,
                     << +result.value (i)
                     << "\n";
             }
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
 
     // parentheses, separated by semicolons && trailing space
     {
-        std::stringstream str_form;
+        std::basic_stringstream <CharType> str_form;
+        str_form.flags (flags);
         str_form << "(";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << "; ";
@@ -372,7 +399,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
                     << +result.value (i)
                     << "\n";
             }
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
@@ -383,9 +410,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
 /*
  * This method tests that serializing a vector type produces the correct output.
  */
-template <typename SIMDType, typename T, std::size_t N>
+template <typename SIMDType, typename CharType, typename T, std::size_t N>
 enum status compute_and_verify (std::array <T, N> const & arg,
-                                std::vector <std::string> & errors,
+                                std::ios_base::fmtflags flags,
+                                std::vector <std::wstring> & errors,
                                 output_tag)
 {
     using traits     = simd::simd_traits <SIMDType>;
@@ -403,61 +431,66 @@ enum status compute_and_verify (std::array <T, N> const & arg,
 
     // decimal format
     {
-        std::stringstream expected_output;
+        std::basic_stringstream <CharType> expected_output;
+        expected_output.flags (flags);
         {
-            expected_output << "(";
+            expected_output << CharType {'('};
             for (std::size_t i = 0; i < lanes - 1; ++i) {
-                expected_output << std::dec << +arg [i] << ";";
+                expected_output << std::dec << +arg [i] << CharType {';'};
             }
-            expected_output << std::dec << +arg [lanes - 1] << ")";
+            expected_output << std::dec << +arg [lanes - 1] << CharType {')'};
         }
 
-        std::stringstream result_output;
+        std::basic_stringstream <CharType> result_output;
+        result_output.flags (flags);
         {
             using namespace simd;
             result_output << std::dec << test_vector; 
         }
 
         if (expected_output.str () != result_output.str ()) {
-            std::ostringstream err;
+            std::basic_ostringstream <CharType> err;
             err << "[[decimal]] incorrect output obtained:\n";
             err << "\texpected: " << expected_output.str () << "\n";
             err << "\tobtained: " << result_output.str () << "\n";
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
 
     // octal format
     {
-        std::stringstream expected_output;
+        std::basic_stringstream <CharType> expected_output;
+        expected_output.flags (flags);
         {
-            expected_output << "(";
+            expected_output << CharType {'('};
             for (std::size_t i = 0; i < lanes - 1; ++i) {
-                expected_output << std::oct << +arg [i] << ";";
+                expected_output << std::oct << +arg [i] << CharType {';'};
             }
-            expected_output << std::oct << +arg [lanes - 1] << ")";
+            expected_output << std::oct << +arg [lanes - 1] << CharType {')'};
         }
 
-        std::stringstream result_output;
+        std::basic_stringstream <CharType> result_output;
+        result_output.flags (flags);
         {
             using namespace simd;
             result_output << std::oct << test_vector; 
         }
 
         if (expected_output.str () != result_output.str ()) {
-            std::ostringstream err;
+            std::basic_ostringstream <CharType> err;
             err << "[[octal]] incorrect output obtained:\n";
             err << "\texpected: " << expected_output.str () << "\n";
             err << "\tobtained: " << result_output.str () << "\n";
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
 
     // hexadecimal format
     {
-        std::stringstream expected_output;
+        std::basic_stringstream <CharType> expected_output;
+        expected_output.flags (flags);
         {
             expected_output << "(";
             for (std::size_t i = 0; i < lanes - 1; ++i) {
@@ -466,18 +499,19 @@ enum status compute_and_verify (std::array <T, N> const & arg,
             expected_output << std::hex << +arg [lanes - 1] << ")";
         }
 
-        std::stringstream result_output;
+        std::basic_stringstream <CharType> result_output;
+        result_output.flags (flags);
         {
             using namespace simd;
             result_output << std::hex << test_vector; 
         }
 
         if (expected_output.str () != result_output.str ()) {
-            std::ostringstream err;
+            std::basic_ostringstream <CharType> err;
             err << "[[hexadecimal]] incorrect output obtained:\n";
             err << "\texpected: " << expected_output.str () << "\n";
             err << "\tobtained: " << result_output.str () << "\n";
-            errors.push_back (err.str ());
+            errors.emplace_back (wstring_convert (err.str ()));
             okay = false;
         }
     }
@@ -485,15 +519,16 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     return okay ? status::pass : status::fail;
 }
 
-template <typename SIMDType, typename IOTag>
+template <typename SIMDType, typename CharType, typename IOTag>
 std::uint64_t generate_and_test_cases (std::size_t len,
+                                       std::ios_base::fmtflags flags,
                                        std::ostream & logos,
-                                       std::vector <std::string> & errors,
+                                       std::vector <std::wstring> & errors,
                                        bool verbose_output,
                                        IOTag)
 {
-    using traits_type  = simd::simd_traits <SIMDType>;
-    using value_type   = typename traits_type::value_type;
+    using traits_type = simd::simd_traits <SIMDType>;
+    using value_type  = typename traits_type::value_type;
 #if defined (__clang__)
     using gen_type = typename std::conditional <
         std::is_same <value_type, __int128_t>::value ||
@@ -544,7 +579,10 @@ std::uint64_t generate_and_test_cases (std::size_t len,
 
     std::uint64_t fail_count = 0;
     for (std::size_t i = 0; i < len; ++i) {
-        switch (compute_and_verify <SIMDType> (args [i], errors, IOTag {})) {
+        auto const result = compute_and_verify <SIMDType, CharType> (
+            args [i], flags, errors, IOTag {}
+        );
+        switch (result) {
             case status::fail:
                 fail_count += 1;
                 break;
@@ -568,13 +606,15 @@ std::uint64_t run_integral_tests (std::string name,
                                   std::size_t test_length,
                                   bool verbose_output)
 {
-    std::vector <std::string> errors;
+    std::vector <std::wstring> errors;
     std::uint64_t test_fail_count = 0;
 
+    auto char_input_test =
+        [&] (std::ios_base::fmtflags flags, std::string description) -> void
     {
-        std::cout << name << " (>>)" << std::endl;
-        auto fail_count = generate_and_test_cases <SIMDType> (
-            test_length, std::cout, errors, verbose_output, input_tag {}
+        std::cout << name << " " << description << std::endl;
+        auto fail_count = generate_and_test_cases <SIMDType, char> (
+            test_length, flags, std::cout, errors, verbose_output, input_tag {}
         );
 
         if (fail_count != 0) {
@@ -589,15 +629,14 @@ std::uint64_t run_integral_tests (std::string name,
 
             if (verbose_output) {
                 for (auto const & e : errors) {
-                    std::cerr << e;
+                    std::wcerr << e;
                 }
             } else {
-                using fctype = decltype (fail_count);
                 for (std::size_t i = 0;
-                     i < std::min (fctype {5ull}, fail_count);
+                     i < std::min (decltype (fail_count) {5ull}, fail_count);
                      ++i)
                 {
-                    std::cerr << errors [i];
+                    std::wcerr << errors [i];
                 }
             }
 
@@ -608,12 +647,14 @@ std::uint64_t run_integral_tests (std::string name,
                 std::cout << "\t... ok ..." << std::endl;
             }
         }
-    }
+    };
 
+    auto char_output_test =
+        [&] (std::ios_base::fmtflags flags, std::string description) -> void
     {
-        std::cout << name << " (<<)" << std::endl;
-        auto fail_count = generate_and_test_cases <SIMDType> (
-            test_length, std::cout, errors, verbose_output, output_tag {}
+        std::cout << name << " " << description << std::endl;
+        auto fail_count = generate_and_test_cases <SIMDType, char> (
+            test_length, flags, std::cout, errors, verbose_output, output_tag {}
         );
 
         if (fail_count != 0) {
@@ -628,15 +669,14 @@ std::uint64_t run_integral_tests (std::string name,
 
             if (verbose_output) {
                 for (auto const & e : errors) {
-                    std::cerr << e;
+                    std::wcerr << e;
                 }
             } else {
-                using fctype = decltype (fail_count);
                 for (std::size_t i = 0;
-                     i < std::min (fctype {5ull}, fail_count);
+                     i < std::min (decltype (fail_count) {5ull}, fail_count);
                      ++i)
                 {
-                    std::cerr << errors [i];
+                    std::wcerr << errors [i];
                 }
             }
 
@@ -647,7 +687,105 @@ std::uint64_t run_integral_tests (std::string name,
                 std::cout << "\t... ok ..." << std::endl;
             }
         }
-    }
+    };
+
+    auto wchar_input_test =
+        [&] (std::ios_base::fmtflags flags, std::string description) -> void
+    {
+        std::cout << name << " " << description << std::endl;
+        auto fail_count = generate_and_test_cases <SIMDType, wchar_t> (
+            test_length, flags, std::cout, errors, verbose_output, input_tag {}
+        );
+
+        if (fail_count != 0) {
+            if (verbose_output) {
+                std::cout << "\t... failed: " << fail_count << " ..."
+                          << std::endl;
+            }
+
+            if (!verbose_output && fail_count > 5) {
+                std::cout << "truncating output to 5 error logs...\n";
+            }
+
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::wcerr << e;
+                }
+            } else {
+                for (std::size_t i = 0;
+                     i < std::min (decltype (fail_count) {5ull}, fail_count);
+                     ++i)
+                {
+                    std::wcerr << errors [i];
+                }
+            }
+
+            errors.clear ();
+            test_fail_count += fail_count;
+        } else {
+            if (verbose_output) {
+                std::cout << "\t... ok ..." << std::endl;
+            }
+        }
+    };
+
+    auto wchar_output_test =
+        [&] (std::ios_base::fmtflags flags, std::string description) -> void
+    {
+        std::cout << name << " " << description << std::endl;
+        auto fail_count = generate_and_test_cases <SIMDType, wchar_t> (
+            test_length, flags, std::cout, errors, verbose_output, output_tag {}
+        );
+
+        if (fail_count != 0) {
+            if (verbose_output) {
+                std::cout << "\t... failed: " << fail_count << " ..."
+                          << std::endl;
+            }
+
+            if (!verbose_output && fail_count > 5) {
+                std::cout << "truncating output to 5 error logs...\n";
+            }
+
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::wcerr << e;
+                }
+            } else {
+                for (std::size_t i = 0;
+                     i < std::min (decltype (fail_count) {5ull}, fail_count);
+                     ++i)
+                {
+                    std::wcerr << errors [i];
+                }
+            }
+
+            errors.clear ();
+            test_fail_count += fail_count;
+        } else {
+            if (verbose_output) {
+                std::cout << "\t... ok ..." << std::endl;
+            }
+        }
+    };
+
+    char_input_test (std::ios_base::dec, "(>>) [char decimal]");
+    char_output_test (std::ios_base::dec, "(<<) [char decimal]");
+
+    char_input_test (std::ios_base::oct, "(>>) [char octal]");
+    char_output_test (std::ios_base::oct, "(<<) [char octal]");
+
+    char_input_test (std::ios_base::hex, "(>>) [char hexadecimal]");
+    char_output_test (std::ios_base::hex, "(<<) [char hexadecimal]");
+
+    wchar_input_test (std::ios_base::dec, "(>>) [wchar_t decimal]");
+    wchar_output_test (std::ios_base::dec, "(<<) [wchar_t decimal]");
+
+    wchar_input_test (std::ios_base::oct, "(>>) [wchar_t octal]");
+    wchar_output_test (std::ios_base::oct, "(<<) [wchar_t octal]");
+
+    wchar_input_test (std::ios_base::hex, "(>>) [wchar_t hexadecimal]");
+    wchar_output_test (std::ios_base::hex, "(<<) [wchar_t hexadecimal]");
 
     return test_fail_count;
 }
