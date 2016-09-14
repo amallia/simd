@@ -6390,7 +6390,7 @@ template <>
             " without conversion"
         );
 
-        return sv - val;
+        return -sv + val;
     }
 
     template <typename U, typename T, std::size_t lanes, typename tag>
@@ -6418,7 +6418,49 @@ template <>
             " without conversion"
         );
 
-        return sv / val;
+        return simd_type <T, lanes, tag> (val) / sv;
+    }
+
+    template <typename U, typename T, std::size_t lanes, typename tag>
+    constexpr simd_type <T, lanes, tag>
+        operator% (U val, simd_type <T, lanes, tag> const & sv)
+    noexcept
+    {
+        static_assert (
+            std::is_convertible <U, T>::value,
+            "cannot perform operation between vector type and scalar type"
+            " without conversion"
+        );
+
+        return simd_type <T, lanes, tag> (val) % sv;
+    }
+
+    template <typename U, typename T, std::size_t lanes, typename tag>
+    constexpr simd_type <T, lanes, tag>
+        operator<< (U val, simd_type <T, lanes, tag> const & sv)
+    noexcept
+    {
+        static_assert (
+            std::is_convertible <U, T>::value,
+            "cannot perform operation between vector type and scalar type"
+            " without conversion"
+        );
+
+        return simd_type <T, lanes, tag> (val) << sv;
+    }
+
+    template <typename U, typename T, std::size_t lanes, typename tag>
+    constexpr simd_type <T, lanes, tag>
+        operator>> (U val, simd_type <T, lanes, tag> const & sv)
+    noexcept
+    {
+        static_assert (
+            std::is_convertible <U, T>::value,
+            "cannot perform operation between vector type and scalar type"
+            " without conversion"
+        );
+
+        return simd_type <T, lanes, tag> (val) >> sv;
     }
 
     template <
@@ -6473,7 +6515,7 @@ template <>
     }
 
     template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <T, lanes, tag>
+    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
         operator&& (U val, simd_type <T, lanes, tag> const & sv)
     noexcept
     {
@@ -6487,7 +6529,7 @@ template <>
     }
 
     template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <T, lanes, tag>
+    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
         operator|| (U val, simd_type <T, lanes, tag> const & sv)
     noexcept
     {
@@ -6501,7 +6543,7 @@ template <>
     }
 
     template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <T, lanes, tag>
+    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
         operator== (U val, simd_type <T, lanes, tag> const & sv)
     noexcept
     {
@@ -6513,6 +6555,700 @@ template <>
 
         return sv == val;
     }
+
+    template <typename U, typename T, std::size_t lanes, typename tag>
+    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+        operator!= (U val, simd_type <T, lanes, tag> const & sv)
+    noexcept
+    {
+        static_assert (
+            std::is_convertible <U, T>::value,
+            "cannot perform operation between vector type and scalar type"
+            " without conversion"
+        );
+
+        return sv != val;
+    }
+
+    template <typename U, typename T, std::size_t lanes, typename tag>
+    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+        operator< (U val, simd_type <T, lanes, tag> const & sv)
+    noexcept
+    {
+        static_assert (
+            std::is_convertible <U, T>::value,
+            "cannot perform operation between vector type and scalar type"
+            " without conversion"
+        );
+
+        return sv > val;
+    }
+
+    template <typename U, typename T, std::size_t lanes, typename tag>
+    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+        operator> (U val, simd_type <T, lanes, tag> const & sv)
+    noexcept
+    {
+        static_assert (
+            std::is_convertible <U, T>::value,
+            "cannot perform operation between vector type and scalar type"
+            " without conversion"
+        );
+
+        return sv < val;
+    }
+
+    template <typename U, typename T, std::size_t lanes, typename tag>
+    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+        operator<= (U val, simd_type <T, lanes, tag> const & sv)
+    noexcept
+    {
+        static_assert (
+            std::is_convertible <U, T>::value,
+            "cannot perform operation between vector type and scalar type"
+            " without conversion"
+        );
+
+        return sv >= val;
+    }
+
+    template <typename U, typename T, std::size_t lanes, typename tag>
+    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+        operator>= (U val, simd_type <T, lanes, tag> const & sv)
+    noexcept
+    {
+        static_assert (
+            std::is_convertible <U, T>::value,
+            "cannot perform operation between vector type and scalar type"
+            " without conversion"
+        );
+
+        return sv <= val;
+    }
+
+    template <typename SIMDType>
+    struct plus
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize plus with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u + v)
+        {
+            return u + v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u + val)
+        {
+            return u + val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val + u)
+        {
+            return val + u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct minus
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize minus with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u - v)
+        {
+            return u - v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u - val)
+        {
+            return u - val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val - u)
+        {
+            return val - u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct multiplies
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize multiplies with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u * v)
+        {
+            return u * v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u * val)
+        {
+            return u * val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val * u)
+        {
+            return val * u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct divides
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize divides with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u / v)
+        {
+            return u / v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u / val)
+        {
+            return u / val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val / u)
+        {
+            return val / u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct modulus
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize modulus with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u % v)
+        {
+            return u % v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u % val)
+        {
+            return u % val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val % u)
+        {
+            return val % u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct negate
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize negate with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u) const
+            noexcept
+            -> decltype (-u)
+        {
+            return -u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct shift_left
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize shift_left with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u << v)
+        {
+            return u << v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u << val)
+        {
+            return u << val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val << u)
+        {
+            return val << u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct shift_right
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize shift_right with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u >> v)
+        {
+            return u >> v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u >> val)
+        {
+            return u >> val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val >> u)
+        {
+            return val >> u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct equal_to
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize equal_to with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u == v)
+        {
+            return u == v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u == val)
+        {
+            return u == val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val == u)
+        {
+            return val == u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct not_equal_to
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize not_equal_to with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u != v)
+        {
+            return u != v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u != val)
+        {
+            return u != val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val != u)
+        {
+            return val != u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct greater
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize greater with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u > v)
+        {
+            return u > v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u > val)
+        {
+            return u > val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val > u)
+        {
+            return val > u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct less
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize less with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u < v)
+        {
+            return u < v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u < val)
+        {
+            return u < val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val < u)
+        {
+            return val < u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct greater_equal
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize greater_equal with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u >= v)
+        {
+            return u >= v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u >= val)
+        {
+            return u >= val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val >= u)
+        {
+            return val >= u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct less_equal
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize less_equal with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u <= v)
+        {
+            return u <= v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u <= val)
+        {
+            return u <= val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val <= u)
+        {
+            return val <= u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct logical_and
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize logical_and with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u && v)
+        {
+            return u && v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u && val)
+        {
+            return u && val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val && u)
+        {
+            return val && u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct logical_or
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize logical_or with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u || v)
+        {
+            return u || v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u || val)
+        {
+            return u || val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val || u)
+        {
+            return val || u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct logical_not
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize logical_not with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u) const
+            noexcept
+            -> decltype (!u)
+        {
+            return !u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct bit_and
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize bit_and with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u & v)
+        {
+            return u & v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u & val)
+        {
+            return u & val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val & u)
+        {
+            return val & u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct bit_or
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize bit_or with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u | v)
+        {
+            return u | v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u | val)
+        {
+            return u | val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val | u)
+        {
+            return val | u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct bit_xor
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize bit_xor with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u, SIMDType const & v) const
+            noexcept
+            -> decltype (u ^ v)
+        {
+            return u ^ v;
+        }
+
+        template <typename T>
+        constexpr auto operator() (SIMDType const & u, T const & val) const
+            noexcept
+            -> decltype (u ^ val)
+        {
+            return u ^ val;
+        }
+
+        template <typename T>
+        constexpr auto operator() (T const & val, SIMDType const & u) const
+            noexcept
+            -> decltype (val ^ u)
+        {
+            return val ^ u;
+        }
+    };
+
+    template <typename SIMDType>
+    struct bit_not
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "cannot specialize bit_not with non-SIMD type"
+        );
+
+        constexpr auto operator() (SIMDType const & u) const
+            noexcept
+            -> decltype (~u)
+        {
+            return ~u;
+        }
+    };
 
     template <typename T, typename U, std::size_t lanes, typename tag>
     simd_type <U, lanes, tag>
