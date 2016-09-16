@@ -1871,7 +1871,8 @@ template <>
         integral_simd_type : public simd_type_base <T, l>
     {
     private:
-        using base = simd_type_base <T, l>;
+        using base      = simd_type_base <T, l>;
+        using this_type = integral_simd_type <T, l>; 
 
         typename base::vector_type_impl _vec;
 
@@ -2017,7 +2018,7 @@ template <>
             : _vec {base::extend (value_type {})}
         {}
 
-        explicit constexpr integral_simd_type (vector_type const & vec) noexcept
+        constexpr integral_simd_type (vector_type const & vec) noexcept
             : _vec {vec}
         {}
 
@@ -2065,7 +2066,7 @@ template <>
         cpp14_constexpr integral_simd_type & operator= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -2418,12 +2419,12 @@ template <>
         constexpr integral_simd_type operator+ (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return integral_simd_type {this->_vec + base::extend (val)};
+            return *this + integral_simd_type {val};
         }
 
         constexpr integral_simd_type operator- (integral_simd_type const & sv)
@@ -2436,12 +2437,12 @@ template <>
         constexpr integral_simd_type operator- (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return integral_simd_type {this->_vec - base::extend (val)};
+            return *this - integral_simd_type {val};
         }
 
         constexpr integral_simd_type operator* (integral_simd_type const & sv)
@@ -2454,12 +2455,12 @@ template <>
         constexpr integral_simd_type operator* (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return integral_simd_type {this->_vec * base::extend (val)};
+            return *this * integral_simd_type {val};
         }
 
         constexpr integral_simd_type operator/ (integral_simd_type const & sv)
@@ -2472,12 +2473,12 @@ template <>
         constexpr integral_simd_type operator/ (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return integral_simd_type {this->_vec / base::extend (val)};
+            return *this / integral_simd_type {val};
         }
 
         constexpr integral_simd_type operator% (integral_simd_type const & sv)
@@ -2490,12 +2491,12 @@ template <>
         constexpr integral_simd_type operator% (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return integral_simd_type {this->_vec % base::extend (val)};
+            return *this % integral_simd_type {val};
         }
 
         constexpr integral_simd_type operator~ (void) const noexcept
@@ -2513,12 +2514,12 @@ template <>
         constexpr integral_simd_type operator& (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return integral_simd_type {this->_vec & base::extend (val)};
+            return *this & integral_simd_type {val};
         }
 
         constexpr integral_simd_type operator| (integral_simd_type const & sv)
@@ -2531,12 +2532,12 @@ template <>
         constexpr integral_simd_type operator| (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return integral_simd_type {this->_vec | base::extend (val)};
+            return *this | integral_simd_type {val};
         }
 
         constexpr integral_simd_type operator^ (integral_simd_type const & sv)
@@ -2549,12 +2550,12 @@ template <>
         constexpr integral_simd_type operator^ (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return integral_simd_type {this->_vec ^ base::extend (val)};
+            return *this ^ integral_simd_type {val};
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
@@ -2604,14 +2605,12 @@ template <>
             operator&& (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec && base::extend (val)
-            };
+            return *this && integral_simd_type {val};
         }
 
         constexpr boolean_simd_type <integral_type, lanes>
@@ -2642,14 +2641,12 @@ template <>
             operator|| (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return boolean_simd_type <integral_type, lanes> {
-                this->_vec || base::extend (val)
-            };
+            return *this || integral_simd_type {val};
         }
 
         constexpr integral_simd_type operator<< (integral_simd_type const & sv)
@@ -2658,10 +2655,17 @@ template <>
             return integral_simd_type {this->_vec << sv._vec};
         }
 
-        constexpr integral_simd_type operator<< (value_type shl_val)
+        template <typename U>
+        constexpr integral_simd_type operator<< (U val)
             const noexcept
         {
-            return *this << integral_simd_type {shl_val};
+            static_assert (
+                std::is_constructible <this_type, U>::value,
+                "cannot perform operation between vector type and scalar type"
+                " without conversion"
+            );
+
+            return *this << integral_simd_type {val};
         }
 
         constexpr integral_simd_type operator>> (integral_simd_type const & sv)
@@ -2670,10 +2674,17 @@ template <>
             return integral_simd_type {this->_vec >> sv._vec};
         }
 
-        constexpr integral_simd_type operator>> (value_type shl_val)
+        template <typename U>
+        constexpr integral_simd_type operator>> (U val)
             const noexcept
         {
-            return *this >> integral_simd_type {shl_val};
+            static_assert (
+                std::is_constructible <this_type, U>::value,
+                "cannot perform operation between vector type and scalar type"
+                " without conversion"
+            );
+
+            return *this >> integral_simd_type {val};
         }
 
         cpp14_constexpr
@@ -2688,13 +2699,12 @@ template <>
         cpp14_constexpr integral_simd_type & operator+= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec += base::extend (val);
-            return *this;
+            return *this += integral_simd_type {val};
         }
 
         cpp14_constexpr
@@ -2709,13 +2719,12 @@ template <>
         cpp14_constexpr integral_simd_type & operator-= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec -= base::extend (val);
-            return *this;
+            return *this -= integral_simd_type {val};
         }
 
         cpp14_constexpr
@@ -2730,13 +2739,12 @@ template <>
         cpp14_constexpr integral_simd_type & operator*= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec *= base::extend (val);
-            return *this;
+            return *this *= integral_simd_type {val};
         }
 
         cpp14_constexpr
@@ -2751,13 +2759,12 @@ template <>
         cpp14_constexpr integral_simd_type & operator/= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec /= base::extend (val);
-            return *this;
+            return *this /= integral_simd_type {val};
         }
 
         cpp14_constexpr
@@ -2772,13 +2779,12 @@ template <>
         cpp14_constexpr integral_simd_type & operator%= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec %= base::extend (val);
-            return *this;
+            return *this %= integral_simd_type {val};
         }
 
         cpp14_constexpr
@@ -2793,13 +2799,12 @@ template <>
         cpp14_constexpr integral_simd_type & operator&= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec &= base::extend (val);
-            return *this;
+            return *this &= integral_simd_type {val};
         }
 
         cpp14_constexpr
@@ -2814,13 +2819,12 @@ template <>
         cpp14_constexpr integral_simd_type & operator|= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec |= base::extend (val);
-            return *this;
+            return *this |= integral_simd_type {val};
         }
 
         cpp14_constexpr
@@ -2835,13 +2839,12 @@ template <>
         cpp14_constexpr integral_simd_type & operator^= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec ^= base::extend (val);
-            return *this;
+            return *this ^= integral_simd_type {val};
         }
 
         cpp14_constexpr
@@ -2856,13 +2859,12 @@ template <>
         cpp14_constexpr integral_simd_type & operator<<= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec <<= base::extend (val);
-            return *this;
+            return *this <<= integral_simd_type {val};
         }
 
         cpp14_constexpr
@@ -2877,13 +2879,12 @@ template <>
         cpp14_constexpr integral_simd_type & operator>>= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec >>= base::extend (val);
-            return *this;
+            return *this >>= integral_simd_type {val};
         }
 
 #if SIMD_HEADER_CLANG
@@ -2919,7 +2920,7 @@ template <>
             const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -2946,7 +2947,7 @@ template <>
             operator!= (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -2973,7 +2974,7 @@ template <>
             operator> (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -3000,7 +3001,7 @@ template <>
             operator< (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -3027,7 +3028,7 @@ template <>
             operator>= (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -3054,7 +3055,7 @@ template <>
             operator<= (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -3074,7 +3075,8 @@ template <>
         fp_simd_type : public simd_type_base <T, l>
     {
     private:
-        using base = simd_type_base <T, l>;
+        using base      = simd_type_base <T, l>;
+        using this_type = fp_simd_type <T, l>; 
 
         typename base::vector_type_impl _vec;
 
@@ -3187,7 +3189,7 @@ template <>
             : _vec {base::extend (value_type {})}
         {}
 
-        explicit constexpr fp_simd_type (vector_type const & vec) noexcept
+        constexpr fp_simd_type (vector_type const & vec) noexcept
             : _vec {vec}
         {}
 
@@ -3233,13 +3235,12 @@ template <>
         cpp14_constexpr fp_simd_type & operator= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec = base::extend (val);
-            return *this;
+            return *this = fp_simd_type {val};
         }
 
     private:
@@ -3559,14 +3560,12 @@ template <>
         constexpr fp_simd_type operator+ (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return fp_simd_type {
-                this->_vec + base::extend (val)
-            };
+            return *this + fp_simd_type {val};
         }
 
         constexpr fp_simd_type operator- (fp_simd_type const & sv) const
@@ -3579,14 +3578,12 @@ template <>
         constexpr fp_simd_type operator- (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return fp_simd_type {
-                this->_vec - base::extend (val)
-            };
+            return *this - fp_simd_type {val};
         }
 
         constexpr fp_simd_type operator* (fp_simd_type const & sv) const
@@ -3599,14 +3596,12 @@ template <>
         constexpr fp_simd_type operator* (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return fp_simd_type {
-                this->_vec * base::extend (val)
-            };
+            return *this * fp_simd_type {val};
         }
 
         constexpr fp_simd_type operator/ (fp_simd_type const & sv) const
@@ -3619,19 +3614,18 @@ template <>
         constexpr fp_simd_type operator/ (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return fp_simd_type {
-                this->_vec / base::extend (val)
-            };
+            return *this / fp_simd_type {val};
         }
 
-        constexpr fp_simd_type operator! (void) const noexcept
+        constexpr boolean_simd_type <value_type, lanes> operator! (void) const
+            noexcept
         {
-            return fp_simd_type {!this->_vec};
+            return boolean_simd_type <value_type, lanes> {!this->_vec};
         }
 
         constexpr fp_simd_type operator&& (fp_simd_type const & sv) const
@@ -3644,14 +3638,12 @@ template <>
         constexpr fp_simd_type operator&& (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return fp_simd_type {
-                this->_vec && base::extend (val)
-            };
+            return *this && fp_simd_type {val};
         }
 
         constexpr fp_simd_type operator|| (fp_simd_type const & sv) const
@@ -3664,17 +3656,16 @@ template <>
         constexpr fp_simd_type operator|| (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return fp_simd_type {
-                this->_vec || base::extend (val)
-            };
+            return *this || fp_simd_type {val};
         }
 
-        cpp14_constexpr fp_simd_type & operator+= (fp_simd_type const & sv) & noexcept
+        cpp14_constexpr fp_simd_type & operator+= (fp_simd_type const & sv) &
+            noexcept
         {
             this->_vec += sv._vec;
             return *this;
@@ -3684,16 +3675,16 @@ template <>
         cpp14_constexpr fp_simd_type & operator+= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec += base::extend (val);
-            return *this;
+            return *this += fp_simd_type {val};
         }
 
-        cpp14_constexpr fp_simd_type & operator-= (fp_simd_type const & sv) & noexcept
+        cpp14_constexpr fp_simd_type & operator-= (fp_simd_type const & sv) &
+            noexcept
         {
             this->_vec -= sv._vec;
             return *this;
@@ -3703,16 +3694,16 @@ template <>
         cpp14_constexpr fp_simd_type & operator-= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec -= base::extend (val);
-            return *this;
+            return *this -= fp_simd_type {val};
         }
 
-        cpp14_constexpr fp_simd_type & operator*= (fp_simd_type const & sv) & noexcept
+        cpp14_constexpr fp_simd_type & operator*= (fp_simd_type const & sv) &
+            noexcept
         {
             this->_vec *= sv._vec;
             return *this;
@@ -3722,13 +3713,12 @@ template <>
         cpp14_constexpr fp_simd_type & operator*= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec *= base::extend (val);
-            return *this;
+            return *this *= fp_simd_type {val};
         }
 
         cpp14_constexpr fp_simd_type & operator/= (fp_simd_type const & sv) &
@@ -3742,13 +3732,12 @@ template <>
         cpp14_constexpr fp_simd_type & operator/= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec /= base::extend (val);
-            return *this;
+            return *this /= fp_simd_type {val};
         }
 
 #if SIMD_HEADER_CLANG
@@ -3784,7 +3773,7 @@ template <>
             const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -3811,7 +3800,7 @@ template <>
             operator!= (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -3838,7 +3827,7 @@ template <>
             operator> (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -3865,7 +3854,7 @@ template <>
             operator< (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -3892,7 +3881,7 @@ template <>
             operator>= (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -3919,7 +3908,7 @@ template <>
             operator<= (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -3936,7 +3925,8 @@ template <>
         complex_simd_type : public simd_type_base <std::complex <T>, l>
     {
     private:
-        using base = simd_type_base <std::complex <T>, l>;
+        using base      = simd_type_base <std::complex <T>, l>;
+        using this_type = complex_simd_type <T, l>;
 
         typename base::vector_type_impl _realvec;
         typename base::vector_type_impl _imagvec;
@@ -4000,7 +3990,7 @@ template <>
             reference_proxy & operator= (U && u) noexcept
             {
                 static_assert (
-                    std::is_convertible <U, value_type>::value,
+                    std::is_constructible <this_type, U>::value,
                     "cannot assign to vector lane from non-convertible type"
                 );
 
@@ -4541,7 +4531,7 @@ template <>
             , _imagvec {extend (value_type {}.imag ())}
         {}
 
-        explicit constexpr
+        constexpr
             complex_simd_type (vector_type const & realvec,
                                vector_type const & imagvec) noexcept
             : _realvec {realvec}
@@ -4608,14 +4598,12 @@ template <>
         cpp14_constexpr complex_simd_type & operator= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_realvec = extend (static_cast <value_type> (val).real ());
-            this->_imagvec = extend (static_cast <value_type> (val).imag ());
-            return *this;
+            return *this = complex_simd_type {val};
         }
 
     private:
@@ -4943,7 +4931,7 @@ template <>
         constexpr complex_simd_type operator+ (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -4963,7 +4951,7 @@ template <>
         constexpr complex_simd_type operator- (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -4989,7 +4977,7 @@ template <>
         constexpr complex_simd_type operator* (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -5000,7 +4988,8 @@ template <>
         cpp14_constexpr complex_simd_type operator/ (complex_simd_type const & sv)
             const noexcept
         {
-            auto const divisor = sv._realvec * sv._realvec + sv._imagvec * sv._imagvec;
+            auto const divisor = sv._realvec * sv._realvec
+                               + sv._imagvec * sv._imagvec;
 
             auto const realmul = this->_realvec * sv._realvec;
             auto const imagmul = this->_imagvec * sv._imagvec;
@@ -5017,7 +5006,7 @@ template <>
         constexpr complex_simd_type operator/ (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -5038,13 +5027,12 @@ template <>
         cpp14_constexpr complex_simd_type & operator+= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            complex_simd_type const v {val};
-            return *this += v;
+            return *this += complex_simd_type {val};
         }
 
         cpp14_constexpr
@@ -5060,13 +5048,12 @@ template <>
         cpp14_constexpr complex_simd_type & operator-= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            complex_simd_type const v {val};
-            return *this -= v;
+            return *this -= complex_simd_type {val};
         }
 
         cpp14_constexpr
@@ -5082,15 +5069,12 @@ template <>
         cpp14_constexpr complex_simd_type & operator*= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            complex_simd_type const v {val};
-            auto const result = *this * v;
-            *this = result;
-            return *this;
+            return *this *= complex_simd_type {val};
         }
 
         cpp14_constexpr
@@ -5106,15 +5090,12 @@ template <>
         cpp14_constexpr complex_simd_type & operator/= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            complex_simd_type const v {val};
-            auto const result = *this / v;
-            *this = result;
-            return *this;
+            return *this /= complex_simd_type {val};
         }
 
 #if SIMD_HEADER_CLANG
@@ -5153,7 +5134,7 @@ template <>
             const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -5183,7 +5164,7 @@ template <>
             operator!= (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -5200,7 +5181,8 @@ template <>
         boolean_simd_type : public simd_type_base <T, l>
     {
     private:
-        using base = simd_type_base <T, l>;
+        using base      = simd_type_base <T, l>;
+        using this_type = boolean_simd_type <T, l>;
 
         typename base::vector_type_impl _vec;
 
@@ -5321,7 +5303,7 @@ template <>
             : _vec {base::extend (value_type {0})}
         {}
 
-        explicit constexpr boolean_simd_type (vector_type const & vec) noexcept
+        constexpr boolean_simd_type (vector_type const & vec) noexcept
 #if SIMD_HEADER_CLANG
             : _vec {vec}
 #elif SIMD_HEADER_GNUG
@@ -5371,13 +5353,12 @@ template <>
         cpp14_constexpr boolean_simd_type & operator= (U val) & noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            this->_vec = base::extend (val);
-            return *this;
+            return *this = boolean_simd_type {val};
         }
 
     private:
@@ -5965,14 +5946,12 @@ template <>
         constexpr boolean_simd_type operator& (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return boolean_simd_type {
-                this->_vec & base::extend (val)
-            };
+            return *this & boolean_simd_type {val};
         }
 
         constexpr boolean_simd_type operator| (boolean_simd_type const & sv)
@@ -5985,14 +5964,12 @@ template <>
         constexpr boolean_simd_type operator| (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return boolean_simd_type {
-                this->_vec | base::extend (val)
-            };
+            return *this | boolean_simd_type {val};
         }
 
         constexpr boolean_simd_type operator^ (boolean_simd_type const & sv)
@@ -6005,119 +5982,12 @@ template <>
         constexpr boolean_simd_type operator^ (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
 
-            return boolean_simd_type {
-                this->_vec ^ base::extend (val)
-            };
-        }
-
-        constexpr boolean_simd_type operator! (void) const noexcept
-        {
-            return boolean_simd_type {!this->_vec};
-        }
-
-        constexpr boolean_simd_type operator&& (boolean_simd_type const & sv)
-            const noexcept
-        {
-            return boolean_simd_type {this->_vec && sv._vec};
-        }
-
-        template <typename U>
-        constexpr boolean_simd_type operator&& (U val) const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return boolean_simd_type {
-                this->_vec && base::extend (val)
-            };
-        }
-
-        constexpr boolean_simd_type operator|| (boolean_simd_type const & sv)
-            const noexcept
-        {
-            return boolean_simd_type {this->_vec || sv._vec};
-        }
-
-        template <typename U>
-        constexpr boolean_simd_type operator|| (U val) const noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            return boolean_simd_type {
-                this->_vec || base::extend (val)
-            };
-        }
-
-        cpp14_constexpr boolean_simd_type &
-            operator&= (boolean_simd_type const & sv) & noexcept
-        {
-            this->_vec &= sv._vec;
-            return *this;
-        }
-
-        template <typename U>
-        cpp14_constexpr boolean_simd_type & operator&= (U val) & noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            this->_vec &= base::extend (val);
-            return *this;
-        }
-
-        cpp14_constexpr boolean_simd_type &
-            operator|= (boolean_simd_type const & sv) & noexcept
-        {
-            this->_vec |= sv._vec;
-            return *this;
-        }
-
-        template <typename U>
-        cpp14_constexpr boolean_simd_type & operator|= (U val) & noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            this->_vec |= base::extend (val);
-            return *this;
-        }
-
-        cpp14_constexpr boolean_simd_type &
-            operator^= (boolean_simd_type const & sv) & noexcept
-        {
-            this->_vec ^= sv._vec;
-            return *this;
-        }
-
-        template <typename U>
-        cpp14_constexpr boolean_simd_type & operator^= (U val) & noexcept
-        {
-            static_assert (
-                std::is_convertible <U, value_type>::value,
-                "cannot perform operation between vector type and scalar type"
-                " without conversion"
-            );
-
-            this->_vec ^= base::extend (val);
-            return *this;
+            return *this ^ boolean_simd_type {val};
         }
 
 #if SIMD_HEADER_CLANG
@@ -6134,6 +6004,122 @@ template <>
 
     public:
 #endif
+        constexpr boolean_simd_type operator! (void) const noexcept
+        {
+#if SIMD_HEADER_CLANG
+            return unpack_comparison (
+                !this->_vec, util::make_index_sequence <lanes> {}
+            );
+#else
+            return boolean_simd_type {!this->_vec};
+#endif
+        }
+
+        constexpr boolean_simd_type operator&& (boolean_simd_type const & sv)
+            const noexcept
+        {
+#if SIMD_HEADER_CLANG
+            return unpack_comparison (
+                this->_vec && sv._vec, util::make_index_sequence <lanes> {}
+            );
+#else
+            return boolean_simd_type {this->_vec && sv._vec};
+#endif
+        }
+
+        template <typename U>
+        constexpr boolean_simd_type operator&& (U val) const noexcept
+        {
+            static_assert (
+                std::is_constructible <this_type, U>::value,
+                "cannot perform operation between vector type and scalar type"
+                " without conversion"
+            );
+
+            return *this && boolean_simd_type {val};
+        }
+
+        constexpr boolean_simd_type operator|| (boolean_simd_type const & sv)
+            const noexcept
+        {
+#if SIMD_HEADER_CLANG
+            return unpack_comparison (
+                this->_vec || sv._vec, util::make_index_sequence <lanes> {}
+            );
+#else
+            return boolean_simd_type {this->_vec || sv._vec};
+#endif
+        }
+
+        template <typename U>
+        constexpr boolean_simd_type operator|| (U val) const noexcept
+        {
+            static_assert (
+                std::is_constructible <this_type, U>::value,
+                "cannot perform operation between vector type and scalar type"
+                " without conversion"
+            );
+
+            return *this || boolean_simd_type {val};
+        }
+
+        cpp14_constexpr boolean_simd_type &
+            operator&= (boolean_simd_type const & sv) & noexcept
+        {
+            this->_vec &= sv._vec;
+            return *this;
+        }
+
+        template <typename U>
+        cpp14_constexpr boolean_simd_type & operator&= (U val) & noexcept
+        {
+            static_assert (
+                std::is_constructible <this_type, U>::value,
+                "cannot perform operation between vector type and scalar type"
+                " without conversion"
+            );
+
+            return *this &= boolean_simd_type {val};
+        }
+
+        cpp14_constexpr boolean_simd_type &
+            operator|= (boolean_simd_type const & sv) & noexcept
+        {
+            this->_vec |= sv._vec;
+            return *this;
+        }
+
+        template <typename U>
+        cpp14_constexpr boolean_simd_type & operator|= (U val) & noexcept
+        {
+            static_assert (
+                std::is_constructible <this_type, U>::value,
+                "cannot perform operation between vector type and scalar type"
+                " without conversion"
+            );
+
+            return *this |= boolean_simd_type {val};
+        }
+
+        cpp14_constexpr boolean_simd_type &
+            operator^= (boolean_simd_type const & sv) & noexcept
+        {
+            this->_vec ^= sv._vec;
+            return *this;
+        }
+
+        template <typename U>
+        cpp14_constexpr boolean_simd_type & operator^= (U val) & noexcept
+        {
+            static_assert (
+                std::is_constructible <this_type, U>::value,
+                "cannot perform operation between vector type and scalar type"
+                " without conversion"
+            );
+
+            return *this ^= boolean_simd_type {val};
+        }
+
         constexpr boolean_simd_type operator== (boolean_simd_type const & sv)
             const noexcept
         {
@@ -6150,7 +6136,7 @@ template <>
         constexpr boolean_simd_type operator== (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -6175,7 +6161,7 @@ template <>
             operator!= (U val) const noexcept
         {
             static_assert (
-                std::is_convertible <U, value_type>::value,
+                std::is_constructible <this_type, U>::value,
                 "cannot perform operation between vector type and scalar type"
                 " without conversion"
             );
@@ -6213,7 +6199,8 @@ template <>
     using simd_type = detail::simd_type <T, lanes, tag>;
 
     template <typename SIMDType>
-    SIMDType load (typename simd_traits <SIMDType>::value_type const * addr) noexcept
+    SIMDType load (typename simd_traits <SIMDType>::value_type const * addr)
+        noexcept
     {
         return SIMDType::load (addr);
     }
@@ -6226,7 +6213,8 @@ template <>
     }
 
     template <typename SIMDType>
-    SIMDType load (typename simd_traits <SIMDType>::vector_type const * addr) noexcept
+    SIMDType load (typename simd_traits <SIMDType>::vector_type const * addr)
+        noexcept
     {
         return SIMDType::load (addr);
     }
@@ -6239,29 +6227,33 @@ template <>
     }
 
     template <typename SIMDType>
-    SIMDType load_aligned (typename simd_traits <SIMDType>::value_type const * addr)
+    SIMDType
+        load_aligned (typename simd_traits <SIMDType>::value_type const * addr)
         noexcept
     {
         return SIMDType::load_aligned (addr);
     }
 
     template <typename SIMDType>
-    SIMDType load_aligned (typename simd_traits <SIMDType>::value_type const * addr,
-                        std::ptrdiff_t off) noexcept
+    SIMDType
+        load_aligned (typename simd_traits <SIMDType>::value_type const * addr,
+                      std::ptrdiff_t off) noexcept
     {
         return SIMDType::load_aligned (addr, off);
     }
 
     template <typename SIMDType>
-    SIMDType load_aligned (typename simd_traits <SIMDType>::vector_type const * addr)
+    SIMDType
+        load_aligned (typename simd_traits <SIMDType>::vector_type const * addr)
         noexcept
     {
         return SIMDType::load_aligned (addr);
     }
 
     template <typename SIMDType>
-    SIMDType load_aligned (typename simd_traits <SIMDType>::vector_type const * addr,
-                        std::ptrdiff_t off)
+    SIMDType
+        load_aligned (typename simd_traits <SIMDType>::vector_type const * addr,
+                      std::ptrdiff_t off)
         noexcept
     {
         return SIMDType::load_aligned (addr, off);
@@ -6515,7 +6507,7 @@ template <>
     }
 
     template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         operator&& (U val, simd_type <T, lanes, tag> const & sv)
     noexcept
     {
@@ -6529,7 +6521,7 @@ template <>
     }
 
     template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         operator|| (U val, simd_type <T, lanes, tag> const & sv)
     noexcept
     {
@@ -6543,7 +6535,7 @@ template <>
     }
 
     template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         operator== (U val, simd_type <T, lanes, tag> const & sv)
     noexcept
     {
@@ -6557,7 +6549,7 @@ template <>
     }
 
     template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         operator!= (U val, simd_type <T, lanes, tag> const & sv)
     noexcept
     {
@@ -6571,7 +6563,7 @@ template <>
     }
 
     template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         operator< (U val, simd_type <T, lanes, tag> const & sv)
     noexcept
     {
@@ -6585,7 +6577,7 @@ template <>
     }
 
     template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         operator> (U val, simd_type <T, lanes, tag> const & sv)
     noexcept
     {
@@ -6599,7 +6591,7 @@ template <>
     }
 
     template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         operator<= (U val, simd_type <T, lanes, tag> const & sv)
     noexcept
     {
@@ -6613,7 +6605,7 @@ template <>
     }
 
     template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         operator>= (U val, simd_type <T, lanes, tag> const & sv)
     noexcept
     {
@@ -7565,6 +7557,8 @@ namespace detail
         return transform (std::forward <HashFn> (hfn), v);
     }
 
+namespace math
+{
     /*
      * Computes the sum across the SIMD vector by the given binary operation.
      */
@@ -7582,7 +7576,7 @@ namespace detail
                      simd_type <T, lanes, arithmetic_tag> const & u)
         noexcept
     {
-        return simd::accumulate (v * u, T {0}, std::plus <T> {});
+        return accumulate (v * u, T {0}, std::plus <T> {});
     }
 
     /*
@@ -7674,13 +7668,34 @@ namespace detail
     }
 
     /*
-     * Computes the absolute value for each lane of a SIMD vector.
+     * Computes the absolute value for each lane of a SIMD vector using
+     * std::abs.
      */
     template <typename T, std::size_t lanes>
     cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
         abs (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
     {
         return transform (std::abs <T>, v);
+    }
+
+    /*
+     * Computes the absolute value for each lane of a SIMD vector using
+     * std::fabs.
+     */
+namespace detail
+{
+    template <typename T, std::size_t lanes>
+    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
+        fabs (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    {
+        return transform (std::abs <T>, v);
+    }
+}
+    template <typename SIMDType>
+    cpp14_constexpr auto fabs (SIMDType const & v) noexcept
+        -> decltype (detail::fabs (v))
+    {
+        return detail::fabs (v);
     }
 
     /*
@@ -8471,7 +8486,7 @@ namespace detail
      * vector.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         isfinite (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
     {
         constexpr simd_type <T, lanes, arithmetic_tag> pinf {+INFINITY};
@@ -8485,7 +8500,7 @@ namespace detail
      * vector.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         isinf (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
     {
         constexpr simd_type <T, lanes, arithmetic_tag> pinf {+INFINITY};
@@ -8499,7 +8514,7 @@ namespace detail
      * SIMD vector.
      */
     template <typename T, std::size_t lanes>
-    constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         isnan (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
     {
         return v != v;
@@ -8510,7 +8525,7 @@ namespace detail
      * infinite, nor NaN) for each lane of a SIMD vector.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         isnormal (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
     {
         return transform (std::isnormal, v);
@@ -8521,7 +8536,7 @@ namespace detail
      * vector.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         signbit (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
     {
         return transform (std::signbit, v);
@@ -8534,11 +8549,11 @@ namespace detail
      * same value for comparison across all lanes of the first argument.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         isgreater (simd_type <T, lanes, arithmetic_tag> const & v, T const & cmp)
         noexcept
     {
-        simd_type <detail::integral_type_switch <T>, lanes, boolean_tag> result {};
+        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
         for (std::size_t i = 0; i < lanes; ++i) {
             result [i] = std::isgreater (v [i], cmp);
         }
@@ -8551,12 +8566,12 @@ namespace detail
      * This function does not set floating point exceptions.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         isgreater (simd_type <T, lanes, arithmetic_tag> const & u,
                    simd_type <T, lanes, arithmetic_tag> const & v)
         noexcept
     {
-        simd_type <detail::integral_type_switch <T>, lanes, boolean_tag> result {};
+        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
         for (std::size_t i = 0; i < lanes; ++i) {
             result [i] = std::isgreater (u [i], v [i]);
         }
@@ -8570,11 +8585,11 @@ namespace detail
      * the same value for comparison across all lanes of the first argument.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         isgreaterequal (simd_type <T, lanes, arithmetic_tag> const & v, T const & cmp)
         noexcept
     {
-        simd_type <detail::integral_type_switch <T>, lanes, boolean_tag> result {};
+        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
         for (std::size_t i = 0; i < lanes; ++i) {
             result [i] = std::isgreaterequal (v [i], cmp);
         }
@@ -8587,12 +8602,12 @@ namespace detail
      * SIMD vectors. This function does not set floating point exceptions.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         isgreaterequal (simd_type <T, lanes, arithmetic_tag> const & u,
                         simd_type <T, lanes, arithmetic_tag> const & v)
         noexcept
     {
-        simd_type <detail::integral_type_switch <T>, lanes, boolean_tag> result {};
+        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
         for (std::size_t i = 0; i < lanes; ++i) {
             result [i] = std::isgreaterequal (u [i], v [i]);
         }
@@ -8606,11 +8621,11 @@ namespace detail
      * same value for comparison across all lanes of the first argument.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         isless (simd_type <T, lanes, arithmetic_tag> const & v, T const & cmp)
         noexcept
     {
-        simd_type <detail::integral_type_switch <T>, lanes, boolean_tag> result {};
+        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
         for (std::size_t i = 0; i < lanes; ++i) {
             result [i] = std::isless (v [i], cmp);
         }
@@ -8623,12 +8638,12 @@ namespace detail
      * This function does not set floating point exceptions.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         isless (simd_type <T, lanes, arithmetic_tag> const & u,
                 simd_type <T, lanes, arithmetic_tag> const & v)
         noexcept
     {
-        simd_type <detail::integral_type_switch <T>, lanes, boolean_tag> result {};
+        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
         for (std::size_t i = 0; i < lanes; ++i) {
             result [i] = std::isless (u [i], v [i]);
         }
@@ -8642,11 +8657,11 @@ namespace detail
      * the same value for comparison across all lanes of the first argument.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         islessequal (simd_type <T, lanes, arithmetic_tag> const & v, T const & cmp)
         noexcept
     {
-        simd_type <detail::integral_type_switch <T>, lanes, boolean_tag> result {};
+        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
         for (std::size_t i = 0; i < lanes; ++i) {
             result [i] = std::islessequal (v [i], cmp);
         }
@@ -8659,12 +8674,12 @@ namespace detail
      * SIMD vectors. This function does not set floating point exceptions.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         islessequal (simd_type <T, lanes, arithmetic_tag> const & u,
                      simd_type <T, lanes, arithmetic_tag> const & v)
         noexcept
     {
-        simd_type <detail::integral_type_switch <T>, lanes, boolean_tag> result {};
+        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
         for (std::size_t i = 0; i < lanes; ++i) {
             result [i] = std::islessequal (u [i], v [i]);
         }
@@ -8679,11 +8694,11 @@ namespace detail
      * argument.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         islessgreater (simd_type <T, lanes, arithmetic_tag> const & v, T const & cmp)
         noexcept
     {
-        simd_type <detail::integral_type_switch <T>, lanes, boolean_tag> result {};
+        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
         for (std::size_t i = 0; i < lanes; ++i) {
             result [i] = std::islessgreater (v [i], cmp);
         }
@@ -8696,12 +8711,12 @@ namespace detail
      * SIMD vectors. This function does not set floating point exceptions.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         islessgreater (simd_type <T, lanes, arithmetic_tag> const & u,
                        simd_type <T, lanes, arithmetic_tag> const & v)
         noexcept
     {
-        simd_type <detail::integral_type_switch <T>, lanes, boolean_tag> result {};
+        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
         for (std::size_t i = 0; i < lanes; ++i) {
             result [i] = std::islessgreater (u [i], v [i]);
         }
@@ -8715,11 +8730,11 @@ namespace detail
      * same value for comparison across all lanes of the first argument.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         isunordered (simd_type <T, lanes, arithmetic_tag> const & v, T const & cmp)
         noexcept
     {
-        simd_type <detail::integral_type_switch <T>, lanes, boolean_tag> result {};
+        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
         for (std::size_t i = 0; i < lanes; ++i) {
             result [i] = std::isunordered (v [i], cmp);
         }
@@ -8732,12 +8747,12 @@ namespace detail
      * vectors. This function does not set floating point exceptions.
      */
     template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <detail::integral_type_switch <T>, lanes, boolean_tag>
+    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
         isunordered (simd_type <T, lanes, arithmetic_tag> const & u,
                        simd_type <T, lanes, arithmetic_tag> const & v)
         noexcept
     {
-        simd_type <detail::integral_type_switch <T>, lanes, boolean_tag> result {};
+        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
         for (std::size_t i = 0; i < lanes; ++i) {
             result [i] = std::isunordered (u [i], v [i]);
         }
@@ -8859,6 +8874,7 @@ namespace detail
         );
     }
 #endif
+}   // namespace math
 
     /*
      * These are the default provided typedefs for SIMD vector types, they cover
@@ -9901,7 +9917,7 @@ namespace std
                 argument_type\
             >::value_type;\
 \
-            return simd::accumulate (\
+            return simd::math::accumulate (\
                 simd::hash <argument_type> (s), std::size_t {0},\
                 [] (std::size_t const & seed, value_type const & t) {\
                     return simd::detail::util::hash_combine <value_type> (\
@@ -9981,7 +9997,7 @@ namespace std
             using hash_type = decltype (h1);\
             using hash_value_type =\
                 typename simd::simd_traits <hash_type>::value_type;\
-            return simd::accumulate (\
+            return simd::math::accumulate (\
                 h1 ^ ((h2  + hash_type {hash_value_type {0x9e3779b9}}) +\
                       (h1 << hash_type {hash_value_type {6}}) +\
                       (h1 >> hash_type {hash_value_type {2}})),\
