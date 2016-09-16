@@ -7,9 +7,9 @@ simd
 
 ## description
 
-A single-header C++11 (and onwards) library of SIMD vector types and operations
-for MMX, SSE, AVX, AVX2, AVX512, NEON, and other SIMD technologies implemented
-using GCC and Clang vector extensions.
+A single-header C++11 (and onwards) library of platform agnostic, value semantic
+SIMD vector types and operations for MMX, SSE, AVX, AVX2, AVX512, NEON, and
+other SIMD technologies implemented using GCC and Clang vector extensions.
 
 ## dependencies
 
