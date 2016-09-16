@@ -9822,7 +9822,9 @@ namespace simd
         {
             if (flags & std::ios_base::dec) {
                 while (!_is.eof () && !_is.bad ()) {
-                    if (!ctype.is (std::ctype_base::digit, _is.peek ())) {
+                    if (!ctype.is (std::ctype_base::digit,
+                                   static_cast <char_type> (_is.peek ())))
+                    {
                         _is.ignore ();
                         continue;
                     } else {
@@ -9835,9 +9837,12 @@ namespace simd
 
                 while (!_is.eof () && !_is.bad ()) {
                     auto const peek = _is.peek ();
-                    if (!ctype.is (std::ctype_base::digit, peek) ||
-                        char_traits::eq (peek, eight)            ||
-                        char_traits::eq (peek, nine))
+                    if (!ctype.is (std::ctype_base::digit,
+                                   static_cast <char_type> (peek)) ||
+                        char_traits::eq (
+                            static_cast <char_type> (peek), eight) ||
+                        char_traits::eq (
+                            static_cast <char_type> (peek), nine))
                     {
                         _is.ignore ();
                         continue;
@@ -9847,7 +9852,9 @@ namespace simd
                 }
             } else if (flags & std::ios_base::hex) {
                 while (!_is.eof () && !_is.bad ()) {
-                    if (!ctype.is (std::ctype_base::xdigit, _is.peek ())) {
+                    if (!ctype.is (std::ctype_base::xdigit,
+                                   static_cast <char_type> (_is.peek ())))
+                    {
                         _is.ignore ();
                         continue;
                     } else {
@@ -9857,7 +9864,9 @@ namespace simd
             } else {
                 /* assume decimal if no flags are set */
                 while (!_is.eof () && !_is.bad ()) {
-                    if (!ctype.is (std::ctype_base::digit, _is.peek ())) {
+                    if (!ctype.is (std::ctype_base::digit,
+                                   static_cast <char_type> (_is.peek ())))
+                    {
                         _is.ignore ();
                         continue;
                     } else {
