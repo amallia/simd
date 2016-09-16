@@ -55,6 +55,7 @@ std::wstring wstring_convert (std::wstring const & wstr)
 template <typename SIMDType, typename CharType, typename T, std::size_t N>
 enum status compute_and_verify (std::array <T, N> const & arg,
                                 std::ios_base::fmtflags flags,
+                                std::streamsize precision,
                                 std::vector <std::wstring> & errors,
                                 input_tag)
 {
@@ -67,7 +68,23 @@ enum status compute_and_verify (std::array <T, N> const & arg,
         "argument mismatch"
     );
 
+    SIMDType const epsilon {
+        static_cast <value_type> (
+            std::pow (static_cast <long double> (10.0),
+                      -static_cast <long double> (precision))
+        )
+    };
     SIMDType const expected_vector {arg};
+
+    auto const expected_compare = [&] (SIMDType const & v) -> bool
+    {
+        if (std::is_floating_point <value_type>::value) {
+            auto const diff = v - expected_vector;
+            return ((diff < epsilon) && (-epsilon < diff)).all_of ();
+        } else {
+            return (v == expected_vector).all_of ();
+        }
+    };
 
     bool okay = true;
 
@@ -75,6 +92,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> str_form;
         str_form.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            str_form.precision (precision);
+        }
+
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << " ";
         }
@@ -86,7 +107,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
             str_form >> result;
         }
 
-        if ((result != expected_vector).any_of ()) {
+        if (!expected_compare (result)) {
             std::ostringstream err;
             err << "[[ws sep]] incorrect values obtained:\n";
             for (std::size_t i = 0; i < lanes; ++i) {
@@ -104,6 +125,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> str_form;
         str_form.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            str_form.precision (precision);
+        }
+
         str_form << "[";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << " ";
@@ -116,7 +141,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
             str_form >> result;
         }
 
-        if ((result != expected_vector).any_of ()) {
+        if (!expected_compare (result)) {
             std::ostringstream err;
             err << "[[brackets w/ ws sep]] incorrect values obtained:\n";
             for (std::size_t i = 0; i < lanes; ++i) {
@@ -134,6 +159,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> str_form;
         str_form.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            str_form.precision (precision);
+        }
+
         str_form << "[";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << ",";
@@ -146,7 +175,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
             str_form >> result;
         }
 
-        if ((result != expected_vector).any_of ()) {
+        if (!expected_compare (result)) {
             std::ostringstream err;
             err << "[[brackets w/ comma sep]] incorrect values obtained:\n";
             for (std::size_t i = 0; i < lanes; ++i) {
@@ -164,6 +193,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> str_form;
         str_form.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            str_form.precision (precision);
+        }
+
         str_form << "[";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << ", ";
@@ -176,7 +209,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
             str_form >> result;
         }
 
-        if ((result != expected_vector).any_of ()) {
+        if (!expected_compare (result)) {
             std::ostringstream err;
             err << "[[brackets w/ comma sep & trailing ws]]"
                    " incorrect values obtained:\n";
@@ -195,6 +228,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> str_form;
         str_form.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            str_form.precision (precision);
+        }
+
         str_form << "[";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << ";";
@@ -207,7 +244,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
             str_form >> result;
         }
 
-        if ((result != expected_vector).any_of ()) {
+        if (!expected_compare (result)) {
             std::ostringstream err;
             err << "[[brackets w/ semicolon sep]] incorrect values obtained:\n";
             for (std::size_t i = 0; i < lanes; ++i) {
@@ -225,6 +262,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> str_form;
         str_form.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            str_form.precision (precision);
+        }
+
         str_form << "[";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << "; ";
@@ -237,7 +278,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
             str_form >> result;
         }
 
-        if ((result != expected_vector).any_of ()) {
+        if (!expected_compare (result)) {
             std::ostringstream err;
             err << "[[brackets w/ semicolon sep & trailing ws]]"
                    " incorrect values obtained:\n";
@@ -256,6 +297,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> str_form;
         str_form.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            str_form.precision (precision);
+        }
+
         str_form << "(";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << " ";
@@ -268,7 +313,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
             str_form >> result;
         }
 
-        if ((result != expected_vector).any_of ()) {
+        if (!expected_compare (result)) {
             std::ostringstream err;
             err << "[[parens w/ ws sep]] incorrect values obtained:\n";
             for (std::size_t i = 0; i < lanes; ++i) {
@@ -286,6 +331,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> str_form;
         str_form.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            str_form.precision (precision);
+        }
+
         str_form << "(";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << ",";
@@ -298,7 +347,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
             str_form >> result;
         }
 
-        if ((result != expected_vector).any_of ()) {
+        if (!expected_compare (result)) {
             std::ostringstream err;
             err << "[[parens w/ comma sep]] incorrect values obtained:\n";
             for (std::size_t i = 0; i < lanes; ++i) {
@@ -316,6 +365,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> str_form;
         str_form.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            str_form.precision (precision);
+        }
+
         str_form << "(";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << ", ";
@@ -328,7 +381,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
             str_form >> result;
         }
 
-        if ((result != expected_vector).any_of ()) {
+        if (!expected_compare (result)) {
             std::ostringstream err;
             err << "[[parens w/ comma sep & trailing ws]]"
                    " incorrect values obtained:\n";
@@ -347,6 +400,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> str_form;
         str_form.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            str_form.precision (precision);
+        }
+
         str_form << "(";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << ";";
@@ -359,7 +416,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
             str_form >> result;
         }
 
-        if ((result != expected_vector).any_of ()) {
+        if (!expected_compare (result)) {
             std::ostringstream err;
             err << "[[parens w/ semicolon sep]] incorrect values obtained:\n";
             for (std::size_t i = 0; i < lanes; ++i) {
@@ -377,6 +434,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> str_form;
         str_form.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            str_form.precision (precision);
+        }
+
         str_form << "(";
         for (std::size_t i = 0; i < lanes - 1; ++i) {
             str_form << +arg [i] << "; ";
@@ -389,7 +450,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
             str_form >> result;
         }
 
-        if ((result != expected_vector).any_of ()) {
+        if (!expected_compare (result)) {
             std::ostringstream err;
             err << "[[parens w/ semicolon sep & trailing ws]]"
                    " incorrect values obtained:\n";
@@ -413,6 +474,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
 template <typename SIMDType, typename CharType, typename T, std::size_t N>
 enum status compute_and_verify (std::array <T, N> const & arg,
                                 std::ios_base::fmtflags flags,
+                                std::streamsize precision,
                                 std::vector <std::wstring> & errors,
                                 output_tag)
 {
@@ -433,6 +495,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> expected_output;
         expected_output.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            expected_output.precision (precision);
+        }
+
         {
             expected_output << CharType {'('};
             for (std::size_t i = 0; i < lanes - 1; ++i) {
@@ -443,6 +509,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
 
         std::basic_stringstream <CharType> result_output;
         result_output.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            result_output.precision (precision);
+        }
+
         {
             using namespace simd;
             result_output << std::dec << test_vector; 
@@ -462,6 +532,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> expected_output;
         expected_output.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            expected_output.precision (precision);
+        }
+
         {
             expected_output << CharType {'('};
             for (std::size_t i = 0; i < lanes - 1; ++i) {
@@ -472,6 +546,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
 
         std::basic_stringstream <CharType> result_output;
         result_output.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            result_output.precision (precision);
+        }
+
         {
             using namespace simd;
             result_output << std::oct << test_vector; 
@@ -491,6 +569,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
     {
         std::basic_stringstream <CharType> expected_output;
         expected_output.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            expected_output.precision (precision);
+        }
+
         {
             expected_output << "(";
             for (std::size_t i = 0; i < lanes - 1; ++i) {
@@ -501,6 +583,10 @@ enum status compute_and_verify (std::array <T, N> const & arg,
 
         std::basic_stringstream <CharType> result_output;
         result_output.flags (flags);
+        if (std::is_floating_point <value_type>::value) {
+            result_output.precision (precision);
+        }
+
         {
             using namespace simd;
             result_output << std::hex << test_vector; 
@@ -522,6 +608,7 @@ enum status compute_and_verify (std::array <T, N> const & arg,
 template <typename SIMDType, typename CharType, typename IOTag>
 std::uint64_t generate_and_test_cases (std::size_t len,
                                        std::ios_base::fmtflags flags,
+                                       std::streamsize precision,
                                        std::ostream & logos,
                                        std::vector <std::wstring> & errors,
                                        bool verbose_output,
@@ -580,7 +667,7 @@ std::uint64_t generate_and_test_cases (std::size_t len,
     std::uint64_t fail_count = 0;
     for (std::size_t i = 0; i < len; ++i) {
         auto const result = compute_and_verify <SIMDType, CharType> (
-            args [i], flags, errors, IOTag {}
+            args [i], flags, precision, errors, IOTag {}
         );
         switch (result) {
             case status::fail:
@@ -614,7 +701,7 @@ std::uint64_t run_integral_tests (std::string name,
     {
         std::cout << name << " " << description << std::endl;
         auto fail_count = generate_and_test_cases <SIMDType, char> (
-            test_length, flags, std::cout, errors, verbose_output, input_tag {}
+            test_length, flags, 0, std::cout, errors, verbose_output, input_tag {}
         );
 
         if (fail_count != 0) {
@@ -654,7 +741,7 @@ std::uint64_t run_integral_tests (std::string name,
     {
         std::cout << name << " " << description << std::endl;
         auto fail_count = generate_and_test_cases <SIMDType, char> (
-            test_length, flags, std::cout, errors, verbose_output, output_tag {}
+            test_length, flags, 0, std::cout, errors, verbose_output, output_tag {}
         );
 
         if (fail_count != 0) {
@@ -694,7 +781,7 @@ std::uint64_t run_integral_tests (std::string name,
     {
         std::cout << name << " " << description << std::endl;
         auto fail_count = generate_and_test_cases <SIMDType, wchar_t> (
-            test_length, flags, std::cout, errors, verbose_output, input_tag {}
+            test_length, flags, 0, std::cout, errors, verbose_output, input_tag {}
         );
 
         if (fail_count != 0) {
@@ -734,7 +821,7 @@ std::uint64_t run_integral_tests (std::string name,
     {
         std::cout << name << " " << description << std::endl;
         auto fail_count = generate_and_test_cases <SIMDType, wchar_t> (
-            test_length, flags, std::cout, errors, verbose_output, output_tag {}
+            test_length, flags, 0, std::cout, errors, verbose_output, output_tag {}
         );
 
         if (fail_count != 0) {
@@ -769,44 +856,415 @@ std::uint64_t run_integral_tests (std::string name,
         }
     };
 
-    char_input_test (std::ios_base::dec, "(>>) [char decimal]");
-    char_output_test (std::ios_base::dec, "(<<) [char decimal]");
+    using namespace std;
 
-    char_input_test (std::ios_base::oct, "(>>) [char octal]");
-    char_output_test (std::ios_base::oct, "(<<) [char octal]");
+    char_input_test (ios_base::dec, "[char decimal input]");
+    char_output_test (ios_base::dec, "[char decimal output]");
 
-    char_input_test (std::ios_base::hex, "(>>) [char hexadecimal]");
-    char_output_test (std::ios_base::hex, "(<<) [char hexadecimal]");
+    char_input_test (
+        ios_base::oct & ~ios_base::showbase, "[char octal no base input]"
+    );
+    char_output_test (
+        ios_base::oct & ~ios_base::showbase, "[char octal no base output]"
+    );
 
-    wchar_input_test (std::ios_base::dec, "(>>) [wchar_t decimal]");
-    wchar_output_test (std::ios_base::dec, "(<<) [wchar_t decimal]");
+#if defined (__clang__)
+#warning "char octal input with base fails when compiled with clang for unsigned 64 bit integers"
+#else
+    char_input_test (
+        ios_base::oct|ios_base::showbase, "[char octal with base input]"
+    );
+#endif
 
-    wchar_input_test (std::ios_base::oct, "(>>) [wchar_t octal]");
-    wchar_output_test (std::ios_base::oct, "(<<) [wchar_t octal]");
+    char_output_test (
+        ios_base::oct|ios_base::showbase, "[char octal with base output]"
+    );
 
-    wchar_input_test (std::ios_base::hex, "(>>) [wchar_t hexadecimal]");
-    wchar_output_test (std::ios_base::hex, "(<<) [wchar_t hexadecimal]");
+    char_input_test (
+        ios_base::hex & ~ios_base::showbase, "[char hexadecimal no base input]"
+    );
+    char_output_test (
+        ios_base::hex & ~ios_base::showbase, "[char hexadecimal no base output]"
+    );
+
+    char_input_test (
+        ios_base::hex|ios_base::showbase, "[char hexadecimal with base input]"
+    );
+    char_output_test (
+        ios_base::hex|ios_base::showbase, "[char hexadecimal with base output]"
+    );
+
+    wchar_input_test (
+        ios_base::dec, "[wchar_t decimal input]"
+    );
+    wchar_output_test (
+        ios_base::dec, "[wchar_t decimal output]"
+    );
+
+    wchar_input_test (
+        ios_base::oct & ~ios_base::showbase, "[wchar_t octal no base input]"
+    );
+    wchar_output_test (
+        ios_base::oct & ~ios_base::showbase, "[wchar_t octal no base output]"
+    );
+
+#if defined (__clang__)
+#warning "wchar_t octal input with base fails when compiled with clang for unsigned 64 bit integers"
+#else
+    wchar_input_test (
+        ios_base::oct|ios_base::showbase, "[wchar_t octal with base input]"
+    );
+#endif
+    wchar_output_test (
+        ios_base::oct|ios_base::showbase, "[wchar_t octal with base output]"
+    );
+
+    wchar_input_test (
+        ios_base::hex & ~ios_base::showbase,
+        "[wchar_t hexadecimal no base input]"
+    );
+    wchar_output_test (
+        ios_base::hex & ~ios_base::showbase,
+        "[wchar_t hexadecimal no base output]"
+    );
+
+    wchar_input_test (
+        ios_base::hex|ios_base::showbase,
+        "[wchar_t hexadecimal with base input]"
+    );
+    wchar_output_test (
+        ios_base::hex|ios_base::showbase,
+        "[wchar_t hexadecimal with base output]"
+    );
 
     return test_fail_count;
 }
-/*
+
 template <typename SIMDType>
 std::uint64_t run_float_tests (std::string name,
                                std::size_t test_length,
                                bool verbose_output)
 {
-    std::vector <std::string> errors;
+    std::vector <std::wstring> errors;
     std::uint64_t test_fail_count = 0;
+
+    auto char_input_test =
+        [&] (std::ios_base::fmtflags flags,
+             std::streamsize precision,
+             std::string description) -> void
+    {
+        std::cout << name << " " << description << std::endl;
+        auto fail_count = generate_and_test_cases <SIMDType, char> (
+            test_length, flags, precision,
+            std::cout, errors, verbose_output,
+            input_tag {}
+        );
+
+        if (fail_count != 0) {
+            if (verbose_output) {
+                std::cout << "\t... failed: " << fail_count << " ..."
+                          << std::endl;
+            }
+
+            if (!verbose_output && fail_count > 5) {
+                std::cout << "truncating output to 5 error logs...\n";
+            }
+
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::wcerr << e;
+                }
+            } else {
+                for (std::size_t i = 0;
+                     i < std::min (decltype (fail_count) {5ull}, fail_count);
+                     ++i)
+                {
+                    std::wcerr << errors [i];
+                }
+            }
+
+            errors.clear ();
+            test_fail_count += fail_count;
+        } else {
+            if (verbose_output) {
+                std::cout << "\t... ok ..." << std::endl;
+            }
+        }
+    };
+
+    auto char_output_test =
+        [&] (std::ios_base::fmtflags flags,
+             std::streamsize precision,
+             std::string description) -> void
+    {
+        std::cout << name << " " << description << std::endl;
+        auto fail_count = generate_and_test_cases <SIMDType, char> (
+            test_length, flags, precision,
+            std::cout, errors, verbose_output,
+            output_tag {}
+        );
+
+        if (fail_count != 0) {
+            if (verbose_output) {
+                std::cout << "\t... failed: " << fail_count << " ..."
+                          << std::endl;
+            }
+
+            if (!verbose_output && fail_count > 5) {
+                std::cout << "truncating output to 5 error logs...\n";
+            }
+
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::wcerr << e;
+                }
+            } else {
+                for (std::size_t i = 0;
+                     i < std::min (decltype (fail_count) {5ull}, fail_count);
+                     ++i)
+                {
+                    std::wcerr << errors [i];
+                }
+            }
+
+            errors.clear ();
+            test_fail_count += fail_count;
+        } else {
+            if (verbose_output) {
+                std::cout << "\t... ok ..." << std::endl;
+            }
+        }
+    };
+
+    auto wchar_input_test =
+        [&] (std::ios_base::fmtflags flags,
+             std::streamsize precision,
+             std::string description) -> void
+    {
+        std::cout << name << " " << description << std::endl;
+        auto fail_count = generate_and_test_cases <SIMDType, wchar_t> (
+            test_length, flags, precision,
+            std::cout, errors, verbose_output,
+            input_tag {}
+        );
+
+        if (fail_count != 0) {
+            if (verbose_output) {
+                std::cout << "\t... failed: " << fail_count << " ..."
+                          << std::endl;
+            }
+
+            if (!verbose_output && fail_count > 5) {
+                std::cout << "truncating output to 5 error logs...\n";
+            }
+
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::wcerr << e;
+                }
+            } else {
+                for (std::size_t i = 0;
+                     i < std::min (decltype (fail_count) {5ull}, fail_count);
+                     ++i)
+                {
+                    std::wcerr << errors [i];
+                }
+            }
+
+            errors.clear ();
+            test_fail_count += fail_count;
+        } else {
+            if (verbose_output) {
+                std::cout << "\t... ok ..." << std::endl;
+            }
+        }
+    };
+
+    auto wchar_output_test =
+        [&] (std::ios_base::fmtflags flags,
+             std::streamsize precision,
+             std::string description) -> void
+    {
+        std::cout << name << " " << description << std::endl;
+        auto fail_count = generate_and_test_cases <SIMDType, wchar_t> (
+            test_length, flags, precision,
+            std::cout, errors, verbose_output,
+            output_tag {}
+        );
+
+        if (fail_count != 0) {
+            if (verbose_output) {
+                std::cout << "\t... failed: " << fail_count << " ..."
+                          << std::endl;
+            }
+
+            if (!verbose_output && fail_count > 5) {
+                std::cout << "truncating output to 5 error logs...\n";
+            }
+
+            if (verbose_output) {
+                for (auto const & e : errors) {
+                    std::wcerr << e;
+                }
+            } else {
+                for (std::size_t i = 0;
+                     i < std::min (decltype (fail_count) {5ull}, fail_count);
+                     ++i)
+                {
+                    std::wcerr << errors [i];
+                }
+            }
+
+            errors.clear ();
+            test_fail_count += fail_count;
+        } else {
+            if (verbose_output) {
+                std::cout << "\t... ok ..." << std::endl;
+            }
+        }
+    };
+
+    using value_type = typename simd::simd_traits <SIMDType>::value_type;
+    auto const max_precision = std::numeric_limits <value_type>::digits10;
+
+    for (std::streamsize prec = 1; prec < max_precision; ++prec) {
+        using namespace std;
+
+        auto const prec_string = " precision " + std::to_string (prec);
+
+        char_input_test (
+            ios_base::scientific & ~ios_base::showpoint, prec,
+            "[char scientific no point input" + prec_string + "]"
+        );
+        char_output_test (
+            ios_base::scientific & ~ios_base::showpoint, prec,
+            "[char scientific no point output" + prec_string + "]"
+        );
+
+        char_input_test (
+            ios_base::scientific|ios_base::showpoint, prec,
+            "[char scientific showpoint input" + prec_string + "]"
+        );
+        char_output_test (
+            ios_base::scientific|ios_base::showpoint, prec,
+            "[char scientific showpoint output" + prec_string + "]"
+        );
+
+        char_input_test (
+            ios_base::fixed & ~ios_base::showpoint, prec,
+            "[char fixed no point input" + prec_string + "]"
+        );
+        char_output_test (
+            ios_base::fixed & ~ios_base::showpoint, prec,
+            "[char fixed no point output" + prec_string + "]"
+        );
+
+        char_input_test (
+            ios_base::fixed|ios_base::showpoint, prec,
+            "[char fixed showpoint input" + prec_string + "]"
+        );
+        char_output_test (
+            ios_base::fixed|ios_base::showpoint, prec,
+            "[char fixed showpoint output" + prec_string + "]"
+        );
+#if defined (__GNUG__) && !defined (__clang__)
+    #warning "char hexadecimal float no point input fails when compiled with GCC"
+#else
+        char_input_test (
+            (ios_base::scientific|ios_base::fixed) & ~ios_base::showpoint, prec,
+            "[char hexadecimal float no point input" + prec_string + "]"
+        );
+#endif
+        char_output_test (
+            (ios_base::scientific|ios_base::fixed) & ~ios_base::showpoint, prec,
+            "[char hexadecimal float no point output" + prec_string + "]"
+        );
+
+#if defined (__GNUG__) && !defined (__clang__)
+    #warning "char hexadecimal float showpoint input fails when compiled with GCC"
+#else
+        char_input_test (
+            ios_base::scientific|ios_base::fixed|ios_base::showpoint, prec,
+            "[char hexadecimal float showpoint input" + prec_string + "]"
+        );
+#endif
+        char_output_test (
+            ios_base::scientific|ios_base::fixed|ios_base::showpoint, prec,
+            "[char hexadecimal float showpoint output" + prec_string + "]"
+        );
+
+        wchar_input_test (
+            ios_base::scientific & ~ios_base::showpoint, prec,
+            "[wchar_t scientific no point input" + prec_string + "]"
+        );
+        wchar_output_test (
+            ios_base::scientific & ~ios_base::showpoint, prec,
+            "[wchar_t scientific no point output" + prec_string + "]"
+        );
+
+        wchar_input_test (
+            ios_base::scientific|ios_base::showpoint, prec,
+            "[wchar_t scientific showpoint input" + prec_string + "]"
+        );
+        wchar_output_test (
+            ios_base::scientific|ios_base::showpoint, prec,
+            "[wchar_t scientific showpoint output" + prec_string + "]"
+        );
+
+        wchar_input_test (
+            ios_base::fixed & ~ios_base::showpoint, prec,
+            "[wchar_t fixed no point input" + prec_string + "]"
+        );
+        wchar_output_test (
+            ios_base::fixed & ~ios_base::showpoint, prec,
+            "[wchar_t fixed no point output" + prec_string + "]"
+        );
+
+        wchar_input_test (
+            ios_base::fixed|ios_base::showpoint, prec,
+            "[wchar_t fixed showpoint input" + prec_string + "]"
+        );
+        wchar_output_test (
+            ios_base::fixed|ios_base::showpoint, prec,
+            "[wchar_t fixed showpoint output" + prec_string + "]"
+        );
+
+#if defined (__GNUG__) && !defined (__clang__)
+    #warning "wchar_t hexadecimal float no point input fails when compiled with GCC"
+#else
+        wchar_input_test (
+            (ios_base::scientific|ios_base::fixed) & ~ios_base::showpoint, prec,
+            "[wchar_t hexadecimal float no point input" + prec_string + "]"
+        );
+#endif
+        wchar_output_test (
+            (ios_base::scientific|ios_base::fixed) & ~ios_base::showpoint, prec,
+            "[wchar_t hexadecimal float no point output" + prec_string + "]"
+        );
+
+#if defined (__GNUG__) && !defined (__clang__)
+    #warning "wchar_t hexadecimal float showpoint input fails when compiled with GCC"
+#else
+        wchar_input_test (
+            ios_base::scientific|ios_base::fixed|ios_base::showpoint, prec,
+            "[wchar_t hexadecimal float showpoint input" + prec_string + "]"
+        );
+#endif
+        wchar_output_test (
+            ios_base::scientific|ios_base::fixed|ios_base::showpoint, prec,
+            "[wchar_t hexadecimal float showpoint output" + prec_string + "]"
+        );
+    }
 
     return test_fail_count;
 }
-*/
+
 int main (int argc, char ** argv)
 {
     auto const test_length =
         [argc, argv] (void) -> std::size_t
         {
-            constexpr std::size_t default_test_length = 10000;
+            constexpr std::size_t default_test_length = 1000;
             auto const pos = std::find_if (
                 argv + 1, argv + argc,
                 [] (char const * s) {
@@ -963,7 +1421,7 @@ int main (int argc, char ** argv)
 			"simd::uint64x8_t", test_length, verbose_output
         );
     }
-/*
+
     // 32-bit float 
     {
         failures += run_float_tests <simd::float32x4_t> (
@@ -999,7 +1457,7 @@ int main (int argc, char ** argv)
             "simd::long_doublex4_t", test_length, verbose_output
         );
     }
-*/
+
     if (failures != 0) {
         std::cerr << "failed: " << failures << " cases" << std::endl;
         return EXIT_FAILURE;
