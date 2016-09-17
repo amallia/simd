@@ -6198,6 +6198,69 @@ template <>
     template <typename T, std::size_t lanes, typename tag = arithmetic_tag>
     using simd_type = detail::simd_type <T, lanes, tag>;
 
+    template <typename>
+    struct is_boolean : std::false_type {};
+
+    template <typename T, std::size_t lanes>
+    struct is_boolean <detail::boolean_simd_type <T, lanes>> : std::true_type {};
+
+    template <typename>
+    struct is_arithmetic : std::false_type {};
+
+    template <typename T, std::size_t lanes>
+    struct is_arithmetic <detail::integral_simd_type <T, lanes>> : std::true_type {};
+
+    template <typename T, std::size_t lanes>
+    struct is_arithmetic <detail::fp_simd_type <T, lanes>> : std::true_type {};
+
+    template <typename T, std::size_t lanes>
+    struct is_arithmetic <detail::complex_simd_type <T, lanes>> : std::true_type {};
+
+    template <typename>
+    struct is_complex : std::false_type {};
+
+    template <typename T, std::size_t lanes>
+    struct is_complex <detail::complex_simd_type <T, lanes>> : std::true_type {};
+
+    template <typename>
+    struct is_arithmetic_integral : std::false_type {};
+
+    template <typename T, std::size_t lanes>
+    struct is_arithmetic_integral <detail::integral_simd_type <T, lanes>>
+        : std::true_type
+    {};
+
+    template <typename>
+    struct is_arithmetic_signed_integral : std::false_type {};
+
+    template <typename T, std::size_t lanes>
+    struct is_arithmetic_signed_integral <detail::integral_simd_type <T, lanes>>
+        : std::conditional <
+            std::is_signed <T>::value,
+            std::true_type,
+            std::false_type
+        >::type
+    {};
+
+    template <typename>
+    struct is_arithmetic_unsigned_integral : std::false_type {};
+
+    template <typename T, std::size_t lanes>
+    struct is_arithmetic_unsigned_integral <detail::integral_simd_type <T, lanes>>
+        : std::conditional <
+            std::is_unsigned <T>::value,
+            std::true_type,
+            std::false_type
+        >::type
+    {};
+
+    template <typename>
+    struct is_arithmetic_floating_point : std::false_type {};
+
+    template <typename T, std::size_t lanes>
+    struct is_arithmetic_floating_point <detail::fp_simd_type <T, lanes>>
+        : std::true_type {};
+
     template <typename SIMDType>
     SIMDType load (typename simd_traits <SIMDType>::value_type const * addr)
         noexcept
