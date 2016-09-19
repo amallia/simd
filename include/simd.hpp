@@ -288,7 +288,8 @@ namespace util
     /*
      * Deallocates a block of memory of size bytes with alignment align.
      */
-    inline void aligned_deallocate (void *, std::size_t, std::size_t) noexcept
+    inline void aligned_deallocate (void *p , std::size_t size, std::size_t alignment)
+        noexcept
     {
         if (!p) {
             return;
