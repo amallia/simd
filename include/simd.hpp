@@ -234,8 +234,7 @@ namespace util
      * typically will not occur on modern OSs that have overcommit
      * semantics).
      */
-    void attempt_global_new_handler_call (void);
-    void attempt_global_new_handler_call (void)
+    inline void attempt_global_new_handler_call (void)
     {
         static std::mutex m;
         std::lock_guard <std::mutex> lock {m};
@@ -253,8 +252,7 @@ namespace util
     /*
      * Allocates a block of memory of size bytes with alignment align.
      */
-    void * aligned_allocate (std::size_t, std::size_t);
-    void * aligned_allocate (std::size_t size, std::size_t alignment)
+    inline void * aligned_allocate (std::size_t size, std::size_t alignment)
     {
 #if __cplusplus > 201402L
         /* do we have C++17 support? */
@@ -290,9 +288,7 @@ namespace util
     /*
      * Deallocates a block of memory of size bytes with alignment align.
      */
-    void aligned_deallocate (void *, std::size_t, std::size_t) noexcept;
-    void aligned_deallocate (void * p, std::size_t size, std::size_t alignment)
-        noexcept
+    inline void aligned_deallocate (void *, std::size_t, std::size_t) noexcept
     {
         if (!p) {
             return;
@@ -315,7 +311,7 @@ namespace util
      * Hash combine for specialization of std::hash for SIMD vector types.
      */
     template <typename T>
-    void hash_combine (std::size_t & seed, T const & t) noexcept
+    inline void hash_combine (std::size_t & seed, T const & t) noexcept
     {
         std::hash <T> hfn {};
         seed ^= hfn (t) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
@@ -326,7 +322,7 @@ namespace util
      * vector types.
      */
     template <typename T>
-    std::size_t hash_combine (std::size_t const & seed, T const & t)
+    inline std::size_t hash_combine (std::size_t const & seed, T const & t)
         noexcept
     {
         std::hash <T> hfn {};
@@ -340,9 +336,9 @@ namespace util
      */
     template <>
 #if SIMD_HEADER_CLANG
-    void hash_combine (std::size_t & seed, __int128_t const & t) noexcept
+    inline void hash_combine (std::size_t & seed, __int128_t const & t) noexcept
 #elif SIMD_HEADER_GNUG
-    void hash_combine (std::size_t & seed, __int128 const & t) noexcept
+    inline void hash_combine (std::size_t & seed, __int128 const & t) noexcept
 #endif
     {
         struct alias {
@@ -363,10 +359,10 @@ namespace util
      */
     template <>
 #if SIMD_HEADER_CLANG
-    std::size_t hash_combine (std::size_t const & seed, __int128_t const & t)
+    inline std::size_t hash_combine (std::size_t const & seed, __int128_t const & t)
         noexcept
 #elif SIMD_HEADER_GNUG
-    std::size_t hash_combine (std::size_t const & seed, __int128 const & t)
+    inline std::size_t hash_combine (std::size_t const & seed, __int128 const & t)
         noexcept
 #endif
     {
@@ -389,9 +385,9 @@ namespace util
      */
     template <>
 #if SIMD_HEADER_CLANG
-    void hash_combine (std::size_t & seed, __uint128_t const & t) noexcept
+    inline void hash_combine (std::size_t & seed, __uint128_t const & t) noexcept
 #elif SIMD_HEADER_GNUG
-    void hash_combine (std::size_t & seed, unsigned __int128 const & t) noexcept
+    inline void hash_combine (std::size_t & seed, unsigned __int128 const & t) noexcept
 #endif
     {
         struct alias {
@@ -412,11 +408,11 @@ namespace util
      */
     template <>
 #if SIMD_HEADER_CLANG
-    std::size_t hash_combine (std::size_t const & seed, __uint128_t const & t)
+    inline std::size_t hash_combine (std::size_t const & seed, __uint128_t const & t)
         noexcept
 #elif SIMD_HEADER_GNUG
-    std::size_t hash_combine (std::size_t const & seed,
-                              unsigned __int128 const & t) noexcept
+    inline std::size_t hash_combine (std::size_t const & seed,
+                                     unsigned __int128 const & t) noexcept
 #endif
     {
         struct alias {
