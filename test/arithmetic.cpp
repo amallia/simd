@@ -4,7 +4,7 @@
 
 #if defined (NDEBUG)
     #undef NDEBUG
-#endif 
+#endif
 #include <algorithm>    // std::find_if, std::generate
 #include <array>        // std::array
 #include <cassert>      // assert
@@ -14,7 +14,6 @@
 #include <cstring>      // std::strcmp
 #include <functional>   // std::{plus, minus, multiplies, divides,
                         // modulus, bit_and, bit_or, bit_xor}
-#include <iomanip>      // std::dec
 #include <iostream>     // std::cerr
 #include <random>       // std::random_device, std::mt19937,
                         // std::uniform_{int,real}_distribution
@@ -209,7 +208,8 @@ template <typename Op, typename T, std::size_t N>
 __attribute__((optimize("no-tree-vectorize")))
 __attribute__((optimize("no-tree-loop-vectorize")))
 #endif
-std::array <T, N> map (Op op, std::array <T, N> const & lhs, std::array <T, N> const & rhs)
+std::array <T, N>
+    map (Op op, std::array <T, N> const & lhs, std::array <T, N> const & rhs)
 {
     std::array <T, N> result;
 #if defined (__clang__)

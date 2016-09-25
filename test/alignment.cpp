@@ -15,7 +15,6 @@
 
 #include "simd.hpp"
 
-
 template <typename T>
 bool alignment_test (T const *, std::size_t) noexcept;
 
