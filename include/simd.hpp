@@ -1386,7 +1386,7 @@ template <>
         template <
             typename vec_to, typename valtype, typename vec_from, std::size_t L
         >
-        static constexpr vec_to
+        static cpp14_constexpr vec_to
             vector_convert (vec_from const & v, util::lane_tag <L>) noexcept
         {
             using from_valtype = typename std::remove_reference <
@@ -1395,7 +1395,7 @@ template <>
 
             return apply_op (
                 v,
-                [] (from_valtype const & val) -> valtype
+                [] (from_valtype const & val) cpp14_constexpr noexcept -> valtype
                 {
                     return static_cast <valtype> (val);
                 },
@@ -2167,20 +2167,16 @@ template <>
 
     private:
         template <typename vec_to, typename valtype, typename vec_from>
-        static vec_to vector_convert (vec_from const & v) noexcept
+        static cpp14_constexpr vec_to vector_convert (vec_from const & v) noexcept
         {
-#if SIMD_HEADER_CLANG
-            return static_cast <vec_to> (v);
-#elif SIMD_HEADER_GNUG
             return base::template vector_convert <vec_to, valtype> (
                 v, util::lane_tag <lanes> {}
             );
-#endif
         }
 
     public:
         template <typename SIMDType>
-        constexpr SIMDType to (void) const noexcept
+        cpp14_constexpr SIMDType to (void) const noexcept
         {
             static_assert (
                 is_simd_type <SIMDType>::value,
@@ -3362,20 +3358,16 @@ template <>
 
     private:
         template <typename vec_to, typename valtype, typename vec_from>
-        static vec_to vector_convert (vec_from const & v) noexcept
+        static cpp14_constexpr vec_to vector_convert (vec_from const & v) noexcept
         {
-#if SIMD_HEADER_CLANG
-            return static_cast <vec_to> (v);
-#elif SIMD_HEADER_GNUG
             return base::template vector_convert <vec_to, valtype> (
                 v, util::lane_tag <lanes> {}
             );
-#endif
         }
 
     public:
         template <typename SIMDType>
-        constexpr SIMDType to (void) const noexcept
+        cpp14_constexpr SIMDType to (void) const noexcept
         {
             static_assert (
                 is_simd_type <SIMDType>::value,
@@ -4722,20 +4714,6 @@ template <>
             return this->to_array (util::make_index_sequence <lanes> {});
         }
 
-    private:
-        template <typename vec_to, typename valtype, typename vec_from>
-        static vec_to vector_convert (vec_from const & v) noexcept
-        {
-#if SIMD_HEADER_CLANG
-            return static_cast <vec_to> (v);
-#elif SIMD_HEADER_GNUG
-            return base::template vector_convert <vec_to, valtype> (
-                v, util::lane_tag <lanes> {}
-            );
-#endif
-        }
-
-    public:
         template <typename SIMDType>
         cpp14_constexpr SIMDType to (void) const noexcept
         {
@@ -5483,20 +5461,16 @@ template <>
 
     private:
         template <typename vec_to, typename valtype, typename vec_from>
-        static vec_to vector_convert (vec_from const & v) noexcept
+        static cpp14_constexpr vec_to vector_convert (vec_from const & v) noexcept
         {
-#if SIMD_HEADER_CLANG
-            return static_cast <vec_to> (v);
-#elif SIMD_HEADER_GNUG
             return base::template vector_convert <vec_to, valtype> (
                 v, util::lane_tag <lanes> {}
             );
-#endif
         }
 
     public:
         template <typename SIMDType>
-        constexpr SIMDType to (void) const noexcept
+        cpp14_constexpr SIMDType to (void) const noexcept
         {
             static_assert (
                 is_simd_type <SIMDType>::value,
