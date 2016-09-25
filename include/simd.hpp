@@ -20,8 +20,10 @@
 #ifndef SIMD_IMPLEMENTATION_HEADER
 #define SIMD_IMPLEMENTATION_HEADER
 
+#include <algorithm>            // std::clamp
 #include <array>                // std::array
 #include <cfloat>               // FLT_RADIX
+#include <cmath>                // **all math functions from namespace std::**
 #include <complex>              // std::complex
 #include <cstddef>              // std::size_t
 #include <cstdint>              // std::{u}int{8,16,32,64}_t
@@ -32,11 +34,10 @@
 #include <memory>               // std::align, std::addressof
 #include <mutex>                // std::lock_guard, std::mutex
 #include <new>                  // std::{get,set}_new_handler
-#include <numeric>              // std::accumulate
+#include <numeric>              // std::accumulate, std::gcd, std::lcm
 #include <stdexcept>            // std::bad_alloc
 #include <type_traits>          // std::conditional, std::is_arithmetic
 #include <utility>              // std::forward, std::index_sequence
-#include <iostream>
 
 #if !defined (__clang__) && !defined (__GNUG__)
     #error "simd implemention requires clang or gcc vector extensions"
@@ -6600,7 +6601,10 @@ template <>
         return -sv + static_cast <value_type> (val);
     }
 
-    template <typename T, typename SIMDType>
+    template <
+        typename T, typename SIMDType,
+        typename = typename std::enable_if <std::is_scalar <T>::value>::type
+    >
     constexpr SIMDType operator* (T const & val, SIMDType const & sv) noexcept
     {
         using traits_type = simd_traits <SIMDType>;
@@ -6614,7 +6618,10 @@ template <>
         return sv * static_cast <value_type> (val);
     }
 
-    template <typename T, typename SIMDType>
+    template <
+        typename T, typename SIMDType,
+        typename = typename std::enable_if <std::is_scalar <T>::value>::type
+    >
     constexpr SIMDType operator/ (T const & val, SIMDType const & sv) noexcept
     {
         using traits_type = simd_traits <SIMDType>;
@@ -6628,7 +6635,10 @@ template <>
         return SIMDType {static_cast <value_type> (val)} / sv;
     }
 
-    template <typename T, typename SIMDType>
+    template <
+        typename T, typename SIMDType,
+        typename = typename std::enable_if <std::is_scalar <T>::value>::type
+    >
     constexpr SIMDType operator% (T const & val, SIMDType const & sv) noexcept
     {
         using traits_type = simd_traits <SIMDType>;
@@ -8384,7 +8394,13 @@ namespace math
      * SIMD vectors without undue underflow or overflow in intermediate steps.
      */
     template <typename SIMDType>
-    SIMDType hypot (SIMDType const & u, SIMDType const & v) noexcept
+    simd_type <
+        decltype (std::hypot (
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > hypot (SIMDType const & u, SIMDType const & v) noexcept
     {
         using traits_type = simd_traits <SIMDType>;
         using value_type  = typename traits_type::value_type;
@@ -8397,13 +8413,21 @@ namespace math
         );
     }
 
+#if __cplusplus > 201402L
     /*
      * Computes the hypotenuse (sqrt (x^2 + y^2 + z^2)) for each tripple-wise
      * lane of SIMD vectors without undue underflow or overflow in intermediate
      * steps.
      */
     template <typename SIMDType>
-    SIMDType hypot (SIMDType const & u, SIMDType const & v, SIMDType const & w)
+    simd_type <
+        decltype (std::hypot (
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > hypot (SIMDType const & u, SIMDType const & v, SIMDType const & w)
         noexcept
     {
         using traits_type = simd_traits <SIMDType>;
@@ -8419,6 +8443,7 @@ namespace math
             u, v, w
         );
     }
+#endif
 
     /*
      * Computes the euclidean norm for each lane of a complex SIMD vector.
