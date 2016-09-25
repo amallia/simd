@@ -23,8 +23,6 @@
 
 #include "simd.hpp"
 
-static_assert (std::is_scalar <bool>::value, "");
-
 std::random_device & random_device (void) noexcept
 {
     static std::random_device rd;
@@ -3961,7 +3959,7 @@ int main (int argc, char ** argv)
     auto const test_length =
         [argc, argv] (void) -> std::size_t
         {
-            constexpr std::size_t default_test_length = 10000;
+            constexpr std::size_t default_test_length = 500;
             auto const pos = std::find_if (
                 argv + 1, argv + argc,
                 [] (char const * s) {
