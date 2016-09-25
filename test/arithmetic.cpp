@@ -82,10 +82,12 @@ struct lower_bound
         if (std::is_integral <value_type>::value) {
             return value_type {1};
         } else {
-            return std::nextafter (
-                value_type {1},
-                std::numeric_limits <value_type>::max ()
-            );                    
+            return static_cast <value_type> (
+                std::nextafter (
+                    value_type {1},
+                    std::numeric_limits <value_type>::max ()
+                )
+            );
         }
     }
 };
