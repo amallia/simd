@@ -180,13 +180,13 @@ namespace detail
 namespace util
 {
 #if __cplusplus >= 201402L
-    template <std::size_t ... v>
-    using index_sequence = std::index_sequence <v...>;
+    template <std::size_t ... I>
+    using index_sequence = std::index_sequence <I...>;
 
     template <std::size_t N>
     using make_index_sequence = std::make_index_sequence <N>;
 #else
-    template <std::size_t ... v>
+    template <std::size_t ... I>
     struct index_sequence
     {
         using type = index_sequence;
@@ -194,16 +194,16 @@ namespace util
 
         static constexpr std::size_t size (void) noexcept
         {
-            return sizeof... (v);
+            return sizeof... (I);
         }
     };
 
     template <typename, typename>
     struct merge;
 
-    template <std::size_t ... v1, std::size_t ... v2>
-    struct merge <index_sequence <v1...>, index_sequence <v2...>>
-        : index_sequence <v1..., (sizeof... (v1) + v2)...>
+    template <std::size_t ... I1, std::size_t ... I2>
+    struct merge <index_sequence <I1...>, index_sequence <I2...>>
+        : index_sequence <I1..., (sizeof... (I1) + I2)...>
     {};
 
     template <std::size_t N>
@@ -1793,6 +1793,21 @@ template <>
     struct is_simd_type <boolean_simd_type <T, lanes>>
         : public std::true_type {};
 
+    template <typename SIMDType>
+    struct is_simd_type <SIMDType const> : is_simd_type <SIMDType> {};
+
+    template <typename SIMDType>
+    struct is_simd_type <SIMDType &> : is_simd_type <SIMDType> {};
+
+    template <typename SIMDType>
+    struct is_simd_type <SIMDType const &> : is_simd_type <SIMDType> {};
+
+    template <typename SIMDType>
+    struct is_simd_type <SIMDType &&> : is_simd_type <SIMDType> {};
+
+    template <typename SIMDType>
+    struct is_simd_type <SIMDType const &&> : is_simd_type <SIMDType> {};
+
     template <typename T, std::size_t l, typename tag>
     struct simd_traits_base
     {
@@ -1839,6 +1854,9 @@ template <>
         using base                   = simd_type_base <T, l>;
         using vector_type            = typename base::vector_type_impl;
         using value_type             = std::complex <T>;
+        using lane_type              = T;
+        using real_simd_type         = fp_simd_type <T, l>;
+        using imag_simd_type         = fp_simd_type <T, l>;
         using integral_type          = typename base::integral_type;
         using unsigned_integral_type = typename base::unsigned_integral_type;
         using signed_integral_type   = typename base::signed_integral_type;
@@ -2190,6 +2208,12 @@ template <>
         constexpr vector_type const & data (void) const & noexcept
         {
             return this->_vec;
+        }
+
+        template <std::size_t N>
+        constexpr value_type value (void) const noexcept
+        {
+            return this->_vec [N];
         }
 
         constexpr value_type value (std::size_t n) const noexcept
@@ -3360,6 +3384,12 @@ template <>
             return this->_vec;
         }
 
+        template <std::size_t N>
+        constexpr value_type value (void) const noexcept
+        {
+            return this->_vec [N];
+        }
+
         constexpr value_type value (std::size_t n) const noexcept
         {
             return this->_vec [n];
@@ -4226,15 +4256,18 @@ template <>
             "template parameter typename T must be a floating point type"
         );
 
-        using vector_type     = typename base::vector_type_impl;
-        using value_type      = std::complex <T>;
-        using integral_type   = typename base::integral_type;
+        using vector_type    = typename base::vector_type_impl;
+        using value_type     = std::complex <T>;
+        using lane_type      = T;
+        using real_simd_type = fp_simd_type <T, l>;
+        using imag_simd_type = fp_simd_type <T, l>;
+        using integral_type = typename base::integral_type;
         using unsigned_integral_type = typename base::unsigned_integral_type;
-        using signed_integral_type = typename base::signed_integral_type;
+        using signed_integral_type   = typename base::signed_integral_type;
         using reference       = reference_proxy <vector_type, value_type>;
         using const_reference =
             reference_proxy <vector_type const, value_type const>;
-        using iterator        = pointer_proxy <vector_type, value_type>;
+        using iterator       = pointer_proxy <vector_type, value_type>;
         using const_iterator =
             pointer_proxy <vector_type const, value_type const>;
         using reverse_iterator       = std::reverse_iterator <iterator>;
@@ -4735,9 +4768,25 @@ template <>
             );
         }
 
+        template <std::size_t N>
+        constexpr value_type value (void) const noexcept
+        {
+            return value_type {this->_realvec [N], this->_imagvec [N]};
+        }
+
         constexpr value_type value (std::size_t n) const noexcept
         {
             return value_type {this->_realvec [n], this->_imagvec [n]};
+        }
+
+        constexpr real_simd_type real (void) const noexcept
+        {
+            return real_simd_type {this->_realvec};
+        }
+
+        constexpr imag_simd_type imag (void) const noexcept
+        {
+            return imag_simd_type {this->_imagvec};
         }
 
         template <std::size_t n>
@@ -5478,6 +5527,12 @@ template <>
             return this->_vec;
         }
 
+        template <std::size_t N>
+        constexpr value_type value (void) const noexcept
+        {
+            return this->_vec [N];
+        }
+
         constexpr value_type value (std::size_t n) const noexcept
         {
             return this->_vec [n];
@@ -6199,25 +6254,30 @@ template <>
     struct is_boolean : std::false_type {};
 
     template <typename T, std::size_t lanes>
-    struct is_boolean <detail::boolean_simd_type <T, lanes>> : std::true_type {};
+    struct is_boolean <detail::boolean_simd_type <T, lanes>>
+        : std::true_type {};
 
     template <typename>
     struct is_arithmetic : std::false_type {};
 
     template <typename T, std::size_t lanes>
-    struct is_arithmetic <detail::integral_simd_type <T, lanes>> : std::true_type {};
+    struct is_arithmetic <detail::integral_simd_type <T, lanes>>
+        : std::true_type {};
 
     template <typename T, std::size_t lanes>
-    struct is_arithmetic <detail::fp_simd_type <T, lanes>> : std::true_type {};
+    struct is_arithmetic <detail::fp_simd_type <T, lanes>>
+        : std::true_type {};
 
     template <typename T, std::size_t lanes>
-    struct is_arithmetic <detail::complex_simd_type <T, lanes>> : std::true_type {};
+    struct is_arithmetic <detail::complex_simd_type <T, lanes>>
+        : std::true_type {};
 
     template <typename>
     struct is_complex : std::false_type {};
 
     template <typename T, std::size_t lanes>
-    struct is_complex <detail::complex_simd_type <T, lanes>> : std::true_type {};
+    struct is_complex <detail::complex_simd_type <T, lanes>>
+        : std::true_type {};
 
     template <typename>
     struct is_arithmetic_integral : std::false_type {};
@@ -6243,7 +6303,9 @@ template <>
     struct is_arithmetic_unsigned_integral : std::false_type {};
 
     template <typename T, std::size_t lanes>
-    struct is_arithmetic_unsigned_integral <detail::integral_simd_type <T, lanes>>
+    struct is_arithmetic_unsigned_integral <
+        detail::integral_simd_type <T, lanes>
+    >
         : std::conditional <
             std::is_unsigned <T>::value,
             std::true_type,
@@ -6262,28 +6324,28 @@ template <>
     SIMDType load (typename simd_traits <SIMDType>::value_type const * addr)
         noexcept
     {
-        return SIMDType::load (addr);
+        return typename std::decay <SIMDType>::type::load (addr);
     }
 
     template <typename SIMDType>
     SIMDType load (typename simd_traits <SIMDType>::value_type const * addr,
-                std::ptrdiff_t off) noexcept
+                   std::ptrdiff_t off) noexcept
     {
-        return SIMDType::load (addr, off);
+        return typename std::decay <SIMDType>::type::load (addr, off);
     }
 
     template <typename SIMDType>
     SIMDType load (typename simd_traits <SIMDType>::vector_type const * addr)
         noexcept
     {
-        return SIMDType::load (addr);
+        return typename std::decay <SIMDType>::type::load (addr);
     }
 
     template <typename SIMDType>
     SIMDType load (typename simd_traits <SIMDType>::vector_type const * addr,
-                std::ptrdiff_t off) noexcept
+                   std::ptrdiff_t off) noexcept
     {
-        return SIMDType::load (addr, off);
+        return typename std::decay <SIMDType>::type::load (addr, off);
     }
 
     template <typename SIMDType>
@@ -6291,7 +6353,7 @@ template <>
         load_aligned (typename simd_traits <SIMDType>::value_type const * addr)
         noexcept
     {
-        return SIMDType::load_aligned (addr);
+        return typename std::decay <SIMDType>::type::load_aligned (addr);
     }
 
     template <typename SIMDType>
@@ -6299,7 +6361,7 @@ template <>
         load_aligned (typename simd_traits <SIMDType>::value_type const * addr,
                       std::ptrdiff_t off) noexcept
     {
-        return SIMDType::load_aligned (addr, off);
+        return typename std::decay <SIMDType>::type::load_aligned (addr, off);
     }
 
     template <typename SIMDType>
@@ -6307,7 +6369,7 @@ template <>
         load_aligned (typename simd_traits <SIMDType>::vector_type const * addr)
         noexcept
     {
-        return SIMDType::load_aligned (addr);
+        return typename std::decay <SIMDType>::type::load_aligned (addr);
     }
 
     template <typename SIMDType>
@@ -6316,366 +6378,480 @@ template <>
                       std::ptrdiff_t off)
         noexcept
     {
-        return SIMDType::load_aligned (addr, off);
+        return typename std::decay <SIMDType>::type::load_aligned (addr, off);
     }
 
-    template <std::size_t n, typename T, std::size_t lanes, typename tag>
-    constexpr typename simd_type <T, lanes, tag>::const_reference
-        get (simd_type <T, lanes, tag> const & sv) noexcept
+    template <std::size_t N, typename SIMDType>
+    constexpr typename simd_traits <SIMDType>::const_reference
+        get (SIMDType const & sv) noexcept
     {
         static_assert (
-            n < lanes,
+            N < simd_traits <SIMDType>::lanes,
             "cannot access out-of-bounds vector lane"
         );
 
-        return sv.template get <n> ();
+        return sv.template get <N> ();
     }
 
-    template <std::size_t n, typename T, std::size_t lanes, typename tag>
-    constexpr typename simd_type <T, lanes, tag>::reference
-        get (simd_type <T, lanes, tag> & sv) noexcept
+    template <std::size_t N, typename SIMDType>
+    constexpr typename simd_traits <SIMDType>::reference
+        get (SIMDType & sv) noexcept
     {
         static_assert (
-            n < lanes,
+            N < simd_traits <SIMDType>::lanes,
             "cannot access out-of-bounds vector lane"
         );
 
-        return sv.template get <n> ();
+        return sv.template get <N> ();
     }
 
-    template <std::size_t n, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <T, lanes, tag> &
-        set (simd_type <T, lanes, tag> & sv, T const & val) noexcept
+    template <typename SIMDType>
+    constexpr typename simd_traits <SIMDType>::const_reference
+        get (std::size_t n, SIMDType const & sv) noexcept
+    {
+        return sv.get (n);
+    }
+
+    template <typename SIMDType>
+    constexpr typename simd_traits <SIMDType>::reference
+        get (std::size_t n, SIMDType & sv) noexcept
+    {
+        return sv.get (n);
+    }
+
+    template <std::size_t N, typename SIMDType>
+    constexpr typename simd_traits <SIMDType>::const_reference
+        value (SIMDType const & sv) noexcept
     {
         static_assert (
-            n < lanes,
+            N < simd_traits <SIMDType>::lanes,
             "cannot access out-of-bounds vector lane"
         );
 
-        return sv.template set <n> (val);
+        return sv.template value <N> ();
     }
 
-    template <typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <T, lanes, tag> &
-        set (std::size_t n, simd_type <T, lanes, tag> & sv, T const & val)
+    template <std::size_t N, typename SIMDType>
+    constexpr typename simd_traits <SIMDType>::reference
+        value (SIMDType & sv) noexcept
+    {
+        static_assert (
+            N < simd_traits <SIMDType>::lanes,
+            "cannot access out-of-bounds vector lane"
+        );
+
+        return sv.template value <N> ();
+    }
+
+    template <typename SIMDType>
+    constexpr typename simd_traits <SIMDType>::const_reference
+        value (std::size_t n, SIMDType const & sv) noexcept
+    {
+        return sv.value (n);
+    }
+
+    template <typename SIMDType>
+    constexpr typename simd_traits <SIMDType>::reference
+        value (std::size_t n, SIMDType & sv) noexcept
+    {
+        return sv.value (n);
+    }
+
+    template <std::size_t N, typename SIMDType>
+    constexpr typename simd_traits <SIMDType>::reference
+        set (SIMDType & sv,
+             typename simd_traits <SIMDType>::value_type const & v) noexcept
+    {
+        static_assert (
+            N < simd_traits <SIMDType>::lanes,
+            "cannot access out-of-bounds vector lane"
+        );
+
+        return sv.template set <N> (v);
+    }
+
+    template <typename SIMDType>
+    constexpr typename simd_traits <SIMDType>::reference
+        set (std::size_t n,
+             SIMDType & sv,
+             typename simd_traits <SIMDType>::value_type const & v) noexcept
+    {
+        return sv.set (n, v);
+    }
+
+    template <typename SIMDTypeTo, typename SIMDTypeFrom>
+    constexpr SIMDTypeTo static_convert (SIMDTypeFrom const & sv) noexcept
+    {
+        return sv.template to <SIMDTypeTo> ();
+    }
+
+    template <typename SIMDTypeAs, typename SIMDTypeFrom>
+    SIMDTypeAs reinterpret_convert (SIMDTypeFrom const & sv) noexcept
+    {
+        return sv.template as <SIMDTypeAs> ();
+    }
+
+    template <typename SIMDType>
+    typename simd_traits <SIMDType>::iterator begin (SIMDType & sv) noexcept
+    {
+        return sv.begin ();
+    }
+
+    template <typename SIMDType>
+    typename simd_traits <SIMDType>::iterator end (SIMDType & sv) noexcept
+    {
+        return sv.end ();
+    }
+
+    template <typename SIMDType>
+    typename simd_traits <SIMDType>::const_iterator begin (SIMDType const & sv)
         noexcept
     {
-        return sv.set (n, val);
-    }
-
-    template <typename SIMDType_To, typename SIMDType_From>
-    constexpr SIMDType_To to (SIMDType_From const & sv) noexcept
-    {
-        return sv.template to <SIMDType_To> ();
-    }
-
-    template <typename SIMDType_To, typename SIMDType_From>
-    SIMDType_To as (SIMDType_From const & sv) noexcept
-    {
-        return sv.template as <SIMDType_To> ();
-    }
-
-    template <typename T, std::size_t lanes, typename tag>
-    typename simd_type <T, lanes, tag>::iterator
-        begin (simd_type <T, lanes, tag> & sv) noexcept
-    {
         return sv.begin ();
     }
 
-    template <typename T, std::size_t lanes, typename tag>
-    typename simd_type <T, lanes, tag>::iterator
-        end (simd_type <T, lanes, tag> & sv) noexcept
+    template <typename SIMDType>
+    typename simd_traits <SIMDType>::const_iterator end (SIMDType const & sv)
+        noexcept
     {
         return sv.end ();
     }
 
-    template <typename T, std::size_t lanes, typename tag>
-    typename simd_type <T, lanes, tag>::const_iterator
-        begin (simd_type <T, lanes, tag> const & sv) noexcept
-    {
-        return sv.begin ();
-    }
-
-    template <typename T, std::size_t lanes, typename tag>
-    typename simd_type <T, lanes, tag>::const_iterator
-        end (simd_type <T, lanes, tag> const & sv) noexcept
-    {
-        return sv.end ();
-    }
-
-    template <typename T, std::size_t lanes, typename tag>
-    typename simd_type <T, lanes, tag>::const_iterator
-        cbegin (simd_type <T, lanes, tag> const & sv) noexcept
+    template <typename SIMDType>
+    typename simd_traits <SIMDType>::const_iterator cbegin (SIMDType const & sv)
+        noexcept
     {
         return sv.cbegin ();
     }
 
-    template <typename T, std::size_t lanes, typename tag>
-    typename simd_type <T, lanes, tag>::const_iterator
-        cend (simd_type <T, lanes, tag> const & sv) noexcept
+    template <typename SIMDType>
+    typename simd_traits <SIMDType>::const_iterator cend (SIMDType const & sv)
+        noexcept
     {
         return sv.cend ();
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <T, lanes, tag>
-        operator+ (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename SIMDType>
+    typename simd_traits <SIMDType>::reverse_iterator rbegin (SIMDType & sv)
+        noexcept
     {
-        static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
-        );
-
-        return sv + val;
+        return sv.rbegin ();
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <T, lanes, tag>
-        operator- (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename SIMDType>
+    typename simd_traits <SIMDType>::iterator rend (SIMDType & sv) noexcept
     {
-        static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
-        );
-
-        return -sv + val;
+        return sv.rend ();
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <T, lanes, tag>
-        operator* (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename SIMDType>
+    typename simd_traits <SIMDType>::const_reverse_iterator
+        rbegin (SIMDType const & sv) noexcept
     {
-        static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
-        );
-
-        return sv * val;
+        return sv.rbegin ();
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <T, lanes, tag>
-        operator/ (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename SIMDType>
+    typename simd_traits <SIMDType>::const_reverse_iterator
+        rend (SIMDType const & sv) noexcept
     {
-        static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
-        );
-
-        return simd_type <T, lanes, tag> (val) / sv;
+        return sv.rend ();
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <T, lanes, tag>
-        operator% (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename SIMDType>
+    typename simd_traits <SIMDType>::const_reverse_iterator
+        crbegin (SIMDType const & sv) noexcept
     {
-        static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
-        );
-
-        return simd_type <T, lanes, tag> (val) % sv;
+        return sv.crbegin ();
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <T, lanes, tag>
-        operator<< (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename SIMDType>
+    typename simd_traits <SIMDType>::const_reverse_iterator
+        crend (SIMDType const & sv) noexcept
     {
-        static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
-        );
-
-        return simd_type <T, lanes, tag> (val) << sv;
+        return sv.crend ();
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <T, lanes, tag>
-        operator>> (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename T, typename SIMDType>
+    constexpr SIMDType operator+ (T const & val, SIMDType const & sv) noexcept
     {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
         static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
         );
 
-        return simd_type <T, lanes, tag> (val) >> sv;
+        return sv + static_cast <value_type> (val);
     }
 
-    template <
-        typename U, typename T, std::size_t lanes, typename tag,
-        typename = typename std::enable_if <std::is_integral <T>::value>::type
-    >
-    constexpr simd_type <T, lanes, tag>
-        operator& (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename T, typename SIMDType>
+    constexpr SIMDType operator- (T const & val, SIMDType const & sv) noexcept
     {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
         static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
         );
 
-        return sv & val;
+        return -sv + static_cast <value_type> (val);
+    }
+
+    template <typename T, typename SIMDType>
+    constexpr SIMDType operator* (T const & val, SIMDType const & sv) noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+        static_assert (
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
+        );
+
+        return sv * static_cast <value_type> (val);
+    }
+
+    template <typename T, typename SIMDType>
+    constexpr SIMDType operator/ (T const & val, SIMDType const & sv) noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+        static_assert (
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
+        );
+
+        return SIMDType {static_cast <value_type> (val)} / sv;
+    }
+
+    template <typename T, typename SIMDType>
+    constexpr SIMDType operator% (T const & val, SIMDType const & sv) noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+        static_assert (
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
+        );
+
+        return SIMDType {static_cast <value_type> (val)} % sv;
     }
 
     template <
-        typename U, typename T, std::size_t lanes, typename tag,
-        typename = typename std::enable_if <std::is_integral <T>::value>::type
+        typename T, typename SIMDType,
+        typename = typename std::enable_if <std::is_scalar <T>::value>::type
     >
-    constexpr simd_type <T, lanes, tag>
-        operator| (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    constexpr SIMDType operator<< (T const & val, SIMDType const & sv) noexcept
     {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
         static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
         );
 
-        return sv | val;
+        return SIMDType {static_cast <value_type> (val)} << sv;
     }
 
     template <
-        typename U, typename T, std::size_t lanes, typename tag,
-        typename = typename std::enable_if <std::is_integral <T>::value>::type
+        typename T, typename SIMDType,
+        typename = typename std::enable_if <std::is_scalar <T>::value>::type
     >
-    constexpr simd_type <T, lanes, tag>
-        operator^ (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    constexpr SIMDType operator>> (T const & val, SIMDType const & sv) noexcept
     {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
         static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
         );
 
-        return sv ^ val;
+        return SIMDType {static_cast <value_type> (val)} >> sv;
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        operator&& (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename T, typename SIMDType>
+    constexpr SIMDType operator& (T const & val, SIMDType const & sv) noexcept
     {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
         static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
         );
 
-        return sv && val;
+        return sv & static_cast <value_type> (val);
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        operator|| (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename T, typename SIMDType>
+    constexpr SIMDType operator| (T const & val, SIMDType const & sv) noexcept
     {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
         static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
         );
 
-        return sv || val;
+        return sv | static_cast <value_type> (val);
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        operator== (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename T, typename SIMDType>
+    constexpr SIMDType operator^ (T const & val, SIMDType const & sv) noexcept
     {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
         static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
         );
 
-        return sv == val;
+        return sv ^ static_cast <value_type> (val);
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        operator!= (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename T, typename SIMDType>
+    constexpr auto operator&& (T const & t, SIMDType const & sv) noexcept
+        -> decltype (
+            sv && static_cast <typename simd_traits <SIMDType>::value_type> (t)
+        )
     {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
         static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
         );
 
-        return sv != val;
+        return sv && static_cast <value_type> (t);
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        operator< (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename T, typename SIMDType>
+    constexpr auto operator|| (T const & t, SIMDType const & sv) noexcept
+        -> decltype (
+            sv || static_cast <typename simd_traits <SIMDType>::value_type> (t)
+        )
     {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
         static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
         );
 
-        return sv > val;
+        return sv || static_cast <value_type> (t);
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        operator> (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename T, typename SIMDType>
+    constexpr auto operator== (T const & t, SIMDType const & sv) noexcept
+        -> decltype (
+            sv == static_cast <typename simd_traits <SIMDType>::value_type> (t)
+        )
     {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
         static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
         );
 
-        return sv < val;
+        return sv == static_cast <value_type> (t);
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        operator<= (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename T, typename SIMDType>
+    constexpr auto operator!= (T const & t, SIMDType const & sv) noexcept
+        -> decltype (
+            sv != static_cast <typename simd_traits <SIMDType>::value_type> (t)
+        )
     {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
         static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
         );
 
-        return sv >= val;
+        return sv != static_cast <value_type> (t);
     }
 
-    template <typename U, typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        operator>= (U val, simd_type <T, lanes, tag> const & sv)
-    noexcept
+    template <typename T, typename SIMDType>
+    constexpr auto operator> (T const & t, SIMDType const & sv) noexcept
+        -> decltype (
+            sv > static_cast <typename simd_traits <SIMDType>::value_type> (t)
+        )
     {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
         static_assert (
-            std::is_convertible <U, T>::value,
-            "cannot perform operation between vector type and scalar type"
-            " without conversion"
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
         );
 
-        return sv <= val;
+        return sv > static_cast <value_type> (t);
+    }
+
+    template <typename T, typename SIMDType>
+    constexpr auto operator< (T const & t, SIMDType const & sv) noexcept
+        -> decltype (
+            sv < static_cast <typename simd_traits <SIMDType>::value_type> (t)
+        )
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+        static_assert (
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
+        );
+
+        return sv < static_cast <value_type> (t);
+    }
+
+    template <typename T, typename SIMDType>
+    constexpr auto operator>= (T const & t, SIMDType const & sv) noexcept
+        -> decltype (
+            sv >= static_cast <typename simd_traits <SIMDType>::value_type> (t)
+        )
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+        static_assert (
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
+        );
+
+        return sv >= static_cast <value_type> (t);
+    }
+
+    template <typename T, typename SIMDType>
+    constexpr auto operator<= (T const & t, SIMDType const & sv) noexcept
+        -> decltype (
+            sv <= static_cast <typename simd_traits <SIMDType>::value_type> (t)
+        )
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+        static_assert (
+            std::is_convertible <T, value_type>::value,
+            "cannot perform binary operation between different types without"
+            " conversion"
+        );
+
+        return sv <= static_cast <value_type> (t);
     }
 
     template <typename SIMDType>
@@ -7302,111 +7478,410 @@ template <>
         }
     };
 
-    template <typename T, typename U, std::size_t lanes, typename tag>
-    simd_type <U, lanes, tag>
-        shuffle (simd_type <U, lanes, tag> const & sv,
-                 simd_type <T, lanes, tag> const & mask) noexcept
+#if SIMD_HEADER_CLANG
+namespace detail
+{
+    template <typename SIMDType, typename IntegralSIMDType, std::size_t ... L>
+    SIMDType shuffle_impl (SIMDType const & sv1,
+                           SIMDType const & sv2,
+                           IntegralSIMDType const & mask,
+                           util::index_sequence <L...>) noexcept
+    {
+        return SIMDType {
+            __builtin_shufflevector (
+                sv1.data (), sv2.data (), simd::value <L> (mask)...
+            )
+        };
+    }
+}   // namespace detail
+
+    template <typename SIMDType, typename IntegralSIMDType>
+    SIMDType shuffle (SIMDType const & sv, IntegralSIMDType const & mask)
+        noexcept
     {
         static_assert (
-            std::is_integral <T>::value,
+            detail::is_simd_type <SIMDType>::value,
+            "template parameter SIMDType must be a simd type"
+        );
+
+        static_assert (
+            detail::is_simd_type <IntegralSIMDType>::value,
+            "template parameter IntegralSIMDType must be a simd type"
+        );
+
+        using mask_traits_type = simd_traits <IntegralSIMDType>;
+        using mask_value_type  = typename mask_traits_type::value_type;
+        static_assert (
+            std::is_integral <mask_value_type>::value,
             "template parameter T of mask simd type must be an integral type"
         );
 
-#if SIMD_HEADER_CLANG
-    /*
-     * clang's __builtin_shufflevector requires constant integer indices,
-     * and hence we must implement the function by hand for the general
-     * case. For the user of this library this limitation can be overcome by
-     * using the .data () method, which provides access to the underlying SIMD
-     * vector type.
-     */
-        simd_type <U, lanes, tag> shuffle_result {};
-
-        for (std::size_t i = 0; i < lanes; ++i) {
-            shuffle_result [i] = sv [mask [i]];
-        }
-
-        return shuffle_result;
-#elif SIMD_HEADER_GNUG
-        return simd_type <U, lanes, tag> {
-            __builtin_shuffle (sv.data (), mask.data ())
-        };
-#endif
+        return detail::shuffle_impl (
+            sv, sv, mask,
+            detail::util::make_index_sequence <mask_traits_type::lanes> {}
+        );
     }
 
-    template <typename T, typename U, std::size_t lanes, typename tag>
-    simd_type <U, lanes, tag>
-        shuffle (simd_type <U, lanes, tag> const & sv1,
-                 simd_type <U, lanes, tag> const & sv2,
-                 simd_type <T, lanes, tag> const & mask) noexcept
+    template <typename SIMDType, typename IntegralSIMDType>
+    SIMDType shuffle (SIMDType const & sv1,
+                      SIMDType const & sv2,
+                      IntegralSIMDType const & mask) noexcept
     {
         static_assert (
-            std::is_integral <T>::value,
+            detail::is_simd_type <SIMDType>::value,
+            "template parameter SIMDType must be a simd type"
+        );
+
+        static_assert (
+            detail::is_simd_type <IntegralSIMDType>::value,
+            "template parameter IntegralSIMDType must be a simd type"
+        );
+
+        using mask_traits_type = simd_traits <IntegralSIMDType>;
+        using mask_value_type  = typename mask_traits_type::value_type;
+        static_assert (
+            std::is_integral <mask_value_type>::value,
             "template parameter T of mask simd type must be an integral type"
         );
 
-#if SIMD_HEADER_CLANG
-    /*
-     * clang's __builtin_shufflevector requires constant integer indices,
-     * and hence we must implement the function by hand for the general
-     * case. For the user of this library this limitation can be overcome by
-     * using the .data () method, which provides access to the underlying SIMD
-     * vector type.
-     */
-        simd_type <U, lanes, tag> shuffle_result {};
+        return detail::shuffle_impl (
+            sv1, sv2, mask,
+            detail::util::make_index_sequence <mask_traits_type::lanes> {}
+        );
+    }
 
-        for (std::size_t i = 0; i < lanes; ++i) {
-            if (static_cast <std::size_t> (mask [i]) < lanes) {
-                shuffle_result [i] = sv1 [mask [i]];
-            } else {
-                shuffle_result [i] = sv2 [lanes - mask [i]];
-            }
-        }
+    template <std::size_t ... Mask, typename SIMDType>
+    SIMDType shuffle (SIMDType const & sv) noexcept
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "template parameter SIMDType must be a simd type"
+        );
+        static_assert (
+            simd_traits <SIMDType>::lanes == sizeof... (Mask),
+            "shuffle with explicit parameters requires the same number as "
+            "simd type lanes"
+        );
 
-        return shuffle_result;
+        return SIMDType {
+            __builtin_shufflevector (sv.data (), sv.data (), Mask...)
+        };
+    }
+
+    template <std::size_t ... Mask, typename SIMDType>
+    SIMDType shuffle (SIMDType const & sv1, SIMDType const & sv2) noexcept
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "template parameter SIMDType must be a simd type"
+        );
+        static_assert (
+            simd_traits <SIMDType>::lanes == sizeof... (Mask),
+            "shuffle with explicit parameters requires the same number as "
+            "simd type lanes"
+        );
+
+        return SIMDType {
+            __builtin_shufflevector (sv1.data (), sv2.data (), Mask...)
+        };
+    }
 #elif SIMD_HEADER_GNUG
-        return simd_type <U, lanes, tag> {
+    template <typename SIMDType, typename IntegralSIMDType>
+    SIMDType shuffle (SIMDType const & sv, IntegralSIMDType const & mask)
+        noexcept
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "template parameter SIMDType must be a simd type"
+        );
+
+        static_assert (
+            detail::is_simd_type <IntegralSIMDType>::value,
+            "template parameter IntegralSIMDType must be a simd type"
+        );
+
+        using mask_traits_type = simd_traits <IntegralSIMDType>;
+        using mask_value_type  = typename mask_traits_type::value_type;
+        static_assert (
+            std::is_integral <mask_value_type>::value,
+            "template parameter T of mask simd type must be an integral type"
+        );
+
+        return SIMDType {__builtin_shuffle (sv.data (), mask.data ())};
+    }
+
+    template <typename SIMDType, typename IntegralSIMDType>
+    SIMDType shuffle (SIMDType const & sv1,
+                      SIMDType const & sv2,
+                      IntegralSIMDType const & mask) noexcept
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "template parameter SIMDType must be a simd type"
+        );
+
+        static_assert (
+            detail::is_simd_type <IntegralSIMDType>::value,
+            "template parameter IntegralSIMDType must be a simd type"
+        );
+
+        using mask_traits_type = simd_traits <IntegralSIMDType>;
+        using mask_value_type  = typename mask_traits_type::value_type;
+        static_assert (
+            std::is_integral <mask_value_type>::value,
+            "template parameter T of mask simd type must be an integral type"
+        );
+
+        return SIMDType {
             __builtin_shuffle (sv1.data (), sv2.data (), mask.data ())
         };
-#endif
     }
 
-    template <typename T, std::size_t lanes>
-    constexpr bool any_of (simd_type <T, lanes, boolean_tag> const & boolvec)
-        noexcept
+    template <std::size_t ... Mask, typename SIMDType>
+    SIMDType shuffle (SIMDType const & sv) noexcept
     {
-        return boolvec.any_of ();
-    }
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "template parameter SIMDType must be a simd type"
+        );
+        static_assert (
+            simd_traits <SIMDType>::lanes == sizeof... (Mask),
+            "shuffle with explicit parameters requires the same number as "
+            "simd type lanes"
+        );
 
-    template <typename T, std::size_t lanes>
-    constexpr bool all_of (simd_type <T, lanes, boolean_tag> const & boolvec)
-        noexcept
-    {
-        return boolvec.all_of ();
-    }
-
-    template <typename T, std::size_t lanes>
-    constexpr bool none_of (simd_type <T, lanes, boolean_tag> const & boolvec)
-        noexcept
-    {
-        return boolvec.none_of ();
-    }
-
-    template <typename T, typename U, std::size_t lanes, typename tag>
-    simd_type <U, lanes, tag>
-        select (simd_type <T, lanes, arithmetic_tag> const & selector,
-                simd_type <U, lanes, tag> const & then_vec,
-                simd_type <U, lanes, tag> const & else_vec) noexcept
-    {
-        using select_type = simd_type <T, lanes, boolean_tag>;
-        using integral_simd_type = typename select_type::template rebind <
-            typename select_type::integral_type, lanes, arithmetic_tag
+        using mask_type = detail::integral_simd_type <
+            std::size_t, sizeof... (Mask)
         >;
 
-        auto const mask = integral_simd_type::increment_vector (lanes) -
-                         (selector.to_integral () * integral_simd_type {lanes});
-        return shuffle (then_vec, else_vec, mask);
+        return SIMDType {
+            __builtin_shuffle (sv.data (), mask_type {Mask...}.data ())
+        };
     }
+
+    template <std::size_t ... Mask, typename SIMDType>
+    SIMDType shuffle (SIMDType const & sv1, SIMDType const & sv2) noexcept
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "template parameter SIMDType must be a simd type"
+        );
+        static_assert (
+            simd_traits <SIMDType>::lanes == sizeof... (Mask),
+            "shuffle with explicit parameters requires the same number as "
+            "simd type lanes"
+        );
+
+        using mask_type = detail::integral_simd_type <
+            std::size_t, sizeof... (Mask)
+        >;
+
+        return SIMDType {
+            __builtin_shuffle (
+                sv1.data (), sv2.data (), mask_type {Mask...}.data ()
+            )
+        };
+    }
+#endif
+
+    template <typename BooleanSIMDType>
+    constexpr bool any_of (BooleanSIMDType const & sv) noexcept
+    {
+        return sv.any_of ();
+    }
+
+    template <typename BooleanSIMDType>
+    constexpr bool all_of (BooleanSIMDType const & sv) noexcept
+    {
+        return sv.all_of ();
+    }
+
+    template <typename BooleanSIMDType>
+    constexpr bool none_of (BooleanSIMDType const & sv) noexcept
+    {
+        return sv.none_of ();
+    }
+
+    /*
+     * General iterator for SIMD vector types constructed either from a pointer
+     * to a contiguous array of scalars in memory or a pointer to a contiguous
+     * array of SIMD vector types in memory. This iterator does not assume the
+     * contents in memory are aligned to the requirements of the SIMD type.
+     *
+     * This iterator conforms to the ContiguousIterator concept and, if the
+     * provided template parameter is not const-qualified, OutputIterator
+     * concepts; it is therefore a contiguous mutable iterator in this case,
+     * and a contiguous iterator otherwise.
+     */
+    template <typename SIMDType>
+    class iterator
+    {
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "template parameter SIMDType must be a SIMD vector type"
+        );
+
+    private:
+        using simd_type        = typename std::remove_cv <SIMDType>::type;
+        using traits_type      = simd_traits <simd_type>;
+        using simd_value_type  = typename traits_type::value_type;
+        using simd_vector_type = typename traits_type::vector_type;
+
+        static constexpr bool is_const = std::is_const <SIMDType>::value;
+        using non_const_simd_pointer = simd_type *;
+        using const_simd_pointer     = simd_type const *;
+        using pointer_type           = typename std::conditional <
+            is_const, const_simd_pointer, non_const_simd_pointer
+        >;
+
+        using non_const_simd_reference = simd_type &;
+        using const_simd_reference     = simd_type const &;
+        using reference_type           = typename std::conditional <
+            is_const, const_simd_reference, non_const_simd_reference
+        >;
+
+        pointer_type _iter;
+
+    public:
+        using difference_type   = std::ptrdiff_t;
+        using value_type        = simd_type;
+        using pointer           = pointer_type;
+        using reference         = reference_type;
+        using iterator_category = std::random_access_iterator_tag;
+
+        iterator (void) noexcept
+            : _iter {nullptr}
+        {}
+
+        iterator (simd_value_type * p) noexcept
+            : _iter {reinterpret_cast <pointer_type> (p)}
+        {}
+
+        iterator (simd_value_type const * p,
+                  typename std::enable_if <is_const>::type * = nullptr) noexcept
+            : _iter {reinterpret_cast <pointer_type> (p)}
+        {}
+
+        iterator (simd_type * p) noexcept
+            : _iter {p}
+        {}
+
+        iterator (simd_type const * p,
+                  typename std::enable_if <is_const>::type * = nullptr) noexcept
+            : _iter {p}
+        {}
+
+        iterator (iterator const &) noexcept             = default;
+        iterator & operator= (iterator const &) noexcept = default;
+
+        ~iterator (void) noexcept = default;
+
+        reference operator* (void) const noexcept
+        {
+            return *this->_iter;
+        }
+
+        reference operator[] (difference_type n) const noexcept
+        {
+            return *(this->_iter + n);
+        }
+
+        pointer operator-> (void) const noexcept
+        {
+            return this->_iter;
+        }
+
+        iterator & operator++ (void) noexcept
+        {
+            this->_iter += 1;
+            return *this;
+        }
+
+        iterator & operator-- (void) noexcept
+        {
+            this->_iter -= 1;
+            return *this;
+        }
+
+        iterator operator++ (int) noexcept
+        {
+            auto tmp = *this;
+            this->_iter += 1;
+            return tmp;
+        }
+
+        iterator operator-- (int) noexcept
+        {
+            auto tmp = *this;
+            this->_iter -= 1;
+            return tmp;
+        }
+
+        iterator & operator+= (difference_type n) noexcept
+        {
+            this->_iter += n;
+            return *this;
+        }
+
+        iterator & operator-= (difference_type n) noexcept
+        {
+            this->_iter -= n;
+            return *this;
+        }
+
+        iterator operator+ (difference_type n) const noexcept
+        {
+            auto tmp = *this;
+            return tmp += n;
+        }
+
+        friend iterator operator+ (difference_type n, iterator const & it)
+            noexcept
+        {
+            return it + n;
+        }
+
+        iterator operator- (difference_type n) const noexcept
+        {
+            auto tmp = *this;
+            return tmp -= n;
+        }
+
+        difference_type operator- (iterator const & other) const noexcept
+        {
+            return this->_iter - other._iter;
+        }
+
+        bool operator== (iterator const & other) const noexcept
+        {
+            return this->_iter == other._iter;
+        }
+
+        bool operator!= (iterator const & other) const noexcept
+        {
+            return this->_iter != other._iter;
+        }
+
+        bool operator> (iterator const & other) const noexcept
+        {
+            return this->_iter > other._iter;
+        }
+
+        bool operator< (iterator const & other) const noexcept
+        {
+            return this->_iter < other._iter;
+        }
+
+        bool operator>= (iterator const & other) const noexcept
+        {
+            return this->_iter >= other._iter;
+        }
+
+        bool operator<= (iterator const & other) const noexcept
+        {
+            return this->_iter <= other._iter;
+        }
+    };
 
     /*
      * General allocator for SIMD vector types; this should be used with
@@ -7549,73 +8024,234 @@ template <>
 
 namespace detail
 {
-    template <typename F, typename SIMDType>
+    template <typename SIMDType, typename ... SIMDTypes>
+    struct common_lane_count;
+
+    template <typename SIMDType>
+    struct common_lane_count <SIMDType>
+    {
+        using type = std::integral_constant <
+            std::size_t, simd::simd_traits <SIMDType>::lanes
+        >;
+    };
+
+    template <typename SIMDType1, typename SIMDType2, typename ... SIMDTypes>
+    struct common_lane_count <SIMDType1, SIMDType2, SIMDTypes...>
+    {
+        using type = typename std::conditional <
+            simd_traits <SIMDType1>::lanes == simd_traits <SIMDType2>::lanes,
+            typename common_lane_count <SIMDType2, SIMDTypes...>::type,
+            void
+        >::type;
+
+        static_assert (
+            !std::is_same <type, void>::value,
+            "no common lane count for SIMD vector types"
+        );
+    };
+
+    template <typename T>
+    struct is_complex : std::false_type {};
+
+    template <typename T>
+    struct is_complex <std::complex <T>> : std::true_type {};
+
+    template <typename T>
+    struct is_boolean : std::false_type {};
+
+    template <>
+    struct is_boolean <bool> : std::true_type {};
+
+    template <typename F, typename ... SIMDTypes>
+    using scalar_result = typename std::result_of <
+        F (typename simd::simd_traits <SIMDTypes>::value_type...)
+    >::type;
+
+    template <typename F, typename ... SIMDTypes>
     using transform_result = simd_type <
-        typename std::result_of <
-            F (typename simd_traits <SIMDType>::value_type)
-        >::type,
-        simd_traits <SIMDType>::lanes,
-        typename simd_traits <SIMDType>::category_tag
+        scalar_result <F, SIMDTypes...>,
+        common_lane_count <SIMDTypes...>::type::value,
+        typename std::conditional <
+            std::is_integral <scalar_result <F, SIMDTypes...>>::value ||
+            std::is_floating_point <scalar_result <F, SIMDTypes...>>::value,
+            arithmetic_tag,
+            typename std::conditional <
+                is_complex <scalar_result <F, SIMDTypes...>>::value,
+                complex_tag,
+                typename std::conditional <
+                    is_boolean <scalar_result <F, SIMDTypes...>>::value,
+                    boolean_tag,
+                    void
+                >::type
+            >::type
+        >::type
     >;
+
+    template <
+        std::size_t ... L, typename F, typename SIMDType
+    >
+    constexpr transform_result <F, SIMDType>
+        transform_impl (util::index_sequence <L...>,
+                        F && f, SIMDType const & sv)
+        noexcept (noexcept (
+            std::forward <F> (f) (
+                std::declval <typename simd::simd_traits <SIMDType>::value_type>
+                    ()
+            )
+        ))
+    {
+        static_assert (
+            is_simd_type <SIMDType>::value,
+            "template parameter SIMDType must be a simd type"
+        );
+
+        return transform_result <F, SIMDType> {
+            std::forward <F> (f) (sv.template value <L> ())...
+        };
+    }
+
+    template <
+        std::size_t ... L, typename F, typename SIMDType1, typename SIMDType2
+    >
+    constexpr transform_result <F, SIMDType1, SIMDType2>
+        transform_impl (util::index_sequence <L...>, F && f,
+                        SIMDType1 const & sv1, SIMDType2 const & sv2)
+        noexcept (noexcept (
+            std::forward <F> (f) (
+                std::declval <
+                    typename simd::simd_traits <SIMDType1>::value_type
+                > (),
+                std::declval <
+                    typename simd::simd_traits <SIMDType2>::value_type
+                > ()
+            )
+        ))
+    {
+        static_assert (
+            is_simd_type <SIMDType1>::value,
+            "template parameter SIMDType1 must be a simd type"
+        );
+        static_assert (
+            is_simd_type <SIMDType2>::value,
+            "template parameter SIMDType2 must be a simd type"
+        );
+
+        return transform_result <F, SIMDType1, SIMDType2> {
+            std::forward <F> (f) (
+                sv1.template value <L> (), sv2.template value <L> ()
+            )...
+        };
+    }
+
+    template <
+        std::size_t ... L, typename F,
+        typename SIMDType1, typename SIMDType2, typename SIMDType3
+    >
+    constexpr transform_result <F, SIMDType1, SIMDType2, SIMDType3>
+        transform_impl (util::index_sequence <L...>, F && f,
+                        SIMDType1 const & sv1,
+                        SIMDType2 const & sv2,
+                        SIMDType3 const & sv3)
+        noexcept (noexcept (
+            std::forward <F> (f) (
+                std::declval <
+                    typename simd::simd_traits <SIMDType1>::value_type
+                > (),
+                std::declval <
+                    typename simd::simd_traits <SIMDType2>::value_type
+                > (),
+                std::declval <
+                    typename simd::simd_traits <SIMDType3>::value_type
+                > ()
+            )
+        ))
+    {
+        static_assert (
+            is_simd_type <SIMDType1>::value,
+            "template parameter SIMDType1 must be a simd type"
+        );
+        static_assert (
+            is_simd_type <SIMDType2>::value,
+            "template parameter SIMDType2 must be a simd type"
+        );
+        static_assert (
+            is_simd_type <SIMDType3>::value,
+            "template parameter SIMDType3 must be a simd type"
+        );
+
+        return transform_result <F, SIMDType1, SIMDType2, SIMDType3> {
+            std::forward <F> (f) (
+                sv1.template value <L> (),
+                sv2.template value <L> (),
+                sv3.template value <L> ()
+            )...
+        };
+    }
 }   // namespace detail
 
     /*
-     * Compute a new SIMD vector containing the function results of each lane of
-     * the original SIMD vector.
+     * Compute a new SIMD vector containing the function results of each
+     * collection of lane values of the original SIMD vectors.
      */
-    template <typename F, typename SIMDType>
-    cpp14_constexpr detail::transform_result <F, SIMDType>
-        transform (F && f, SIMDType const & v)
+    template <typename F, typename ... SIMDTypes>
+    constexpr detail::transform_result <F, SIMDTypes...>
+        transform (F && f, SIMDTypes const &... sv)
         noexcept (noexcept (
             std::forward <F> (f) (
-                std::declval <typename simd_traits <SIMDType>::value_type> ()
+                std::declval <
+                    typename simd::simd_traits <SIMDTypes>::value_type
+                > () ...
             )
         ))
     {
-        constexpr auto lanes = simd_traits <SIMDType>::lanes;
+        using common_lanes =
+            typename detail::common_lane_count <SIMDTypes...>::type;
 
-        detail::transform_result <F, SIMDType> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result.set (i, std::forward <F> (f) (v [i]));
-        }
-        return result;
-    }
-
-    /*
-     * Compute a new SIMD vector containing the hash values of each lane of the
-     * original SIMD vector.
-     */
-    template <typename SIMDType>
-    auto hash (SIMDType const & v)
-        noexcept (noexcept (
-            transform (
-                std::hash <typename simd_traits <SIMDType>::value_type> {}, v
-            )
-        ))
-        -> decltype (
-            transform (
-                std::hash <typename simd_traits <SIMDType>::value_type> {}, v
-            )
-        )
-    {
-        return transform (
-            std::hash <typename simd_traits <SIMDType>::value_type> {}, v
+        return detail::transform_impl (
+            detail::util::make_index_sequence <common_lanes::value> {},
+            std::forward <F> (f), sv...
         );
     }
 
     /*
      * Compute a new SIMD vector containing the hash values of each lane of the
-     * original SIMD vector using the provided hash function.
+     * original SIMD vector, optionally with a provided hash function.
      */
-    template <typename HashFn, typename SIMDType>
-    auto hash (HashFn && hfn, SIMDType const & v)
-        noexcept (noexcept (transform (std::forward <HashFn> (hfn), v)))
-        -> decltype (
-            transform (std::forward <HashFn> (hfn), v)
-        )
+    template <typename SIMDType>
+    struct hash
     {
-        return transform (std::forward <HashFn> (hfn), v);
-    }
+        static_assert (
+            detail::is_simd_type <SIMDType>::value,
+            "template parameter SIMDType must be a simd type"
+        );
+
+    private:
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+    public:
+        using argument_type = SIMDType;
+        using result_type   = simd::simd_type <std::size_t, traits_type::lanes>;
+
+        constexpr result_type operator() (argument_type const & sv) const
+            noexcept (noexcept (
+                std::declval <std::hash <value_type>> () (
+                    std::declval <value_type> ()
+                )
+            ))
+        {
+            return transform (std::hash <value_type> {}, sv);
+        }
+
+        template <typename HashFn>
+        constexpr result_type operator() (HashFn && h, argument_type const & sv)
+            const noexcept (noexcept (
+                std::forward <HashFn> (h) (std::declval <value_type> ())
+            ))
+        {
+            return transform (std::forward <HashFn> (h), sv);
+        }
+    };
 
 namespace math
 {
@@ -7631,97 +8267,54 @@ namespace math
     /*
      * Computes the inner product of two arithmetic (non-boolean) SIMD vectors.
      */
-    template <typename T, std::size_t lanes>
-    T inner_product (simd_type <T, lanes, arithmetic_tag> const & v,
-                     simd_type <T, lanes, arithmetic_tag> const & u)
-        noexcept
+    template <typename SIMDType, std::size_t lanes>
+    auto inner_product (SIMDType const & sv1, SIMDType const & sv2) noexcept
+        -> typename simd_traits <SIMDType>::value_type
     {
-        return accumulate (v * u, T {0}, std::plus <T> {});
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return simd::math::accumulate (
+            sv1 * sv2, value_type {0}, std::plus <value_type> {}
+        );
     }
 
     /*
      * Returns a SIMD vector of the real components of a complex SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    constexpr simd_type <T, lanes, arithmetic_tag>
-        real (simd_type <T, lanes, complex_tag> const & v) noexcept
+    template <typename ComplexSIMDType>
+    constexpr auto real (ComplexSIMDType const & sv) noexcept
+        -> decltype (sv.real ())
     {
-        return simd_type <T, lanes, arithmetic_tag> {v.real ()};
+        return sv.real ();
     }
 
     /*
-     * Returns a SIMD vector of the imaginary components of a complex SIMD
-     * vector.
+     * Returns a SIMD vector of the real components of a complex SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    constexpr simd_type <T, lanes, arithmetic_tag>
-        imag (simd_type <T, lanes, complex_tag> const & v) noexcept
+    template <typename ComplexSIMDType>
+    constexpr auto imag (ComplexSIMDType const & sv) noexcept
+        -> decltype (sv.imag ())
     {
-        return simd_type <T, lanes, arithmetic_tag> {v.imag ()};
-    }
-
-    /*
-     * Computes two SIMD vectors respectively containing the pairwise
-     * quotient and remainder of integral division.
-     */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr std::pair <simd_type <T, lanes, arithmetic_tag>,
-                         simd_type <T, lanes, arithmetic_tag>>
-        div (simd_type <T, lanes, arithmetic_tag> const & v, T const & a) noexcept
-    {
-        using result_type = decltype (
-            std::div (std::declval <T> (), std::declval <T> ())
-        );
-
-        std::array <result_type, lanes> results;
-        for (std::size_t i = 0; i < lanes; ++i) {
-            results [i] = std::div (v [i], a);
-        }
-
-        std::pair <simd_type <T, lanes, arithmetic_tag>,
-                   simd_type <T, lanes, arithmetic_tag>>
-            qr;
-
-        for (std::size_t i = 0; i < lanes; ++i) {
-            qr.first [i] = results [i].quot;
-        }
-
-        for (std::size_t i = 0; i < lanes; ++i) {
-            qr.second [i] = results [i].rem;
-        }
-
-        return qr;
+        return sv.imag ();
     }
 
     /*
      * Computes two SIMD vectors respectively containing the pairwise
      * quotient and remainder of integral division.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr std::pair <simd_type <T, lanes, arithmetic_tag>,
-                         simd_type <T, lanes, arithmetic_tag>>
-        div (simd_type <T, lanes, arithmetic_tag> const & u,
-             simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    std::pair <SIMDType, SIMDType>
+        div (SIMDType const & u, SIMDType const & v) noexcept
     {
-        using result_type = decltype (
-            std::div (std::declval <T> (), std::declval <T> ())
-        );
+        using traits_type = simd_traits <SIMDType>;
 
-        std::array <result_type, lanes> results;
-        for (std::size_t i = 0; i < lanes; ++i) {
-            results [i] = std::div (u [i], v [i]);
-        }
+        std::pair <SIMDType, SIMDType> qr;
 
-        std::pair <simd_type <T, lanes, arithmetic_tag>,
-                   simd_type <T, lanes, arithmetic_tag>>
-            qr;
-
-        for (std::size_t i = 0; i < lanes; ++i) {
-            qr.first [i] = results [i].quot;
-        }
-
-        for (std::size_t i = 0; i < lanes; ++i) {
-            qr.second [i] = results [i].rem;
+        for (std::size_t i = 0; i < traits_type::lanes; ++i) {
+            auto const result = std::div (u.value (i), v.value (i));
+            qr.first.assign  (i, result.quot);
+            qr.second.assign (i, result.rem);
         }
 
         return qr;
@@ -7731,564 +8324,1055 @@ namespace math
      * Computes the absolute value for each lane of a SIMD vector using
      * std::abs.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        abs (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::abs (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > abs (SIMDType const & v) noexcept
     {
-        return transform (std::abs <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::abs (a); }, v
+        );
     }
 
     /*
      * Computes the absolute value for each lane of a SIMD vector using
      * std::fabs.
      */
-namespace detail
-{
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        fabs (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
-    {
-        return transform (std::abs <T>, v);
-    }
-}
     template <typename SIMDType>
-    cpp14_constexpr auto fabs (SIMDType const & v) noexcept
-        -> decltype (detail::fabs (v))
+    simd_type <
+        decltype (std::fabs (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > fabs (SIMDType const & v) noexcept
     {
-        return detail::fabs (v);
-    }
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
 
-    /*
-     * Computes the absolute value for each lane of a complex SIMD vector
-     * without undue underflow or overflow by calling std::hypot.
-     */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        abs (simd_type <T, lanes, complex_tag> const & v) noexcept
-    {
         return transform (
-            [] (T const & a, T const & b) { return std::hypot (a, b); }, v
+            [] (value_type const & a) noexcept { return std::fabs (a); }, v
         );
     }
 
     /*
      * Computes the phase angle for each lane of a complex SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        arg (simd_type <T, lanes, complex_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::arg (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > arg (SIMDType const & v) noexcept
     {
-        return transform (std::arg <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::arg (a); }, v
+        );
     }
 
     /*
-     * Computes the norm for each lane of a complex SIMD vector.
+     * Computes the hypotenuse (sqrt (x^2 + y^2)) for each pairwise lane of
+     * SIMD vectors without undue underflow or overflow in intermediate steps.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        norm (simd_type <T, lanes, complex_tag> const & v) noexcept
+    template <typename SIMDType>
+    SIMDType hypot (SIMDType const & u, SIMDType const & v) noexcept
     {
-        auto const & data = v.data ();
-        auto const & reals = std::get <0> (data);
-        auto const & imags = std::get <1> (data);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
 
-        return reals * reals + imags * imags;
+        return transform (
+            [] (value_type const & a, value_type const & b) noexcept {
+                return std::hypot (a, b);
+            },
+            u, v
+        );
+    }
+
+    /*
+     * Computes the hypotenuse (sqrt (x^2 + y^2 + z^2)) for each tripple-wise
+     * lane of SIMD vectors without undue underflow or overflow in intermediate
+     * steps.
+     */
+    template <typename SIMDType>
+    SIMDType hypot (SIMDType const & u, SIMDType const & v, SIMDType const & w)
+        noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a,
+                value_type const & b,
+                value_type const & c) noexcept
+            {
+                return std::hypot (a, b, c);
+            },
+            u, v, w
+        );
+    }
+
+    /*
+     * Computes the euclidean norm for each lane of a complex SIMD vector.
+     */
+    template <typename ComplexSIMDType>
+    simd_type <
+        typename simd_traits <ComplexSIMDType>::lane_type,
+        simd_traits <ComplexSIMDType>::lanes
+    > norm (ComplexSIMDType const & v) noexcept
+    {
+        return simd::math::hypot (v.real (), v.imag ());
     }
 
     /*
      * Computes the complex conjugate for each lane of a complex SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, complex_tag>
-        conj (simd_type <T, lanes, complex_tag> const & v) noexcept
+    template <typename ComplexSIMDType>
+    constexpr ComplexSIMDType conj (ComplexSIMDType const & v) noexcept
     {
-        auto const & data = v.data ();
-        auto const & reals = std::get <0> (data);
-        auto const & imags = std::get <1> (data);
-
-        return simd_type <T, lanes, complex_tag> (reals, -imags);
+        return ComplexSIMDType {v.real (), -v.imag ()};
     }
 
     /*
      * Computes the projection onto the Riemann Sphere for each lane of a
      * complex SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, complex_tag>
-        proj (simd_type <T, lanes, complex_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::proj (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > proj (SIMDType const & v) noexcept
     {
-        return transform (std::proj <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::proj (a); }, v
+        );
     }
 
     /*
      * Computes the exponential for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        exp (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::exp (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > exp (SIMDType const & v) noexcept
     {
-        return transform (std::exp <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::exp (a); }, v
+        );
     }
 
     /*
      * Computes the exponent base 2 for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        exp2 (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::exp2 (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > exp2 (SIMDType const & v) noexcept
     {
-        return transform (std::exp2 <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::exp2 (a); }, v
+        );
     }
 
     /*
      * Computes the exponential minus 1 for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        expm1 (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::expm1 (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > expm1 (SIMDType const & v) noexcept
     {
-        return transform (std::expm1 <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::expm1 (a); }, v
+        );
     }
 
     /*
      * Computes the natural logarithm for each lane of a SIMD vector.
      * For complex types branch cuts occur along the negative real axis.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        log (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::log (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > log (SIMDType const & v) noexcept
     {
-        return transform (std::log <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::log (a); }, v
+        );
     }
 
     /*
      * Computes the logarithm base 10 for each lane of a SIMD vector.
      * For complex types branch cuts occur along the negative real axis.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        log10 (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::log10 (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > log10 (SIMDType const & v) noexcept
     {
-        return transform (std::log10 <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::log10 (a); }, v
+        );
     }
 
     /*
      * Computes the logarithm base 2 for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        log2 (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::log2 (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > log2 (SIMDType const & v) noexcept
     {
-        return transform (std::log2 <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::log2 (a); }, v
+        );
     }
 
     /*
      * Computes the natural logarithm for each lane of a SIMD vector
      * plus one.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        log1p (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::log1p (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > log1p (SIMDType const & v) noexcept
     {
-        return transform (std::log1p <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::log1p (a); }, v
+        );
     }
 
     /*
      * Computes the square root for each lane of a SIMD vector.
      * For complex types the result lies in the right half-plane.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        sqrt (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::sqrt (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > sqrt (SIMDType const & v) noexcept
     {
-        return transform (std::sqrt <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::sqrt (a); }, v
+        );
     }
 
     /*
      * Computes the cube root for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        cbrt (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::cbrt (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > cbrt (SIMDType const & v) noexcept
     {
-        return transform (std::cbrt <T>, v);
-    }
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
 
-    /*
-     * Computes the hypotenuse (sqrt (x^2 + y^2)) for each pairwise lane of
-     * SIMD vectors.
-     */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        hypot (simd_type <T, lanes, arithmetic_tag> const & u,
-               simd_type <T, lanes, arithmetic_tag> const & v) noexcept
-    {
-        using result_type = decltype (
-            std::hypot (std::declval <T> (), std::declval <T> ())
+        return transform (
+            [] (value_type const & a) noexcept { return std::cbrt (a); }, v
         );
-
-        simd_type <result_type, lanes, arithmetic_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::hypot (u [i], v [i]);
-        }
-        return result;
     }
 
     /*
      * Computes the power x^y for each lane, pairwise of two SIMD vectors.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        pow (simd_type <T, lanes, tag> const & u,
-             simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDTypeBase, typename SIMDTypeExp>
+    simd_type <
+        decltype (std::pow (
+            std::declval <typename simd_traits <SIMDTypeBase>::value_type> (),
+            std::declval <typename simd_traits <SIMDTypeExp>::value_type> ()
+        )),
+        simd_traits <SIMDTypeBase>::lanes
+    > pow (SIMDTypeBase const & base, SIMDTypeExp const & exp) noexcept
     {
-        simd_type <T, lanes, tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::pow (u [i], v [i]);
-        }
-        return result;
+        using base_traits_type = simd_traits <SIMDTypeBase>;
+        using base_value_type  = typename base_traits_type::value_type;
+
+        using exp_traits_type = simd_traits <SIMDTypeExp>;
+        using exp_value_type  = typename exp_traits_type::value_type;
+
+        static_assert (
+            base_traits_type::lanes == exp_traits_type::lanes,
+            "cannot apply pow function to SIMD vectors of different lenghts"
+        );
+
+        return transform (
+            [] (base_value_type const & b, exp_value_type const & e) noexcept
+            {
+                return std::pow (b, e);
+            },
+            base, exp
+        );
     }
 
     /*
      * Computes the sine for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        sin (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::sin (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > sin (SIMDType const & v) noexcept
     {
-        return transform (std::sin <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::sin (a); }, v
+        );
     }
 
     /*
      * Computes the arcsine for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        asin (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::asin (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > asin (SIMDType const & v) noexcept
     {
-        return transform (std::asin <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::asin (a); }, v
+        );
     }
 
     /*
      * Computes the cosine for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        cos (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::cos (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > cos (SIMDType const & v) noexcept
     {
-        return transform (std::cos <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::cos (a); }, v
+        );
     }
 
     /*
      * Computes the arcosine for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        acos (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::acos (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > acos (SIMDType const & v) noexcept
     {
-        return transform (std::acos <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::acos (a); }, v
+        );
     }
 
     /*
      * Computes the tangent for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        tan (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::tan (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > tan (SIMDType const & v) noexcept
     {
-        return transform (std::tan <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::tan (a); }, v
+        );
     }
 
     /*
      * Computes the arctangent for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        atan (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::atan (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > atan (SIMDType const & v) noexcept
     {
-        return transform (std::atan <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::atan (a); }, v
+        );
     }
 
     /*
      * Computes the arctangent considering signs for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        atan2 (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::atan2 (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > atan2 (SIMDType const & v) noexcept
     {
-        return transform (std::atan2 <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::atan2 (a); }, v
+        );
     }
 
     /*
      * Computes the hyperbolic sine for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        sinh (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::sinh (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > sinh (SIMDType const & v) noexcept
     {
-        return transform (std::sinh <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::sinh (a); }, v
+        );
     }
 
     /*
      * Computes the area hyperbolic sine for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        asinh (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::asinh (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > asinh (SIMDType const & v) noexcept
     {
-        return transform (std::asinh <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::asinh (a); }, v
+        );
     }
 
     /*
      * Computes the hyperbolic cosine for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        cosh (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::cosh (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > cosh (SIMDType const & v) noexcept
     {
-        return transform (std::cosh <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::cosh (a); }, v
+        );
     }
 
     /*
      * Computes the area hyperbolic cosine for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        acosh (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::acosh (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > acosh (SIMDType const & v) noexcept
     {
-        return transform (std::acosh <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::acosh (a); }, v
+        );
     }
 
     /*
      * Computes the hyperbolic tangent for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        tanh (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::tanh (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > tanh (SIMDType const & v) noexcept
     {
-        return transform (std::tanh <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::tanh (a); }, v
+        );
     }
 
     /*
      * Computes the area hyperbolic tangent for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        atanh (simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::atanh (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > atanh (SIMDType const & v) noexcept
     {
-        return transform (std::atanh <T>, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::atanh (a); }, v
+        );
     }
 
     /*
      * Computes the error function for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        decltype (std::erf (std::declval <T> ())), lanes, arithmetic_tag
-    >
-        erf (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::erf (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > erf (SIMDType const & v) noexcept
     {
-        return transform (std::erf, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::erf (a); }, v
+        );
     }
 
     /*
      * Computes the complementary error function for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        decltype (std::erfc (std::declval <T> ())), lanes, arithmetic_tag
-    >
-        erfc (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::erfc (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > erfc (SIMDType const & v) noexcept
     {
-        return transform (std::erfc, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::erfc (a); }, v
+        );
     }
 
     /*
      * Computes the gamma function for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        decltype (std::tgamma (std::declval <T> ())), lanes, arithmetic_tag
-    >
-        tgamma (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::tgamma (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > tgamma (SIMDType const & v) noexcept
     {
-        return transform (std::tgamma, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::tgamma (a); }, v
+        );
     }
 
     /*
      * Computes the natural logarithm of the gramma function for each lane of a
      * SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        decltype (std::lgamma (std::declval <T> ())), lanes, arithmetic_tag
-    >
-        lgamma (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::lgamma (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > lgamma (SIMDType const & v) noexcept
     {
-        return transform (std::lgamma, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::lgamma (a); }, v
+        );
     }
 
     /*
      * Computes the pairwise maximum of two SIMD vectors.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        max (simd_type <T, lanes, tag> const & u,
-             simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    cpp14_constexpr SIMDType max (SIMDType const & u, SIMDType const & v)
+        noexcept
     {
-        simd_type <T, lanes, tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::max (u [i], v [i]);
-        }
-        return result;
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a, value_type const & b) cpp14_constexpr
+            {
+                return std::max (a, b);
+            },
+            u, v
+        );
     }
 
     /*
      * Computes the pairwise minimum of two SIMD vectors.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    cpp14_constexpr simd_type <T, lanes, tag>
-        min (simd_type <T, lanes, tag> const & u,
-             simd_type <T, lanes, tag> const & v) noexcept
+    template <typename SIMDType>
+    cpp14_constexpr SIMDType min (SIMDType const & u, SIMDType const & v)
+        noexcept
     {
-        simd_type <T, lanes, tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::min (u [i], v [i]);
-        }
-        return result;
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a, value_type const & b) cpp14_constexpr
+            {
+                return std::min (a, b);
+            },
+            u, v
+        );
+    }
+
+    /*
+     * Computes the floating point pairwise maximum of two SIMD vectors.
+     */
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::fmax (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > fmax (SIMDType const & u, SIMDType const & v) noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a, value_type const & b) {
+                return std::fmax (a, b);
+            },
+            u, v
+        );
+    }
+
+    /*
+     * Computes the floating point pairwise minimum of two SIMD vectors.
+     */
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::fmin (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > fmin (SIMDType const & u, SIMDType const & v) noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a, value_type const & b) {
+                return std::fmin (a, b);
+            },
+            u, v
+        );
+    }
+
+    /*
+     * Computes the positive floating point pairwise difference of two SIMD
+     * vectors.
+     */
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::fdim (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > fdim (SIMDType const & u, SIMDType const & v) noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a, value_type const & b) {
+                return std::fdim (a, b);
+            },
+            u, v
+        );
     }
 
     /*
      * Computes the ceil for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        ceil (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::ceil (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > ceil (SIMDType const & v) noexcept
     {
-        return transform ([] (T const & a) { return std::ceil (a); }, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::ceil (a); }, v
+        );
     }
 
     /*
      * Computes the floor for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        floor (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::floor (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > floor (SIMDType const & v) noexcept
     {
-        return transform ([] (T const & a) { return std::floor (a); }, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::floor (a); }, v
+        );
     }
 
     /*
      * Computes the truncation value for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        trunc (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::trunc (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > trunc (SIMDType const & v) noexcept
     {
-        return transform ([] (T const & a) { return std::trunc (a); }, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::trunc (a); }, v
+        );
     }
 
     /*
-     * Computes the nearest integer value for each lane of a SIMD vector.
+     * Computes the nearest integer value for each lane of a SIMD vector,
+     * rounding away from zero in half-way cases. Returns the result as a SIMD
+     * vector of either the original floating point lane type or, if the lane
+     * type is a non-floating point arithmetic type, the promoted type (double).
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        round (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::round (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > round (SIMDType const & v) noexcept
     {
-        return transform ([] (T const & a) { return std::round (a); }, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::round (a); }, v
+        );
     }
 
     /*
-     * Computes the nearest integer value for each lane of a SIMD vector using the
-     * current rounding mode.
+     * Computes the nearest integer value for each lane of a SIMD vector,
+     * rounding away from zero in half-way cases. Returns the result as a SIMD
+     * vector of long values.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        nearbyint (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::lround (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > lround (SIMDType const & v) noexcept
     {
-        return transform ([] (T const & a) { return std::nearbyint (a); }, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::lround (a); }, v
+        );
+    }
+
+    /*
+     * Computes the nearest integer value for each lane of a SIMD vector,
+     * rounding away from zero in half-way cases. Returns the result as a SIMD
+     * vector of long long values.
+     */
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::llround (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > llround (SIMDType const & v) noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::llround (a); }, v
+        );
+    }
+
+    /*
+     * Computes the nearest integer value for each lane of a SIMD vector using
+     * the current rounding mode.
+     */
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::nearbyint (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > nearbyint (SIMDType const & v) noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::nearbyint (a); }, v
+        );
+    }
+
+    /*
+     * Computes the nearest integer using current rounding mode with F.P.
+     * exception if the result differs. Returns the result as a SIMD vector of
+     * either the original floating point lane type or, if the lane type is a
+     * non-floating point arithmetic type, the promoted type (double).
+     */
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::rint (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > rint (SIMDType const & v) noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::rint (a); }, v
+        );
+    }
+
+    /*
+     * Computes the nearest integer using current rounding mode with F.P.
+     * exception if the result differs. Returns the result as a SIMD vector of
+     * long values.
+     */
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::lrint (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > lrint (SIMDType const & v) noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::lrint (a); }, v
+        );
+    }
+
+    /*
+     * Computes the nearest integer using current rounding mode with F.P.
+     * exception if the result differs. Returns the result as a SIMD vector of
+     * long long values.
+     */
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::llrint (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > llrint (SIMDType const & v) noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::llrint (a); }, v
+        );
     }
 
     /*
      * Computes the decomposition of a number into significand and a power of 2,
      * returning a pair of SIMD vectors with the above values, respectively.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr std::pair <
-        simd_type <decltype (
-                    std::frexp (std::declval <T> (), std::declval <int *> ())
-                   ), lanes, arithmetic_tag>,
-        simd_type <int, lanes, arithmetic_tag>
-    >
-        frexp (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    std::pair <
+        simd_type <
+            decltype (std::frexp (
+                std::declval <typename simd_traits <SIMDType>::value_type> (),
+                std::declval <int *> ()
+            )),
+            simd_traits <SIMDType>::lanes
+        >,
+        simd_type <int, simd_traits <SIMDType>::lanes>
+    > frexp (SIMDType const & v) noexcept
     {
-        using result_type = decltype (
-            std::frexp (std::declval <T> (), std::declval <int *> ())
-        );
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+        using result_type = std::pair <
+            simd_type <
+                decltype (std::frexp (
+                    std::declval <value_type> (), std::declval <int *> ()
+                )),
+                traits_type::lanes
+            >,
+            simd_type <int, traits_type::lanes>
+        >;
 
-        std::pair <simd_type <result_type, lanes, arithmetic_tag>,
-                   simd_type <int, lanes, arithmetic_tag>>
-            result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result.first [i] = std::frexp (v [i], &result.second [i]);
+        result_type result {};
+        for (std::size_t i = 0; i < traits_type::lanes; ++i) {
+            int exp;
+            result.first.assign (i, std::frexp (v.value (i), &exp));
+            result.second.assign (i, exp);
         }
         return result;
     }
 
     /*
      * Computes a value times the number 2 raised to the exp power for each
-     * lane of a SIMD vector. This overload uses the same exp for each
-     * computation.
+     * pairwise lanes of SIMD vectors. The value type of the second SIMD vector
+     * must be implicitly convertible to int.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        typename std::common_type <
-            T,
-            decltype (std::ldexp (std::declval <T> (), std::declval <int> ()))
-        >::type,
-        lanes,
-        arithmetic_tag
-    >
-        ldexp (simd_type <T, lanes, arithmetic_tag> const & v, int exp) noexcept
+    template <typename SIMDTypeMultiplicand, typename SIMDTypeExp>
+    simd_type <
+        decltype (std::ldexp (
+            std::declval <
+                typename simd_traits <SIMDTypeMultiplicand>::value_type
+            > (),
+            std::declval <typename simd_traits <SIMDTypeExp>::value_type> ()
+        )),
+        simd_traits <SIMDTypeMultiplicand>::lanes
+    > ldexp (SIMDTypeMultiplicand const & x, SIMDTypeExp const & exp) noexcept
     {
-        using result_type = decltype (
-            std::ldexp (std::declval <T> (), std::declval <int> ())
+        using m_traits_type = simd_traits <SIMDTypeMultiplicand>;
+        using m_value_type  = typename m_traits_type::value_type;
+
+        using exp_traits_type = simd_traits <SIMDTypeExp>;
+        using exp_value_type  = typename exp_traits_type::value_type;
+
+        static_assert (
+            m_traits_type::lanes == exp_traits_type::lanes,
+            "cannot apply ldexp function to SIMD vectors of different lenghts"
         );
-        using common_type = typename std::common_type <T, result_type>::type;
-        using common_simd_type = simd_type <common_type, lanes, arithmetic_tag>;
 
-        common_simd_type const exp2 {std::exp2 (exp)};
-        return static_cast <common_simd_type> (v) * exp2;
-    }
-
-    /*
-     * Computes a value times the number 2 raised to the exp power for each
-     * lane of a SIMD vector. This overload uses a SIMD vector of
-     * (potentially different) exponents for the computation.
-     */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        typename std::common_type <
-            T,
-            decltype (std::ldexp (std::declval <T> (), std::declval <int> ()))
-        >::type,
-        lanes,
-        arithmetic_tag
-    >
-        ldexp (simd_type <T, lanes, arithmetic_tag> const & v,
-               simd_type <int, lanes, arithmetic_tag> const & exp) noexcept
-    {
-        using common_type = simd_type <
-            typename std::common_type <
-                T,
-                decltype (
-                    std::ldexp (std::declval <T> (), std::declval <int> ())
-                )
-            >::type, lanes, arithmetic_tag
-        >;
-
-        auto const exp2 = transform (std::exp2, exp);
-        return static_cast <common_type> (v) * exp2;
+        return transform (
+            [] (m_value_type const & m, exp_value_type const & e) noexcept
+            {
+                return std::ldexp (m, e);
+            },
+            x, exp
+        );
     }
 
     /*
@@ -8297,211 +9381,202 @@ namespace detail
      * of SIMD vectors containing the integral and fractional parts,
      * respectively.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr std::pair <
-        simd_type <T, lanes, arithmetic_tag>, simd_type <T, lanes, arithmetic_tag>
-    >
-        modf (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    std::pair <
+        simd_type <
+            decltype (std::modf (
+                std::declval <typename simd_traits <SIMDType>::value_type> (),
+                std::declval <typename simd_traits <SIMDType>::value_type *> ()
+            )),
+            simd_traits <SIMDType>::lanes
+        >,
+        simd_type <
+            typename simd_traits <SIMDType>::value_type,
+            simd_traits <SIMDType>::lanes
+        >
+    > modf (SIMDType const & v) noexcept
     {
-        std::pair <
-            simd_type <T, lanes, arithmetic_tag>, simd_type <T, lanes, arithmetic_tag>
-        > result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result.first [i] = std::modf (v [i], &result.second [i]);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+        using result_type = std::pair <
+            simd_type <
+                decltype (std::modf (
+                    std::declval <value_type> (), std::declval <value_type *> ()
+                )),
+                traits_type::lanes
+            >,
+            simd_type <value_type, traits_type::lanes>
+        >;
+
+        result_type result {};
+        for (std::size_t i = 0; i < traits_type::lanes; ++i) {
+            value_type integral_val;
+            result.first.assign (i, std::modf (v.value (i), &integral_val));
+            result.second.assign (i, integral_val);
         }
         return result;
     }
 
     /*
      * Computes a value times the number FLT_RADIX raised to the exp power for
-     * each lane of a SIMD vector. This overload uses the same exp for each
-     * computation.
+     * each pairwise lanes of SIMD vectors. The value type of the second SIMD
+     * vector must be convertible to int.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        typename std::common_type <
-            T,
-            decltype (std::scalbn (std::declval <T> (), std::declval <int> ()))
-        >::type,
-        lanes,
-        arithmetic_tag
-    >
-        scalbn (simd_type <T, lanes, arithmetic_tag> const & v, int exp) noexcept
+    template <typename SIMDTypeMultiplicand, typename SIMDTypeExp>
+    simd_type <
+        decltype (std::scalbn (
+            std::declval <
+                typename simd_traits <SIMDTypeMultiplicand>::value_type
+            > (),
+            std::declval <typename simd_traits <SIMDTypeExp>::value_type> ()
+        )),
+        simd_traits <SIMDTypeMultiplicand>::lanes
+    > scalbn (SIMDTypeMultiplicand const & x, SIMDTypeExp const & exp) noexcept
     {
-        using result_type = decltype (
-            std::scalbn (std::declval <T> (), std::declval <int> ())
-        );
-        using common_type = typename std::common_type <T, result_type>::type;
-        using common_simd_type = simd_type <common_type, lanes, arithmetic_tag>;
+        using m_traits_type = simd_traits <SIMDTypeMultiplicand>;
+        using m_value_type  = typename m_traits_type::value_type;
 
-        common_simd_type const exp_flt_radix {std::pow (FLT_RADIX, exp)};
-        return static_cast <common_simd_type> (v) * exp_flt_radix;
+        using exp_traits_type = simd_traits <SIMDTypeExp>;
+        using exp_value_type  = typename exp_traits_type::value_type;
+
+        static_assert (
+            m_traits_type::lanes == exp_traits_type::lanes,
+            "cannot apply scalbn function to SIMD vectors of different lenghts"
+        );
+
+        return transform (
+            [] (m_value_type const & m, exp_value_type const & e) noexcept
+            {
+                return std::scalbn (m, e);
+            },
+            x, exp
+        );
     }
 
     /*
      * Computes a value times the number FLT_RADIX raised to the exp power for
-     * each lane of a SIMD vector. This overload uses a SIMD vector of
-     * (potentially different) exponents for the computation.
+     * each pairwise lanes of SIMD vectors. The value type of the second SIMD
+     * vector must be convertible to long.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        typename std::common_type <
-            T,
-            decltype (std::scalbn (std::declval <T> (), std::declval <int> ()))
-        >::type,
-        lanes,
-        arithmetic_tag
-    >
-        scalbn (simd_type <T, lanes, arithmetic_tag> const & v,
-                simd_type <int, lanes, arithmetic_tag> const & exp) noexcept
+    template <typename SIMDTypeMultiplicand, typename SIMDTypeExp>
+    simd_type <
+        decltype (std::scalbln (
+            std::declval <
+                typename simd_traits <SIMDTypeMultiplicand>::value_type
+            > (),
+            std::declval <typename simd_traits <SIMDTypeExp>::value_type> ()
+        )),
+        simd_traits <SIMDTypeMultiplicand>::lanes
+    > scalbln (SIMDTypeMultiplicand const & x, SIMDTypeExp const & exp) noexcept
     {
-        using common_type = simd_type <
-            typename std::common_type <
-                T,
-                decltype (
-                    std::scalbn (std::declval <T> (), std::declval <int> ())
-                )
-            >::type, lanes, arithmetic_tag
-        >;
+        using m_traits_type = simd_traits <SIMDTypeMultiplicand>;
+        using m_value_type  = typename m_traits_type::value_type;
 
-        auto const exp_flt_radix = transform (
-            [] (int e) { return std::pow (FLT_RADIX, e); }, exp
+        using exp_traits_type = simd_traits <SIMDTypeExp>;
+        using exp_value_type  = typename exp_traits_type::value_type;
+
+        static_assert (
+            m_traits_type::lanes == exp_traits_type::lanes,
+            "cannot apply scalbln function to SIMD vectors of different lenghts"
         );
-        return static_cast <common_type> (v) * exp_flt_radix;
-    }
 
-    /*
-     * Computes a value times the number FLT_RADIX raised to the long exp power
-     * for each lane of a SIMD vector. This overload uses the same exp for
-     * each computation.
-     */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        typename std::common_type <
-            T,
-            decltype (
-                std::scalbln (std::declval <T> (), std::declval <long> ())
-            )
-        >::type,
-        lanes,
-        arithmetic_tag
-    >
-        scalbln (simd_type <T, lanes, arithmetic_tag> const & v, long exp) noexcept
-    {
-        using result_type = decltype (
-            std::scalbln (std::declval <T> (), std::declval <long> ())
+        return transform (
+            [] (m_value_type const & m, exp_value_type const & e) noexcept
+            {
+                return std::scalbln (m, e);
+            },
+            x, exp
         );
-        using common_type = typename std::common_type <T, result_type>::type;
-        using common_simd_type = simd_type <common_type, lanes, arithmetic_tag>;
-
-        common_simd_type const exp_flt_radix {std::pow (FLT_RADIX, exp)};
-        return static_cast <common_simd_type> (v) * exp_flt_radix;
-    }
-
-    /*
-     * Computes a value times the number FLT_RADIX raised to the exp power for
-     * each lane of a SIMD vector. This overload uses a SIMD vector of
-     * (potentially different) exponents for the computation.
-     */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        typename std::common_type <
-            T,
-            decltype (
-                std::scalbln (std::declval <T> (), std::declval <long> ())
-            )
-        >::type,
-        lanes,
-        arithmetic_tag
-    >
-        scalbln (simd_type <T, lanes, arithmetic_tag> const & v,
-                 simd_type <long, lanes, arithmetic_tag> const & exp) noexcept
-    {
-        using common_type = simd_type <
-            typename std::common_type <
-                T,
-                decltype (
-                    std::scalbln (std::declval <T> (), std::declval <long> ())
-                )
-            >::type, lanes, arithmetic_tag
-        >;
-
-        auto const exp_flt_radix = transform (
-            [] (long e) { return std::pow (FLT_RADIX, e); }, exp
-        );
-        return static_cast <common_type> (v) * exp_flt_radix;
     }
 
     /*
      * Extracts the integral exponent of a floating point value for each lane
      * of a SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <int, lanes, arithmetic_tag>
-        ilogb (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::ilogb (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > ilogb (SIMDType const & v) noexcept
     {
-        return transform (std::ilogb, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::ilogb (a); }, v
+        );
     }
 
     /*
      * Extracts the floating point radix independent exponent of a floating
      * point value, as a floating point result for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        decltype (std::logb (std::declval <T> ())), lanes, arithmetic_tag
-    >
-        logb (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::logb (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > logb (SIMDType const & v) noexcept
     {
-        return transform (std::ilogb, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::logb (a); }, v
+        );
     }
 
     /*
      * Computes the next representable value from the floating point value from
      * to the floating point value to for each lane of SIMD vectors.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        decltype (std::nextafter (std::declval <T> (), std::declval <T> ())),
-        lanes, arithmetic_tag
-    >
-        nextafter (simd_type <T, lanes, arithmetic_tag> const & from,
-                   simd_type <T, lanes, arithmetic_tag> const & to) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::nextafter (
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > nextafter (SIMDType const & from, SIMDType const & to) noexcept
     {
-        simd_type <
-            decltype (
-                std::nextafter (std::declval <T> (), std::declval <T> ())
-            ),
-            lanes, arithmetic_tag
-        > result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::nextafter (from [i], to [i]);
-        }
-        return result;
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & f, value_type const & t) noexcept
+            {
+                return std::nextafter (f, t);
+            },
+            from, to
+        );
     }
 
     /*
      * Computes the next representable value from the floating point value from
      * to the floating point value to for each lane of SIMD vectors.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        decltype (std::nextafter (std::declval <T> (), std::declval <T> ())),
-        lanes, arithmetic_tag
-    >
-        nexttoward (simd_type <T, lanes, arithmetic_tag> const & from,
-                    simd_type <T, lanes, arithmetic_tag> const & to) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::nexttoward (
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > nexttoward (SIMDType const & from, SIMDType const & to) noexcept
     {
-        simd_type <
-            decltype (
-                std::nextafter (std::declval <T> (), std::declval <T> ())
-            ),
-            lanes, arithmetic_tag
-        > result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::nexttoward (from [i], to [i]);
-        }
-        return result;
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & f, value_type const & t) noexcept
+            {
+                return std::nexttoward (f, t);
+            },
+            from, to
+        );
     }
 
     /*
@@ -8509,24 +9584,25 @@ namespace detail
      * point value and the sign of the second floating point value for each lane
      * of SIMD vectors.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <
-        decltype (std::nextafter (std::declval <T> (), std::declval <T> ())),
-        lanes, arithmetic_tag
-    >
-        copysign (simd_type <T, lanes, arithmetic_tag> const & mag,
-                  simd_type <T, lanes, arithmetic_tag> const & sgn) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::copysign (
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > copysign (SIMDType const & mag, SIMDType const & sgn) noexcept
     {
-        simd_type <
-            decltype (
-                std::nextafter (std::declval <T> (), std::declval <T> ())
-            ),
-            lanes, arithmetic_tag
-        > result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::copysign (mag [i], sgn [i]);
-        }
-        return result;
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & m, value_type const & s) noexcept
+            {
+                return std::copysign (m, s);
+            },
+            mag, sgn
+        );
     }
 
     /*
@@ -8534,48 +9610,54 @@ namespace detail
      * infinite, NaN, or an implementation defined category for each lane of a
      * SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <int, lanes, arithmetic_tag>
-        fpclassify (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::fpclassify (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > fpclassify (SIMDType const & v) noexcept
     {
-        return transform (std::fpclassify, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::fpclassify (a); },
+            v
+        );
     }
 
     /*
      * Determines if a floating point value is finite for each lane of a SIMD
      * vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        isfinite (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    constexpr auto isfinite (SIMDType const & v) noexcept
+        -> decltype (v == v)
     {
-        constexpr simd_type <T, lanes, arithmetic_tag> pinf {+INFINITY};
-        constexpr simd_type <T, lanes, arithmetic_tag> ninf {-INFINITY};
-
-        return (v == v) && (v != pinf) && (v != ninf);
+        return (v == v)
+            && (v != SIMDType {INFINITY})
+            && (v != SIMDType {-INFINITY});
     }
 
     /*
      * Determines if a floating point value is infinite for each lane of a SIMD
      * vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        isinf (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    constexpr auto isinf (SIMDType const & v) noexcept
+        -> decltype (v == v)
     {
-        constexpr simd_type <T, lanes, arithmetic_tag> pinf {+INFINITY};
-        constexpr simd_type <T, lanes, arithmetic_tag> ninf {-INFINITY};
-
-        return (v == pinf) || (v == ninf);
+        return (v == SIMDType {INFINITY}) || (v == SIMDType {-INFINITY});
     }
 
     /*
      * Determines if a floating point value is not-a-number for each lane of a
      * SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        isnan (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    constexpr auto isnan (SIMDType const & v) noexcept
+        -> decltype (v != v)
     {
         return v != v;
     }
@@ -8584,40 +9666,40 @@ namespace detail
      * Determines if a floating point value is normal (neither zero, subnormal,
      * infinite, nor NaN) for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        isnormal (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::isnormal (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > isnormal (SIMDType const & v) noexcept
     {
-        return transform (std::isnormal, v);
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a) noexcept { return std::isnormal (a); }, v
+        );
     }
 
     /*
      * Determines if a floating point value is negative for each lane of a SIMD
      * vector.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        signbit (simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::isnormal (
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > signbit (SIMDType const & v) noexcept
     {
-        return transform (std::signbit, v);
-    }
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
 
-    /*
-     * Determines the result of whether a floating point value is greater than
-     * another floating point value for each lane of a SIMD vector.  This
-     * function does not set floating point exceptions. This overload uses the
-     * same value for comparison across all lanes of the first argument.
-     */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        isgreater (simd_type <T, lanes, arithmetic_tag> const & v, T const & cmp)
-        noexcept
-    {
-        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::isgreater (v [i], cmp);
-        }
-        return result;
+        return transform (
+            [] (value_type const & a) noexcept { return std::signbit (a); }, v
+        );
     }
 
     /*
@@ -8625,35 +9707,25 @@ namespace detail
      * greater than another floating point value for each lane of SIMD vectors.
      * This function does not set floating point exceptions.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        isgreater (simd_type <T, lanes, arithmetic_tag> const & u,
-                   simd_type <T, lanes, arithmetic_tag> const & v)
-        noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::isgreater (
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > isgreater (SIMDType const & u, SIMDType const & v) noexcept
     {
-        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::isgreater (u [i], v [i]);
-        }
-        return result;
-    }
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
 
-    /*
-     * Determines the result of whether a floating point value is greater than
-     * or equal to another floating point value for each lane of a SIMD vector.
-     * This function does not set floating point exceptions. This overload uses
-     * the same value for comparison across all lanes of the first argument.
-     */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        isgreaterequal (simd_type <T, lanes, arithmetic_tag> const & v, T const & cmp)
-        noexcept
-    {
-        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::isgreaterequal (v [i], cmp);
-        }
-        return result;
+        return transform (
+            [] (value_type const & a, value_type const & b) noexcept
+            {
+                return std::isgreater (a, b);
+            },
+            u, v
+        );
     }
 
     /*
@@ -8661,35 +9733,25 @@ namespace detail
      * greater than or equal to another floating point value for each lane of
      * SIMD vectors. This function does not set floating point exceptions.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        isgreaterequal (simd_type <T, lanes, arithmetic_tag> const & u,
-                        simd_type <T, lanes, arithmetic_tag> const & v)
-        noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::isgreaterequal (
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > isgreaterequal (SIMDType const & u, SIMDType const & v) noexcept
     {
-        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::isgreaterequal (u [i], v [i]);
-        }
-        return result;
-    }
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
 
-    /*
-     * Determines the result of whether a floating point value is less than
-     * another floating point value for each lane of a SIMD vector.  This
-     * function does not set floating point exceptions. This overload uses the
-     * same value for comparison across all lanes of the first argument.
-     */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        isless (simd_type <T, lanes, arithmetic_tag> const & v, T const & cmp)
-        noexcept
-    {
-        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::isless (v [i], cmp);
-        }
-        return result;
+        return transform (
+            [] (value_type const & a, value_type const & b) noexcept
+            {
+                return std::isgreaterequal (a, b);
+            },
+            u, v
+        );
     }
 
     /*
@@ -8697,35 +9759,25 @@ namespace detail
      * less than another floating point value for each lane of SIMD vectors.
      * This function does not set floating point exceptions.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        isless (simd_type <T, lanes, arithmetic_tag> const & u,
-                simd_type <T, lanes, arithmetic_tag> const & v)
-        noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::isless (
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > isless (SIMDType const & u, SIMDType const & v) noexcept
     {
-        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::isless (u [i], v [i]);
-        }
-        return result;
-    }
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
 
-    /*
-     * Determines the result of whether a floating point value is less than
-     * or equal to another floating point value for each lane of a SIMD vector.
-     * This function does not set floating point exceptions. This overload uses
-     * the same value for comparison across all lanes of the first argument.
-     */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        islessequal (simd_type <T, lanes, arithmetic_tag> const & v, T const & cmp)
-        noexcept
-    {
-        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::islessequal (v [i], cmp);
-        }
-        return result;
+        return transform (
+            [] (value_type const & a, value_type const & b) noexcept
+            {
+                return std::isless (a, b);
+            },
+            u, v
+        );
     }
 
     /*
@@ -8733,36 +9785,25 @@ namespace detail
      * less than or equal to another floating point value for each lane of
      * SIMD vectors. This function does not set floating point exceptions.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        islessequal (simd_type <T, lanes, arithmetic_tag> const & u,
-                     simd_type <T, lanes, arithmetic_tag> const & v)
-        noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::islessequal (
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > islessequal (SIMDType const & u, SIMDType const & v) noexcept
     {
-        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::islessequal (u [i], v [i]);
-        }
-        return result;
-    }
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
 
-    /*
-     * Determines the result of whether a floating point value is less than
-     * or greater than another floating point value for each lane of a SIMD
-     * vector. This function does not set floating point exceptions. This
-     * overload uses the same value for comparison across all lanes of the first
-     * argument.
-     */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        islessgreater (simd_type <T, lanes, arithmetic_tag> const & v, T const & cmp)
-        noexcept
-    {
-        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::islessgreater (v [i], cmp);
-        }
-        return result;
+        return transform (
+            [] (value_type const & a, value_type const & b) noexcept
+            {
+                return std::islessequal (a, b);
+            },
+            u, v
+        );
     }
 
     /*
@@ -8770,35 +9811,25 @@ namespace detail
      * less than or greater than another floating point value for each lane of
      * SIMD vectors. This function does not set floating point exceptions.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        islessgreater (simd_type <T, lanes, arithmetic_tag> const & u,
-                       simd_type <T, lanes, arithmetic_tag> const & v)
-        noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::islessgreater (
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > islessgreater (SIMDType const & u, SIMDType const & v) noexcept
     {
-        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::islessgreater (u [i], v [i]);
-        }
-        return result;
-    }
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
 
-    /*
-     * Determines the result of whether a floating point value is unordered
-     * with another floating point value for each lane of a SIMD  vector. This
-     * function does not set floating point exceptions. This overload uses the
-     * same value for comparison across all lanes of the first argument.
-     */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        isunordered (simd_type <T, lanes, arithmetic_tag> const & v, T const & cmp)
-        noexcept
-    {
-        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::isunordered (v [i], cmp);
-        }
-        return result;
+        return transform (
+            [] (value_type const & a, value_type const & b) noexcept
+            {
+                return std::islessgreater (a, b);
+            },
+            u, v
+        );
     }
 
     /*
@@ -8806,53 +9837,111 @@ namespace detail
      * unordered with another floating point value for each lane of SIMD
      * vectors. This function does not set floating point exceptions.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag>
-        isunordered (simd_type <T, lanes, arithmetic_tag> const & u,
-                       simd_type <T, lanes, arithmetic_tag> const & v)
-        noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::isunordered (
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > isunordered (SIMDType const & u, SIMDType const & v) noexcept
     {
-        simd_type <::simd::detail::integral_type_switch <T>, lanes, boolean_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::isunordered (u [i], v [i]);
-        }
-        return result;
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+
+        return transform (
+            [] (value_type const & a, value_type const & b) noexcept
+            {
+                return std::isunordered (a, b);
+            },
+            u, v
+        );
     }
 
     /*
      * Computes the pairwise fmod of two SIMD vectors.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        fmod (simd_type <T, lanes, arithmetic_tag> const & u,
-              simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::fmod (
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > fmod (SIMDType const & u, SIMDType const & v) noexcept
     {
-        using result_type = decltype (
-            std::fmod (std::declval <T> (), std::declval <T> ())
-        );
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
 
-        simd_type <result_type, lanes, arithmetic_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::fmod (u [i], v [i]);
-        }
-        return result;
+        return transform (
+            [] (value_type const & a, value_type const & b) noexcept
+            {
+                return std::fmod (a, b);
+            },
+            u, v
+        );
     }
 
     /*
      * Computes the pairwise remainder of two SIMD vectors.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        remainder (simd_type <T, lanes, arithmetic_tag> const & u,
-                   simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType>
+    simd_type <
+        decltype (std::remainder (
+            std::declval <typename simd_traits <SIMDType>::value_type> (),
+            std::declval <typename simd_traits <SIMDType>::value_type> ()
+        )),
+        simd_traits <SIMDType>::lanes
+    > remainder (SIMDType const & u, SIMDType const & v) noexcept
     {
-        using result_type = decltype (
-            std::remainder (std::declval <T> (), std::declval <T> ())
-        );
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
 
-        simd_type <result_type, lanes, arithmetic_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::remainder (u [i], v [i]);
+        return transform (
+            [] (value_type const & a, value_type const & b) noexcept
+            {
+                return std::remainder (a, b);
+            },
+            u, v
+        );
+    }
+
+    /*
+     * Computes the pairwise remainder of two SIMD vectors as well as the sign
+     * and at least the three last bits of the division, which is stored in the
+     * second SIMD vector of the result pair.
+     */
+    template <typename SIMDType>
+    std::pair <
+        simd_type <
+            decltype (std::remquo (
+                std::declval <typename simd_traits <SIMDType>::value_type> (),
+                std::declval <typename simd_traits <SIMDType>::value_type> ()
+            )),
+            simd_traits <SIMDType>::lanes
+        >,
+        simd_type <int, simd_traits <SIMDType>::lanes>
+    > remquo (SIMDType const & u, SIMDType const & v) noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
+        using result_type = std::pair <
+            simd_type <
+                decltype (std::remquo (
+                    std::declval <value_type> (), std::declval <value_type> ()
+                )),
+                traits_type::lanes
+            >,
+            simd_type <int, traits_type::lanes>
+        >;
+
+        result_type result {};
+        for (std::size_t i = 0; i < traits_type::lanes; ++i) {
+            int quo;
+            result.first.assign (
+                i, std::remquo (u.value (i), v.value (i), &quo)
+            );
+            result.second.assign (i, quo);
         }
         return result;
     }
@@ -8861,76 +9950,153 @@ namespace detail
      * Computes the fused multiply and add operation of three SIMD vectors,
      * in the form (u * v) + w.
      */
-    template <typename T, std::size_t lanes>
-    cpp14_constexpr simd_type <T, lanes, arithmetic_tag>
-        fma (simd_type <T, lanes, arithmetic_tag> const & u,
-             simd_type <T, lanes, arithmetic_tag> const & v,
-             simd_type <T, lanes, arithmetic_tag> const & w) noexcept
+    template <typename SIMDType1, typename SIMDType2, typename SIMDType3>
+    simd_type <
+        decltype (std::fma (
+            std::declval <typename simd_traits <SIMDType1>::value_type> (),
+            std::declval <typename simd_traits <SIMDType2>::value_type> (),
+            std::declval <typename simd_traits <SIMDType3>::value_type> ()
+        )),
+        simd_traits <SIMDType1>::lanes
+    > fma (SIMDType1 const & u, SIMDType2 const & v, SIMDType3 const & w)
+        noexcept
     {
-        using result_type = decltype (
-            std::fma (
-                std::declval <T> (), std::declval <T> (), std::declval <T> ()
-            )
+        using traits_type1 = simd_traits <SIMDType1>;
+        using value_type1  = typename traits_type1::value_type;
+
+        using traits_type2 = simd_traits <SIMDType2>;
+        using value_type2  = typename traits_type2::value_type;
+
+        using traits_type3 = simd_traits <SIMDType3>;
+        using value_type3  = typename traits_type3::value_type;
+
+        static_assert (
+            traits_type1::lanes == traits_type2::lanes &&
+            traits_type1::lanes == traits_type3::lanes,
+            "cannot compute fma across SIMD vectors of different lengths"
         );
 
-        simd_type <result_type, lanes, arithmetic_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::fma (u [i], v [i], w [i]);
-        }
-        return result;
+        return transform (
+            [] (value_type1 const & a,
+                value_type2 const & b,
+                value_type3 const & c) noexcept
+            {
+                return std::fma (a, b, c);
+            },
+            u, v, w
+        );
     }
 
 #if __cplusplus > 201402L
     /*
      * Computes the pairwise gcd of two SIMD vectors.
      */
-    template <typename T, std::size_t lanes>
-    constexpr simd_type <T, lanes, arithmetic_tag>
-        gcd (simd_type <T, lanes, arithmetic_tag> const & u,
-             simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType1, typename SIMDType2>
+    constexpr simd_type <
+        decltype (std::gcd (
+            std::declval <typename simd_traits <SIMDType1>::value_type> (),
+            std::declval <typename simd_traits <SIMDType2>::value_type> ()
+        )),
+        simd_traits <SIMDType1>::lanes
+    > gcd (SIMDType1 const & u, SIMDType2 const & v) noexcept
     {
+        using traits_type1 = simd_traits <SIMDType1>;
+        using value_type1  = typename traits_type1::value_type;
+
+        using traits_type2 = simd_traits <SIMDType2>;
+        using value_type2  = typename traits_type2::value_type;
+
         static_assert (
-            std::is_integral <T>::value,
-            "template parameter type T must be an integral type"
+            traits_type1::lanes == traits_type2::lanes,
+            "cannot compute gcd across SIMD vectors of different length"
         );
 
-        simd_type <T, lanes, arithmetic_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::gcd (u [i], v [i]);
-        }
-        return result;
+        return transform (
+            [] (value_type1 const & a, value_type2 const & b) constexpr noexcept
+            {
+                return std::gcd (a, b);
+            },
+            u, v
+        );
     }
 
     /*
      * Computes the pairwise lcm of two SIMD vectors.
      */
-    template <typename T, std::size_t lanes>
-    constexpr simd_type <T, lanes, arithmetic_tag>
-        lcm (simd_type <T, lanes, arithmetic_tag> const & u,
-             simd_type <T, lanes, arithmetic_tag> const & v) noexcept
+    template <typename SIMDType1, typename SIMDType2>
+    constexpr simd_type <
+        decltype (std::lcm (
+            std::declval <typename simd_traits <SIMDType1>::value_type> (),
+            std::declval <typename simd_traits <SIMDType2>::value_type> ()
+        )),
+        simd_traits <SIMDType1>::lanes
+    > lcm (SIMDType1 const & u, SIMDType2 const & v) noexcept
     {
+        using traits_type1 = simd_traits <SIMDType1>;
+        using value_type1  = typename traits_type1::value_type;
+
+        using traits_type2 = simd_traits <SIMDType2>;
+        using value_type2  = typename traits_type2::value_type;
+
         static_assert (
-            std::is_integral <T>::value,
-            "template parameter type T must be an integral type"
+            traits_type1::lanes == traits_type2::lanes,
+            "cannot compute lcm across SIMD vectors of different length"
         );
 
-        simd_type <T, lanes, arithmetic_tag> result {};
-        for (std::size_t i = 0; i < lanes; ++i) {
-            result [i] = std::lcm (u [i], v [i]);
-        }
-        return result;
+        return transform (
+            [] (value_type1 const & a, value_type2 const & b) constexpr noexcept
+            {
+                return std::lcm (a, b);
+            },
+            u, v
+        );
     }
 
     /*
      * Computes the clamped value for each lane of a SIMD vector.
      */
-    template <typename T, std::size_t lanes, typename tag>
-    constexpr simd_type <T, lanes, tag>
-        clamp (simd_type <T, lanes, tag> const & v, T const & lo, T const & hi)
+    template <typename SIMDType>
+    constexpr SIMDType
+        clamp (SIMDType const & u, SIMDType const & lo, SIMDType const & hi)
         noexcept
     {
+        using traits_type = simd_traits <SIMDType>;
+        uisng value_type  = typename traits_type::value_type;
+
         return transform (
-            [&lo, &hi] (T const & a) { return std::clamp (a, lo, hi); }, v
+            [] (value_type const & val,
+                value_type const & l,
+                value_type const & h) constexpr noexcept
+            {
+                return std::clamp (val, l, h);
+            },
+            u, lo, hi
+        );
+    }
+
+    /*
+     * Computes the clamped value for each lane of a SIMD vector using the
+     * provided comparison function.
+     */
+    template <typename SIMDType, typename Compare>
+    constexpr SIMDType clamp (SIMDType const & u,
+                              SIMDType const & lo,
+                              SIMDType const & hi,
+                              Compare && comp)
+        noexcept
+    {
+        using traits_type = simd_traits <SIMDType>;
+        uisng value_type  = typename traits_type::value_type;
+
+        return transform (
+            [c = std::forward <Compare> (comp)] (value_type const & val,
+                                                 value_type const & l,
+                                                 value_type const & h)
+                constexpr noexcept
+            {
+                return std::clamp (val, l, h, c);
+            },
+            u, lo, hi
         );
     }
 #endif
@@ -9803,8 +10969,7 @@ namespace simd
         operator<< (std::basic_ostream <CharT, CharTraits> & os,
                     SIMDType const & v)
     {
-        static constexpr std::size_t lanes =
-            simd::simd_traits <SIMDType>::lanes;
+        static constexpr std::size_t lanes = simd_traits <SIMDType>::lanes;
 
         typename std::basic_ostream <CharT, CharTraits>::sentry sentry {os};
         if (sentry) {
@@ -9833,8 +10998,8 @@ namespace simd
     std::basic_istream <CharT, CharTraits> &
         operator>> (std::basic_istream <CharT, CharTraits> & is, SIMDType & v)
     {
-        using vec_traits = simd::simd_traits <SIMDType>;
-        using value_type = typename vec_traits::value_type;
+        using traits_type = simd_traits <SIMDType>;
+        using value_type  = typename traits_type::value_type;
 
         /* select type to read into from std::num_get::get */
         using in_type = typename std::conditional <
@@ -9869,7 +11034,7 @@ namespace simd
         using isb_iterator = std::istreambuf_iterator <CharT, CharTraits>;
 
         using char_traits = CharTraits;
-        using char_type = typename CharTraits::char_type;
+        using char_type   = typename CharTraits::char_type;
 
         auto const flags    = is.flags ();
         auto const & locale = is.getloc ();
@@ -9959,7 +11124,7 @@ namespace simd
                         v.assign (count, static_cast <value_type> (in_val));
                         count += 1;
                     }
-                } while (count < vec_traits::lanes);
+                } while (count < traits_type::lanes);
             }
         } catch (std::ios_base::failure &) {
             is.setstate (std::ios_base::failbit);
@@ -9977,8 +11142,8 @@ namespace std
 #define std_hash_impl(ty, lanes, tag) template <>\
     struct hash <simd::simd_type <ty, lanes, tag>>\
     {\
-        typedef simd::simd_type <ty, lanes, tag> argument_type;\
-        typedef std::size_t result_type;\
+        using argument_type = simd::simd_type <ty, lanes, tag>;\
+        using result_type   = std::size_t;\
 \
         result_type operator() (argument_type const & s) const noexcept\
         {\
@@ -9986,8 +11151,9 @@ namespace std
                 argument_type\
             >::value_type;\
 \
+            simd::hash <argument_type> hasher {};\
             return simd::math::accumulate (\
-                simd::hash <argument_type> (s), std::size_t {0},\
+                hasher (s), std::size_t {0},\
                 [] (std::size_t const & seed, value_type const & t) {\
                     return simd::detail::util::hash_combine <value_type> (\
                             seed, t\
@@ -10047,8 +11213,8 @@ namespace std
 #define std_hash_impl_int128(ty, lanes, tag) template <>\
     struct hash <simd::simd_type <ty, lanes, tag>>\
     {\
-        typedef simd::simd_type <ty, lanes, tag> argument_type;\
-        typedef std::size_t result_type;\
+        using argument_type = simd::simd_type <ty, lanes, tag>;\
+        using result_type   = std::size_t;\
 \
         result_type operator() (argument_type const & s) const noexcept\
         {\
@@ -10060,8 +11226,9 @@ namespace std
             };\
 \
             auto const & a = reinterpret_cast <alias const &> (s);\
-            auto h1 = simd::hash <decltype (a.v1)> (a.v1);\
-            auto h2 = simd::hash <decltype (a.v2)> (a.v2);\
+            simd::hash <decltype (a.v1)> hasher {};\
+            auto const h1 = hasher (a.v1);\
+            auto const h2 = hasher (a.v2);\
 \
             using hash_type = decltype (h1);\
             using hash_value_type =\
