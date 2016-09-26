@@ -7892,7 +7892,7 @@ namespace detail
 #if __cplusplus > 201402L
         [[deprecated("member function address is deprecated in C++17")]]
 #endif
-        pointer allocate (reference r) const noexcept
+        pointer address (reference r) const noexcept
         {
             return &r;
         }
@@ -7900,7 +7900,7 @@ namespace detail
 #if __cplusplus > 201402L
         [[deprecated("member function address is deprecated in C++17")]]
 #endif
-        const_pointer allocate (const_reference r) const noexcept
+        const_pointer address (const_reference r) const noexcept
         {
             return &r;
         }
@@ -8111,6 +8111,62 @@ namespace detail
                 sv1.template value <L> (),
                 sv2.template value <L> (),
                 sv3.template value <L> ()
+            )...
+        };
+    }
+
+    template <
+        std::size_t ... L, typename F,
+        typename SIMDType1, typename SIMDType2,
+        typename SIMDType3, typename SIMDType4
+    >
+    constexpr transform_result <F, SIMDType1, SIMDType2, SIMDType3, SIMDType4>
+        transform_impl (util::index_sequence <L...>, F && f,
+                        SIMDType1 const & sv1,
+                        SIMDType2 const & sv2,
+                        SIMDType3 const & sv3,
+                        SIMDType4 const & sv4)
+        noexcept (noexcept (
+            std::forward <F> (f) (
+                std::declval <
+                    typename simd::simd_traits <SIMDType1>::value_type
+                > (),
+                std::declval <
+                    typename simd::simd_traits <SIMDType2>::value_type
+                > (),
+                std::declval <
+                    typename simd::simd_traits <SIMDType3>::value_type
+                > (),
+                std::declval <
+                    typename simd::simd_traits <SIMDType4>::value_type
+                > ()
+            )
+        ))
+    {
+        static_assert (
+            is_simd_type <SIMDType1>::value,
+            "template parameter SIMDType1 must be a simd type"
+        );
+        static_assert (
+            is_simd_type <SIMDType2>::value,
+            "template parameter SIMDType2 must be a simd type"
+        );
+        static_assert (
+            is_simd_type <SIMDType3>::value,
+            "template parameter SIMDType3 must be a simd type"
+        );
+        static_assert (
+            is_simd_type <SIMDType4>::value,
+            "template parameter SIMDType4 must be a simd type"
+        );
+
+        return transform_result <F, SIMDType1, SIMDType2, SIMDType3, SIMDType4>
+        {
+            std::forward <F> (f) (
+                sv1.template value <L> (),
+                sv2.template value <L> (),
+                sv3.template value <L> (),
+                sv4.template value <L> ()
             )...
         };
     }
