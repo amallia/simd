@@ -20,13 +20,13 @@ There are `simd` types for each of 8-bit, 16-bit, 32-bit, 64-bit and 128-bit
 signed and unsigned integers, and 32-bit, 64-bit, and either 80-bit x87 floats
 or 128-bit floats, depending on the representation of `long double`. There are
 also `simd` types for each floating point type implementing complex arithmetic
-semantics with value types of `std::complex <T>.`
+semantics with value types of `std::complex <T>`.
 
-All types in the `simd::` namespace are type safe, value semantic, regular POD
+All types in the `simd` namespace are type safe, value semantic, regular POD
 types supporting the full range of overloadable operators for their respective
 underlying types. Overloads of `operator`s `new`/`new[]` and `delete`/`delete[]`
 are provided that allocate memory aligned to the appropriate constant for each
-type in the `simd::` namespace. C++17 aligned overloads of `operator`s `new`/
+type in the `simd` namespace. C++17 aligned overloads of `operator`s `new`/
 `new[]` and `delete`/`delete[]` are also supported. For container classes
 supporting custom allocators there is a `simd::allocator <T>` template class
 implementing allocation of correctly-aligned memory regions. There is also
