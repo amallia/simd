@@ -67,7 +67,7 @@ cxx_wflg += -Wsuggest-final-types -Wsuggest-final-methods -Wsuggest-override \
 			-Wzero-as-null-pointer-constant -Wno-psabi -Wuseless-cast
 cxx_lflg += -lstdc++
 else
-cxx_wflg += -Wint-to-void-pointer-cast -Wshift-overflow -Wshift-underflow
+cxx_wflg += -Wint-to-void-pointer-cast -Wshift-overflow
 cxx_slflg += -stdlib=libc++
 endif
 cxx_flgs := $(cxx_vflg) -std=$(cxx_std) $(cxx_slflg) $(cxx_gflg) $(cxx_oflg) \
