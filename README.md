@@ -40,6 +40,8 @@ of new `simd` types is supported with the `simd::simd_type` template type alias.
 
 Generalized lane-by-lane function application is available with the
 `simd::transform` method, which supports up to and including `4-ary` methods.
+Evaluation of `simd::transform` is a `constexpr` operation when provided a
+`constexpr` function and constant expression input values.
 
 Generalized horizontal accumulation is available with the `simd::accumulate`
 method.
