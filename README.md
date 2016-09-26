@@ -46,6 +46,20 @@ Evaluation of `simd::transform` is a `constexpr` operation when provided a
 Generalized horizontal accumulation is available with the `simd::accumulate`
 method.
 
+I/O operations on `simd` types are implemented with overloads of `operator>>`
+and `operator<<` for arbitrary character-type streams. The implementation
+is locale-independent and supports I/O manipulators for `std::dec`, `std::oct`,
+`std::hex`, floating point precision manipulators, and scientific and hex
+representations of floating point values. Input of `simd` types is independent
+of whitespace and non-numeric character separators; that is, no particular
+format is demanded (essentially any format will work). Output of `simd` types
+is always in the format `(v0;v1;...;vn)` for lane values `v0`, `v1`, ..., `vn`
+of an `n`-lane `simd` vector type. The only restriction is on input and output
+of 128-bit signed and unsigned integers, where for these operations to be
+supported user-defined `operator<<` and `operator>>` methods for `__int128`,
+and `unsigned __int128` (GCC) or `__int128_t`, and `__uin128_t` (Clang) must
+be provided.
+
 Lane-by-lane hashing is available with the `simd::hash` method, which has
 overloads using either `std::hash` or a user-provided hash function.
 
