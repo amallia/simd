@@ -52,9 +52,9 @@ synthesize instructions for the appropriate operations.
 * `uint32x2_t` -- unsigned 32-bit integers
 
 #### 1 64-bit lane
-* `bool64x1_t` -- 64-bit booleans
-* `int64x1_t` -- signed 64-bit integers
-* `uint64x1_t` -- unsigned 64-bit integers
+* `bool64x1_t` -- 64-bit boolean
+* `int64x1_t` -- signed 64-bit integer
+* `uint64x1_t` -- unsigned 64-bit integer
 
 ## <a name="sse"></a>namespace `simd::sse`
 
@@ -75,9 +75,9 @@ synthesize instructions for the appropriate operations.
 * `uint32x2_t` -- unsigned 32-bit integers
 
 #### 1 64-bit lane
-* `bool64x1_t` -- 64-bit booleans
-* `int64x1_t` -- signed 64-bit integers
-* `uint64x1_t` -- unsigned 64-bit integers
+* `bool64x1_t` -- 64-bit boolean
+* `int64x1_t` -- signed 64-bit integer
+* `uint64x1_t` -- unsigned 64-bit integer
 
 #### 4 32-bit lanes
 * `float32x4_t` -- 32-bit floating point values
@@ -102,9 +102,9 @@ synthesize instructions for the appropriate operations.
 * `uint32x2_t` -- unsigned 32-bit integers
 
 #### 1 64-bit lane
-* `bool64x1_t` -- 64-bit booleans
-* `int64x1_t` -- signed 64-bit integers
-* `uint64x1_t` -- unsigned 64-bit integers
+* `bool64x1_t` -- 64-bit boolean
+* `int64x1_t` -- signed 64-bit integer
+* `uint64x1_t` -- unsigned 64-bit integer
 
 #### 16 8-bit lanes
 * `bool8x16_t` -- 8-bit booleans
@@ -131,9 +131,9 @@ synthesize instructions for the appropriate operations.
 * `complex_float64x2_t` -- 64-bit complex number values
 
 #### 1 128-bit lane
-* `bool128x1_t` -- 128-bit booleans
-* `int128x1_t` -- signed 128-bit integers
-* `uint128x1_t` -- unsigned 128-bit integers
+* `bool128x1_t` -- 128-bit boolean
+* `int128x1_t` -- signed 128-bit integer
+* `uint128x1_t` -- unsigned 128-bit integer
 
 ## <a name="sse3"></a>namespace `simd::sse3`
 
@@ -154,9 +154,9 @@ synthesize instructions for the appropriate operations.
 * `uint32x2_t` -- unsigned 32-bit integers
 
 #### 1 64-bit lane
-* `bool64x1_t` -- 64-bit booleans
-* `int64x1_t` -- signed 64-bit integers
-* `uint64x1_t` -- unsigned 64-bit integers
+* `bool64x1_t` -- 64-bit boolean
+* `int64x1_t` -- signed 64-bit integer
+* `uint64x1_t` -- unsigned 64-bit integer
 
 #### 16 8-bit lanes
 * `bool8x16_t` -- 8-bit booleans
@@ -183,9 +183,9 @@ synthesize instructions for the appropriate operations.
 * `complex_float64x2_t` -- 64-bit complex number values
 
 #### 1 128-bit lane
-* `bool128x1_t` -- 128-bit booleans
-* `int128x1_t` -- signed 128-bit integers
-* `uint128x1_t` -- unsigned 128-bit integers
+* `bool128x1_t` -- 128-bit boolean
+* `int128x1_t` -- signed 128-bit integer
+* `uint128x1_t` -- unsigned 128-bit integer
 
 ## <a name="ssse3"></a>namespace `simd::ssse3`
 
@@ -206,9 +206,9 @@ synthesize instructions for the appropriate operations.
 * `uint32x2_t` -- unsigned 32-bit integers
 
 #### 1 64-bit lane
-* `bool64x1_t` -- 64-bit booleans
-* `int64x1_t` -- signed 64-bit integers
-* `uint64x1_t` -- unsigned 64-bit integers
+* `bool64x1_t` -- 64-bit boolean
+* `int64x1_t` -- signed 64-bit integer
+* `uint64x1_t` -- unsigned 64-bit integer
 
 #### 16 8-bit lanes
 * `bool8x16_t` -- 8-bit booleans
@@ -235,9 +235,9 @@ synthesize instructions for the appropriate operations.
 * `complex_float64x2_t` -- 64-bit complex number values
 
 #### 1 128-bit lane
-* `bool128x1_t` -- 128-bit booleans
-* `int128x1_t` -- signed 128-bit integers
-* `uint128x1_t` -- unsigned 128-bit integers
+* `bool128x1_t` -- 128-bit boolean
+* `int128x1_t` -- signed 128-bit integer
+* `uint128x1_t` -- unsigned 128-bit integer
 
 ## <a name="sse4"></a>namespace `simd::sse4`/`simd::sse4_1`/`simd::sse4_2`
 
@@ -258,9 +258,9 @@ synthesize instructions for the appropriate operations.
 * `uint32x2_t` -- unsigned 32-bit integers
 
 #### 1 64-bit lane
-* `bool64x1_t` -- 64-bit booleans
-* `int64x1_t` -- signed 64-bit integers
-* `uint64x1_t` -- unsigned 64-bit integers
+* `bool64x1_t` -- 64-bit boolean
+* `int64x1_t` -- signed 64-bit integer
+* `uint64x1_t` -- unsigned 64-bit integer
 
 #### 16 8-bit lanes
 * `bool8x16_t` -- 8-bit booleans
@@ -287,9 +287,9 @@ synthesize instructions for the appropriate operations.
 * `complex_float64x2_t` -- 64-bit complex number values
 
 #### 1 128-bit lane
-* `bool128x1_t` -- 128-bit booleans
-* `int128x1_t` -- signed 128-bit integers
-* `uint128x1_t` -- unsigned 128-bit integers
+* `bool128x1_t` -- 128-bit boolean
+* `int128x1_t` -- signed 128-bit integer
+* `uint128x1_t` -- unsigned 128-bit integer
 
 ## <a name="avx"></a>namespace `simd::avx`
 
@@ -310,9 +310,9 @@ synthesize instructions for the appropriate operations.
 * `uint32x2_t` -- unsigned 32-bit integers
 
 #### 1 64-bit lane
-* `bool64x1_t` -- 64-bit booleans
-* `int64x1_t` -- signed 64-bit integers
-* `uint64x1_t` -- unsigned 64-bit integers
+* `bool64x1_t` -- 64-bit boolean
+* `int64x1_t` -- signed 64-bit integer
+* `uint64x1_t` -- unsigned 64-bit integer
 
 #### 16 8-bit lanes
 * `bool8x16_t` -- 8-bit booleans
@@ -339,9 +339,9 @@ synthesize instructions for the appropriate operations.
 * `complex_float64x2_t` -- 64-bit complex number values
 
 #### 1 128-bit lane
-* `bool128x1_t` -- 128-bit booleans
-* `int128x1_t` -- signed 128-bit integers
-* `uint128x1_t` -- unsigned 128-bit integers
+* `bool128x1_t` -- 128-bit boolean
+* `int128x1_t` -- signed 128-bit integer
+* `uint128x1_t` -- unsigned 128-bit integer
 
 #### 8 32-bit lanes
 * `float32x8_t` -- 32-bit floating point values
@@ -370,9 +370,9 @@ synthesize instructions for the appropriate operations.
 * `uint32x2_t` -- unsigned 32-bit integers
 
 #### 1 64-bit lane
-* `bool64x1_t` -- 64-bit booleans
-* `int64x1_t` -- signed 64-bit integers
-* `uint64x1_t` -- unsigned 64-bit integers
+* `bool64x1_t` -- 64-bit boolean
+* `int64x1_t` -- signed 64-bit integer
+* `uint64x1_t` -- unsigned 64-bit integer
 
 #### 16 8-bit lanes
 * `bool8x16_t` -- 8-bit booleans
@@ -399,9 +399,9 @@ synthesize instructions for the appropriate operations.
 * `complex_float64x2_t` -- 64-bit complex number values
 
 #### 1 128-bit lane
-* `bool128x1_t` -- 128-bit booleans
-* `int128x1_t` -- signed 128-bit integers
-* `uint128x1_t` -- unsigned 128-bit integers
+* `bool128x1_t` -- 128-bit boolean
+* `int128x1_t` -- signed 128-bit integer
+* `uint128x1_t` -- unsigned 128-bit integer
 
 #### 8 32-bit lanes
 * `bool32x8_t` -- 32-bit booleans
@@ -436,9 +436,9 @@ synthesize instructions for the appropriate operations.
 * `uint32x2_t` -- unsigned 32-bit integers
 
 #### 1 64-bit lane
-* `bool64x1_t` -- 64-bit booleans
-* `int64x1_t` -- signed 64-bit integers
-* `uint64x1_t` -- unsigned 64-bit integers
+* `bool64x1_t` -- 64-bit boolean
+* `int64x1_t` -- signed 64-bit integer
+* `uint64x1_t` -- unsigned 64-bit integer
 
 #### 16 8-bit lanes
 * `bool8x16_t` -- 8-bit booleans
@@ -465,9 +465,9 @@ synthesize instructions for the appropriate operations.
 * `complex_float64x2_t` -- 64-bit complex number values
 
 #### 1 128-bit lane
-* `bool128x1_t` -- 128-bit booleans
-* `int128x1_t` -- signed 128-bit integers
-* `uint128x1_t` -- unsigned 128-bit integers
+* `bool128x1_t` -- 128-bit boolean
+* `int128x1_t` -- signed 128-bit integer
+* `uint128x1_t` -- unsigned 128-bit integer
 
 #### 8 32-bit lanes
 * `bool32x8_t` -- 32-bit booleans
@@ -516,9 +516,9 @@ synthesize instructions for the appropriate operations.
 * `uint32x2_t` -- unsigned 32-bit integers
 
 #### 1 64-bit lane
-* `bool64x1_t` -- 64-bit booleans
-* `int64x1_t` -- signed 64-bit integers
-* `uint64x1_t` -- unsigned 64-bit integers
+* `bool64x1_t` -- 64-bit boolean
+* `int64x1_t` -- signed 64-bit integer
+* `uint64x1_t` -- unsigned 64-bit integer
 
 #### 16 8-bit lanes
 * `bool8x16_t` -- 8-bit booleans
