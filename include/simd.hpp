@@ -65,6 +65,12 @@
     #define cpp14_constexpr
 #endif
 
+#if __cplusplus > 201402L
+    #define cpp17_constexpr constexpr
+#else
+    #define cpp17_constexpr
+#endif
+
 /* -- Implementation Notes --
  *  Vector type specializations:
  *
@@ -1204,7 +1210,7 @@ template <>
 
             return apply_op <vec_to> (
                 v,
-                [] (from_valtype const & val) cpp14_constexpr noexcept
+                [] (from_valtype const & val) cpp17_constexpr noexcept
                     -> valtype
                 {
                     return static_cast <valtype> (val);
@@ -2471,7 +2477,7 @@ template <>
             return boolean_simd_type <integral_type, lanes> {
                 base::template apply_op <vector_type> (
                     this->_vec,
-                    [] (value_type const & v) cpp14_constexpr -> value_type
+                    [] (value_type const & v) cpp17_constexpr -> value_type
                     {
                         return static_cast <value_type> (!v);
                     }
@@ -2491,7 +2497,7 @@ template <>
                     this->_vec,
                     sv._vec,
                     [] (value_type const & u, value_type const & v)
-                        cpp14_constexpr -> value_type
+                        cpp17_constexpr -> value_type
                     {
                         return static_cast <value_type> (u && v);
                     }
@@ -2526,7 +2532,7 @@ template <>
                     this->_vec,
                     sv._vec,
                     [] (value_type const & u, value_type const & v)
-                        cpp14_constexpr -> value_type
+                        cpp17_constexpr -> value_type
                     {
                         return static_cast <value_type> (u || v);
                     }
@@ -4569,6 +4575,13 @@ template <>
         {
             this->_realvec = extend (val.real ());
             this->_realvec = extend (val.imag ());
+        }
+
+        template <std::size_t N>
+        cpp14_constexpr void assign (value_type const & val) & noexcept
+        {
+            this->_realvec [N] = val.real ();
+            this->_imagvec [N] = val.imag ();
         }
 
         cpp14_constexpr void
@@ -9001,7 +9014,7 @@ namespace math
         using value_type  = typename traits_type::value_type;
 
         return transform (
-            [] (value_type const & a, value_type const & b) cpp14_constexpr
+            [] (value_type const & a, value_type const & b) cpp17_constexpr
             {
                 return std::max (a, b);
             },
@@ -9020,7 +9033,7 @@ namespace math
         using value_type  = typename traits_type::value_type;
 
         return transform (
-            [] (value_type const & a, value_type const & b) cpp14_constexpr
+            [] (value_type const & a, value_type const & b) cpp17_constexpr
             {
                 return std::min (a, b);
             },
