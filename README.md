@@ -130,7 +130,6 @@ simd::uint32x4_t mandelbrot_vec (simd::float32x4_t re,
 
 ## benchmarking
 
-
 ## known successful configurations
 
 ### Ubuntu Linux (travis-ci: 12.04 precise)
