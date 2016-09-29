@@ -118,7 +118,7 @@ compute_and_verify (SimdT const & arg, std::vector <std::string> & errors)
     auto const expected_result = map (scalar_op, arg_arr);
     typename std::remove_cv <decltype (result)>::type expected_vector;
     for (std::size_t i = 0; i < lanes; ++i) {
-        expected_vector.assign (i, expected_result [i]);
+        expected_vector.set (i, expected_result [i]);
     }
 
     if (simd::any_of (result != expected_vector)) {
@@ -169,7 +169,7 @@ enum status compute_and_verify (SimdT const & lhs,
     auto const expected_result = map (scalar_op, lhs_arr, rhs_arr);
     typename std::remove_cv <decltype (result)>::type expected_vector;
     for (std::size_t i = 0; i < lanes; ++i) {
-        expected_vector.assign (i, expected_result [i]);
+        expected_vector.set (i, expected_result [i]);
     }
 
     if (simd::any_of (result != expected_vector)) {

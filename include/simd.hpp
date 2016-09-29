@@ -2058,6 +2058,40 @@ template <>
             other = tmp;
         }
 
+        template <std::size_t N>
+        cpp14_constexpr integral_simd_type & set (value_type const & val) &
+            noexcept
+        {
+            static_assert (
+                N < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            this->_vec [N] = val;
+            return *this;
+        }
+
+        cpp14_constexpr integral_simd_type &
+            set (std::size_t n, value_type const & val) & noexcept
+        {
+            this->_vec [n] = val;
+            return *this;
+        }
+
+        cpp14_constexpr integral_simd_type &
+            set (std::initializer_list <value_type> vlist) & noexcept
+        {
+            auto lindex = vlist.begin ();
+            for (std::size_t i = 0; i < std::min (lanes, vlist.size ()); ++i) {
+                this->_vec [i] = *lindex++;
+            }
+        }
+
+        cpp14_constexpr void fill (value_type const & val) & noexcept
+        {
+            this->_vec = base::extend (val);
+        }
+
         cpp14_constexpr vector_type & data (void) & noexcept
         {
             return this->_vec;
@@ -2069,6 +2103,30 @@ template <>
         }
 
         template <std::size_t N>
+        constexpr const_reference get (void) const & noexcept
+        {
+            static_assert (
+                N < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            return const_reference {
+                &this->_vec, static_cast <std::ptrdiff_t> (N)
+            };
+        }
+
+        template <std::size_t N>
+        cpp14_constexpr reference get (void) & noexcept
+        {
+            static_assert (
+                N < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            return reference {&this->_vec, static_cast <std::ptrdiff_t> (N)};
+        }
+
+        template <std::size_t N>
         constexpr value_type value (void) const noexcept
         {
             return this->_vec [N];
@@ -2077,74 +2135,6 @@ template <>
         constexpr value_type value (std::size_t n) const noexcept
         {
             return this->_vec [n];
-        }
-
-        cpp14_constexpr void fill (value_type const & val) & noexcept
-        {
-            this->_vec = base::extend (val);
-        }
-
-        cpp14_constexpr void
-            assign (std::size_t n, value_type const & val) & noexcept
-        {
-            this->_vec [n] = val;
-        }
-
-        cpp14_constexpr void
-            assign (std::initializer_list <value_type> & vl) & noexcept
-        {
-            auto vals = vl.begin ();
-            std::size_t i = 0;
-            for (; i < std::min (lanes, vl.size ()); ++i) {
-                this->_vec [i] = vals [i];
-            }
-            for (; i < lanes; ++i) {
-                this->_vec [i] = value_type {0};
-            }
-        }
-
-        template <std::size_t n>
-        constexpr const_reference get (void) const & noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            return const_reference {
-                &this->_vec, static_cast <std::ptrdiff_t> (n)
-            };
-        }
-
-        template <std::size_t n>
-        cpp14_constexpr reference get (void) & noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            return reference {&this->_vec, static_cast <std::ptrdiff_t> (n)};
-        }
-
-        template <std::size_t n>
-        cpp14_constexpr integral_simd_type & set (value_type const & val) &
-            noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            this->_vec [n] = val;
-            return *this;
-        }
-
-        cpp14_constexpr integral_simd_type &
-            set (std::size_t n, value_type const & val) & noexcept
-        {
-            this->_vec [n] = val;
-            return *this;
         }
 
         constexpr const_reference operator[] (std::size_t n) const & noexcept
@@ -3245,6 +3235,39 @@ template <>
             other = tmp;
         }
 
+        template <std::size_t N>
+        cpp14_constexpr fp_simd_type & set (value_type const & val) & noexcept
+        {
+            static_assert (
+                N < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            this->_vec [N] = val;
+            return *this;
+        }
+
+        cpp14_constexpr fp_simd_type &
+            set (std::size_t n, value_type const & val) & noexcept
+        {
+            this->_vec [n] = val;
+            return *this;
+        }
+
+        cpp14_constexpr fp_simd_type &
+            set (std::initializer_list <value_type> vlist) & noexcept
+        {
+            auto lindex = vlist.begin ();
+            for (std::size_t i = 0; i < std::min (lanes, vlist.size ()); ++i) {
+                this->_vec [i] = *lindex++;
+            }
+        }
+
+        cpp14_constexpr void fill (value_type const & val) & noexcept
+        {
+            this->_vec = base::extend (val);
+        }
+
         cpp14_constexpr vector_type & data (void) & noexcept
         {
             return this->_vec;
@@ -3256,6 +3279,30 @@ template <>
         }
 
         template <std::size_t N>
+        constexpr const_reference get (void) const & noexcept
+        {
+            static_assert (
+                N < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            return const_reference {
+                &this->_vec, static_cast <std::ptrdiff_t> (N)
+            };
+        }
+
+        template <std::size_t N>
+        cpp14_constexpr reference get (void) & noexcept
+        {
+            static_assert (
+                N < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            return reference {&this->_vec, static_cast <std::ptrdiff_t> (N)};
+        }
+
+        template <std::size_t N>
         constexpr value_type value (void) const noexcept
         {
             return this->_vec [N];
@@ -3264,74 +3311,6 @@ template <>
         constexpr value_type value (std::size_t n) const noexcept
         {
             return this->_vec [n];
-        }
-
-        cpp14_constexpr void fill (value_type const & val) & noexcept
-        {
-            this->_vec = base::extend (val);
-        }
-
-        cpp14_constexpr void
-            assign (std::size_t n, value_type const & val) & noexcept
-        {
-            this->_vec [n] = val;
-        }
-
-        cpp14_constexpr void
-            assign (std::initializer_list <value_type> & vl) & noexcept
-        {
-            auto vals = vl.begin ();
-            std::size_t i = 0;
-            for (; i < std::min (lanes, vl.size ()); ++i) {
-                this->_vec [i] = vals [i];
-            }
-            for (; i < lanes; ++i) {
-                this->_vec [i] = value_type {0};
-            }
-        }
-
-        template <std::size_t n>
-        constexpr const_reference get (void) const & noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            return const_reference {
-                &this->_vec, static_cast <std::ptrdiff_t> (n)
-            };
-        }
-
-        template <std::size_t n>
-        cpp14_constexpr reference get (void) & noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            return reference {&this->_vec, static_cast <std::ptrdiff_t> (n)};
-        }
-
-        template <std::size_t n>
-        cpp14_constexpr fp_simd_type & set (value_type const & val) &
-            noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            this->_vec [n] = val;
-            return *this;
-        }
-
-        cpp14_constexpr fp_simd_type &
-            set (std::size_t n, value_type const & val) & noexcept
-        {
-            this->_vec [n] = val;
-            return *this;
         }
 
         constexpr const_reference operator[] (std::size_t n) const & noexcept
@@ -4571,39 +4550,47 @@ template <>
             other = tmp;
         }
 
-        cpp14_constexpr void fill (value_type const & val) noexcept
-        {
-            this->_realvec = extend (val.real ());
-            this->_realvec = extend (val.imag ());
-        }
-
         template <std::size_t N>
-        cpp14_constexpr void assign (value_type const & val) & noexcept
+        cpp14_constexpr complex_simd_type & set (value_type const & val) &
+            noexcept
         {
+            static_assert (
+                N < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
             this->_realvec [N] = val.real ();
             this->_imagvec [N] = val.imag ();
+            return *this;
         }
 
-        cpp14_constexpr void
-            assign (std::size_t n, value_type const & val) & noexcept
+        cpp14_constexpr complex_simd_type &
+            set (std::size_t n, value_type const & val) & noexcept
         {
             this->_realvec [n] = val.real ();
             this->_imagvec [n] = val.imag ();
+            return *this;
         }
 
-        cpp14_constexpr void
-            assign (std::initializer_list <value_type> & vl) & noexcept
+        cpp14_constexpr complex_simd_type &
+            set (std::initializer_list <value_type> vlist) & noexcept
         {
-            auto vals = vl.begin ();
-            std::size_t i = 0;
-            for (; i < std::min (lanes, vl.size ()); ++i) {
-                this->_realvec [i] = vals [i].real ();
-                this->_imagvec [i] = vals [i].imag ();
+            auto lindex = vlist.begin ();
+            for (std::size_t i = 0; i < std::min (lanes, vlist.size ()); ++i) {
+                this->_realvec [i] = lindex->real ();
+                this->_imagvec [i] = lindex->imag ();
+                lindex += 1;
             }
-            for (; i < lanes; ++i) {
-                this->_realvec [i] = value_type {0}.real ();
-                this->_imagvec [i] = value_type {0}.imag ();
-            }
+
+            return *this;
+        }
+
+        cpp14_constexpr complex_simd_type & fill (value_type const & val) &
+            noexcept
+        {
+            this->_realvec = extend (val.real ());
+            this->_realvec = extend (val.imag ());
+            return *this;
         }
 
         constexpr std::pair <vector_type const &, vector_type const &>
@@ -4620,6 +4607,32 @@ template <>
             return std::pair <vector_type &, vector_type &> (
                 this->_realvec, this->_imagvec
             );
+        }
+
+        template <std::size_t N>
+        constexpr const_reference get (void) const & noexcept
+        {
+            static_assert (
+                N < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            return const_reference {
+                this->_realvec, this->_imagvec, static_cast <std::ptrdiff_t> (N)
+            };
+        }
+
+        template <std::size_t N>
+        cpp14_constexpr reference get (void) & noexcept
+        {
+            static_assert (
+                N < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            return reference {
+                this->_realvec, this->_imagvec, static_cast <std::ptrdiff_t> (N)
+            };
         }
 
         template <std::size_t N>
@@ -4641,54 +4654,6 @@ template <>
         constexpr imag_simd_type imag (void) const noexcept
         {
             return imag_simd_type {this->_imagvec};
-        }
-
-        template <std::size_t n>
-        constexpr const_reference get (void) const & noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            return const_reference {
-                this->_realvec, this->_imagvec, static_cast <std::ptrdiff_t> (n)
-            };
-        }
-
-        template <std::size_t n>
-        cpp14_constexpr reference get (void) & noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            return reference {
-                this->_realvec, this->_imagvec, static_cast <std::ptrdiff_t> (n)
-            };
-        }
-
-        template <std::size_t n>
-        cpp14_constexpr complex_simd_type set (value_type const & val) &
-            noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            this->_realvec [n] = val.real ();
-            this->_imagvec [n] = val.imag ();
-            return *this;
-        }
-
-        cpp14_constexpr complex_simd_type &
-            set (std::size_t n, value_type const & val) & noexcept
-        {
-            this->_realvec [n] = val.real ();
-            this->_imagvec [n] = val.imag ();
-            return *this;
         }
 
         constexpr const_reference
@@ -5354,6 +5319,40 @@ template <>
             other = tmp;
         }
 
+        template <std::size_t N>
+        cpp14_constexpr boolean_simd_type & set (value_type const & val) &
+            noexcept
+        {
+            static_assert (
+                N < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            this->_vec [N] = val;
+            return *this;
+        }
+
+        cpp14_constexpr boolean_simd_type &
+            set (std::size_t n, value_type const & val) & noexcept
+        {
+            this->_vec [n] = val;
+            return *this;
+        }
+
+        cpp14_constexpr boolean_simd_type &
+            set (std::initializer_list <value_type> vlist) & noexcept
+        {
+            auto lindex = vlist.begin ();
+            for (std::size_t i = 0; i < std::min (lanes, vlist.size ()); ++i) {
+                this->_vec [i] = *lindex++;
+            }
+        }
+
+        cpp14_constexpr void fill (value_type const & val) & noexcept
+        {
+            this->_vec = base::extend (val);
+        }
+
         cpp14_constexpr vector_type & data (void) & noexcept
         {
             return this->_vec;
@@ -5365,6 +5364,30 @@ template <>
         }
 
         template <std::size_t N>
+        constexpr const_reference get (void) const & noexcept
+        {
+            static_assert (
+                N < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            return const_reference {
+                &this->_vec, static_cast <std::ptrdiff_t> (N)
+            };
+        }
+
+        template <std::size_t N>
+        cpp14_constexpr reference get (void) & noexcept
+        {
+            static_assert (
+                N < lanes,
+                "cannot access out-of-bounds vector lane"
+            );
+
+            return reference {&this->_vec, static_cast <std::ptrdiff_t> (N)};
+        }
+
+        template <std::size_t N>
         constexpr value_type value (void) const noexcept
         {
             return this->_vec [N];
@@ -5373,74 +5396,6 @@ template <>
         constexpr value_type value (std::size_t n) const noexcept
         {
             return this->_vec [n];
-        }
-
-        cpp14_constexpr void fill (value_type const & val) & noexcept
-        {
-            this->_vec = base::extend (val);
-        }
-
-        cpp14_constexpr void
-            assign (std::size_t n, value_type const & val) & noexcept
-        {
-            this->_vec [n] = val;
-        }
-
-        cpp14_constexpr void
-            assign (std::initializer_list <value_type> & vl) & noexcept
-        {
-            auto vals = vl.begin ();
-            std::size_t i = 0;
-            for (; i < std::min (lanes, vl.size ()); ++i) {
-                this->_vec [i] = vals [i];
-            }
-            for (; i < lanes; ++i) {
-                this->_vec [i] = value_type {0};
-            }
-        }
-
-        template <std::size_t n>
-        constexpr const_reference get (void) const & noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            return const_reference {
-                &this->_vec, static_cast <std::ptrdiff_t> (n)
-            };
-        }
-
-        template <std::size_t n>
-        cpp14_constexpr reference get (void) & noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            return reference {&this->_vec, static_cast <std::ptrdiff_t> (n)};
-        }
-
-        template <std::size_t n>
-        cpp14_constexpr boolean_simd_type & set (value_type const & val) &
-            noexcept
-        {
-            static_assert (
-                n < lanes,
-                "cannot access out-of-bounds vector lane"
-            );
-
-            this->_vec [n] = val;
-            return *this;
-        }
-
-        cpp14_constexpr boolean_simd_type &
-            set (std::size_t n, value_type const & val) & noexcept
-        {
-            this->_vec [n] = val;
-            return *this;
         }
 
         constexpr const_reference operator[] (std::size_t n) const & noexcept
@@ -6257,7 +6212,7 @@ template <>
     }
 
     template <std::size_t N, typename SIMDType>
-    constexpr typename simd_traits <SIMDType>::const_reference
+    constexpr typename simd_traits <SIMDType>::value_type
         value (SIMDType const & sv) noexcept
     {
         static_assert (
@@ -6268,52 +6223,32 @@ template <>
         return sv.template value <N> ();
     }
 
-    template <std::size_t N, typename SIMDType>
-    constexpr typename simd_traits <SIMDType>::reference
-        value (SIMDType & sv) noexcept
-    {
-        static_assert (
-            N < simd_traits <SIMDType>::lanes,
-            "cannot access out-of-bounds vector lane"
-        );
-
-        return sv.template value <N> ();
-    }
-
     template <typename SIMDType>
-    constexpr typename simd_traits <SIMDType>::const_reference
+    constexpr typename simd_traits <SIMDType>::value_type
         value (std::size_t n, SIMDType const & sv) noexcept
     {
         return sv.value (n);
     }
 
-    template <typename SIMDType>
-    constexpr typename simd_traits <SIMDType>::reference
-        value (std::size_t n, SIMDType & sv) noexcept
-    {
-        return sv.value (n);
-    }
-
     template <std::size_t N, typename SIMDType>
-    constexpr typename simd_traits <SIMDType>::reference
-        set (SIMDType & sv,
-             typename simd_traits <SIMDType>::value_type const & v) noexcept
+    cpp14_constexpr void
+    set (SIMDType & sv, typename simd_traits <SIMDType>::value_type const & v)
+        noexcept
     {
         static_assert (
             N < simd_traits <SIMDType>::lanes,
             "cannot access out-of-bounds vector lane"
         );
 
-        return sv.template set <N> (v);
+        sv.template set <N> (v);
     }
 
     template <typename SIMDType>
-    constexpr typename simd_traits <SIMDType>::reference
-        set (std::size_t n,
-             SIMDType & sv,
+    cpp14_constexpr void
+        set (std::size_t n, SIMDType & sv,
              typename simd_traits <SIMDType>::value_type const & v) noexcept
     {
-        return sv.set (n, v);
+        sv.set (n, v);
     }
 
     template <typename SIMDTypeTo, typename SIMDTypeFrom>
@@ -8309,8 +8244,8 @@ namespace math
 
         for (std::size_t i = 0; i < traits_type::lanes; ++i) {
             auto const result = std::div (u.value (i), v.value (i));
-            qr.first.assign  (i, result.quot);
-            qr.second.assign (i, result.rem);
+            qr.first.set  (i, result.quot);
+            qr.second.set (i, result.rem);
         }
 
         return qr;
@@ -9347,8 +9282,8 @@ namespace math
         result_type result {};
         for (std::size_t i = 0; i < traits_type::lanes; ++i) {
             int exp;
-            result.first.assign (i, std::frexp (v.value (i), &exp));
-            result.second.assign (i, exp);
+            result.first.set (i, std::frexp (v.value (i), &exp));
+            result.second.set (i, exp);
         }
         return result;
     }
@@ -9425,8 +9360,8 @@ namespace math
         result_type result {};
         for (std::size_t i = 0; i < traits_type::lanes; ++i) {
             value_type integral_val;
-            result.first.assign (i, std::modf (v.value (i), &integral_val));
-            result.second.assign (i, integral_val);
+            result.first.set (i, std::modf (v.value (i), &integral_val));
+            result.second.set (i, integral_val);
         }
         return result;
     }
@@ -10015,10 +9950,10 @@ namespace math
         result_type result {};
         for (std::size_t i = 0; i < traits_type::lanes; ++i) {
             int quo;
-            result.first.assign (
+            result.first.set (
                 i, std::remquo (u.value (i), v.value (i), &quo)
             );
-            result.second.assign (i, quo);
+            result.second.set (i, quo);
         }
         return result;
     }
@@ -11198,7 +11133,7 @@ namespace simd
                         is.setstate (std::ios_base::failbit);
                         return is;
                     } else {
-                        v.assign (count, static_cast <value_type> (in_val));
+                        v.set (count, static_cast <value_type> (in_val));
                         count += 1;
                     }
                 } while (count < traits_type::lanes);
